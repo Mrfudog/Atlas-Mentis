@@ -17,6 +17,7 @@ import {
   relationsFrom,
   layoutFor,
   viewKeys,
+  PLACE_VIEWS,
 } from '@nw/model';
 import type { PropertySchema } from '@nw/model';
 import { seedRegistry } from '../src/index.js';
@@ -117,14 +118,19 @@ describe('seed registry', () => {
     expect(seedRegistry.views['player']).toBeUndefined();
   });
 
-  /* Drei Ansichten, nicht einundzwanzig. Vierzehn der alten gab es für
+  /* Vier Ansichten, nicht einundzwanzig. Vierzehn der alten gab es für
      genau eine Artikelart — das ist keine Auswahl, sondern eine Liste von
      Sonderfällen mit einem Dropdown davor. Und **die Anordnung wohnt am
      Typ**: was für eine Artikelart eigen ist, steht bei ihr. */
   it('keeps the views to how much, and the arrangement at the type', () => {
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'overview', 'quick']);
-    const mitEigener = Object.keys(seedRegistry.interfaces)
-      .filter((n) => seedRegistry.interfaces[n]?.views?.['full']?.length);
+    /* Die, nach denen ein Ort fragt (seit T-110 mit dem Druck, seit T-425
+       mit den Erfassungsmasken, E-169), und der Handzettel als erste eigene. */
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['create', 'createFull', 'fight', 'full', 'handout', 'overview', 'print', 'quick', 'roleplay']);
+    for (const v of PLACE_VIEWS) expect(seedRegistry.views[v]).toBeDefined();
+    const mitEigener = Object.keys(seedRegistry.interfaces).filter((n) => {
+      const v = seedRegistry.interfaces[n]?.views?.['full'];
+      return Array.isArray(v) && v.length;
+    });
     expect(mitEigener).toContain('Creature');
     expect(mitEigener).toContain('Map');
     /* Und nichts liegt mehr an der Ansicht: eine Anordnung dort wäre die
@@ -294,11 +300,18 @@ describe('shared choice lists', () => {
    nichts, nimmt alles; ein Feld, das „measure" heisst und sonst nichts,
    rechnet nichts — und das sieht aus wie eine richtige Zahl. */
 describe('links name their target, measures name their unit', () => {
+  /* Auch die Felder an Kanten (`hasClass.subclass`): eine Auswahl ohne
+     Zieltyp wäre dort wieder offen (T-068). */
   const felder = (): { art: string; feld: string; p: PropertySchema }[] => {
     const out: { art: string; feld: string; p: PropertySchema }[] = [];
     Object.entries(seedRegistry.interfaces).forEach(([art, def]) => {
       Object.entries(def.schema?.properties ?? {}).forEach(([feld, p]) => {
         out.push({ art, feld, p });
+      });
+    });
+    Object.values(seedRegistry.relations).forEach((def) => {
+      Object.entries(def.props?.properties ?? {}).forEach(([feld, p]) => {
+        out.push({ art: `(${def.type})`, feld, p });
       });
     });
     return out;
@@ -605,7 +618,7 @@ describe('interface inheritance', () => {
 
   /* Ein laufender Handwerksgang (REQ-184). `put` ist die Zeile, an der
      alles hängt: ohne sie wüsste ein Fehlschlag nicht, was er kosten soll,
-     und `onFailure` wäre Zierrat. */
+     und die Regel an der Kampagne wäre Zierrat. */
   it('lets a craft actually run, on an edge and not in an article', () => {
     const gang = seedRegistry.relations.crafting;
     expect(gang.to).toEqual(['Recipe']);
@@ -614,7 +627,9 @@ describe('interface inheritance', () => {
     // Und eine Zahl neben dem Text, weil „2 Stunden" nicht rechnet.
     const rez = seedRegistry.interfaces.Recipe.schema.properties ?? {};
     expect(rez.days?.type).toBe('number');
-    expect(rez.onFailure?.enum).toEqual(['materialsLost', 'halfLost', 'nothingLost']);
+    // Was die Quelle beim Misslingen sagt, ist Text; es gilt die Kampagne (T-165).
+    expect(rez.onFailure?.enum).toBeUndefined();
+    expect(seedRegistry.interfaces.Campaign.schema.properties?.craftFailure?.enum).not.toContain('recipe');
   });
 
   /* Kachelkarten (REQ-138): ohne Spalten und Zeilen ist ein Muster nur eine
@@ -825,6 +840,10 @@ describe('loot is more than items', () => {
     expect(rule.required ?? []).not.toContain('kind');
     expect(enumOptions(seedRegistry, rule.properties['kind'])).toEqual([
       'rule', 'travel', 'sense', 'reward', 'boon', 'option',
+      /* T-087: Aufrüstung eines Fahrzeugs, Raum einer Bastion, Karte eines Decks. */
+      'upgrade', 'facility', 'card',
+      /* T-270: ein Artikel steht für ein System der App (Inventar, Handwerk …). */
+      'system',
     ]);
   });
 
@@ -885,9 +904,9 @@ describe('one registry of types', () => {
   /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock,
      Gegenstand zu Gegenstand (M4), und eine Instanz hat genau eine.
      Mehrere Vorlagen wären eine Mischung, die niemand geschrieben hat. */
-  it('lets a statblock and an item read a template of their own kind', () => {
+  it('lets a statblock, an item, a crafting order, a map and an encounter read a template of their own kind', () => {
     const r = seedRegistry.relations['instanceOf'];
-    expect(r?.from).toEqual(['Statblock', 'Item']);
+    expect(r?.from).toEqual(['Statblock', 'Item', 'CraftingOrder', 'Map', 'Encounter']);
     expect(r?.to).toEqual(['same']);
     expect(r?.cardinality).toBe('one');
     expect(r?.asField).toBeUndefined();
@@ -940,7 +959,7 @@ describe('the rule family', () => {
   const i = seedRegistry.interfaces;
 
   it('puts every rule kind below Rule, and Disease below Condition', () => {
-    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemProperty']) {
+    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemFeature']) {
       expect(i[n]?.extends).toContain('Rule');
     }
     expect(i['Disease']?.extends).toEqual(['Condition']);
@@ -968,9 +987,50 @@ describe('the rule family', () => {
     expect(seedRegistry.relations['worships']?.to).toEqual(['Deity']);
   });
 
+  /* T-324, E-163: was an einen Gegenstand kommt, ist ein Regelartikel. */
+  it('makes item properties and enhancements two sorts of one item feature', () => {
+    expect(i['ItemFeature']).toMatchObject({ area: 'rules', abstract: true });
+    expect(i['ItemProperty']?.extends).toEqual(['ItemFeature']);
+    expect(i['Enhancement']?.extends).toEqual(['ItemFeature']);
+    expect(Object.keys(i['ItemFeature'].schema.properties)).toEqual(
+      expect.arrayContaining(['appliesTo', 'namePrefix', 'nameSuffix', 'priceAdd', 'priceMult', 'mechanics']),
+    );
+    expect(Object.keys(i['Enhancement'].schema.properties)).toEqual(expect.arrayContaining(['rarity', 'bonusWeapon', 'bonusAc']));
+    /* Am Grundgegenstand steht nichts mehr davon. */
+    for (const f of ['appliesTo', 'namePrefix', 'nameSuffix', 'priceAdd', 'priceMult']) expect(i['Item'].schema.properties[f]).toBeUndefined();
+    expect(seedRegistry.relations['enchantedWith']?.to).toEqual(['Enhancement']);
+    /* Die Werte des Einzelfalls stehen an der Kante. */
+    expect(Object.keys(seedRegistry.relations['hasProperty']?.props?.properties ?? {})).toEqual(['damage', 'range', 'note']);
+  });
+
   it('carries the licence flag, the faction goal and the table columns', () => {
     expect(i['Source'].schema.properties['srd']?.type).toBe('boolean');
     expect(i['Faction'].schema.properties['goal']).toBeTruthy();
     expect(i['Table'].schema.properties['columns']).toBeTruthy();
+  });
+});
+
+describe('Ebenen-Arten (E-166)', () => {
+  it('jede Art, die von Layer erbt, steht in LAYER_TYPES — sonst sähen Stapel und Rechte sie nicht als Ebene', async () => {
+    const { LAYER_TYPES, typeChain } = await import('@nw/model');
+    const ebenen = Object.keys(seedRegistry.interfaces).filter((n) => !seedRegistry.interfaces[n]?.abstract && typeChain(seedRegistry, n).includes('Layer'));
+    expect(ebenen.sort()).toEqual([...LAYER_TYPES].sort());
+  });
+});
+
+/* Ein Encounter trägt, was die Leitung vorbereitet (T-333): wo er
+   stattfindet, was zu holen ist, auf welcher Karte — als Gruppen in der
+   Ansicht, damit der Ansichtsdesigner sie verschieben kann. */
+describe('an encounter as a prepared article (T-333)', () => {
+  it('happens at a place, like a scene', () => {
+    expect(seedRegistry.relations['happensAt']?.from).toEqual(expect.arrayContaining(['Story', 'Encounter']));
+    expect(relationsFrom(seedRegistry, 'Encounter').map((d) => d.type)).toContain('happensAt');
+  });
+  it('shows place, loot and map as groups in its full view', () => {
+    const full = seedRegistry.interfaces['Encounter']!.views!['full']!;
+    const gruppe = (rel: string) => full.find((el) => el.el === 'collection' && el.path?.[0]?.relation === rel);
+    expect(gruppe('happensAt')).toMatchObject({ text: 'Place' });
+    expect(gruppe('loot')).toMatchObject({ text: 'Loot', show: 'table', props: ['qty', 'chance'] });
+    expect(gruppe('onMap')).toMatchObject({ text: 'Map' });
   });
 });

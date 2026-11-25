@@ -1,0 +1,181 @@
+{
+ "titel": "Die Dokumentation in drei Stufen",
+ "kaesten": [
+  {
+   "id": "einstieg",
+   "x": 560,
+   "y": 0,
+   "w": 280,
+   "h": 64,
+   "text": "docs/README.md\nEinstieg und Bestandsaufnahme",
+   "farbe": "weiss"
+  },
+  {
+   "id": "produkt",
+   "x": 0,
+   "y": 150,
+   "w": 200,
+   "h": 64,
+   "text": "Produkt\nEpics, Features, Stories",
+   "farbe": "gelb"
+  },
+  {
+   "id": "produkt-d",
+   "x": 0,
+   "y": 290,
+   "w": 200,
+   "h": 190,
+   "text": "VTT/Epics (12 Epics)\nVTT/Features\nVTT/Stories (REQ-nnn)\nAnforderungen.md\nRoadmap.md (Herkunft)",
+   "farbe": "grau"
+  },
+  {
+   "id": "modell",
+   "x": 240,
+   "y": 150,
+   "w": 200,
+   "h": 64,
+   "text": "Modell\nArten, Felder, Kanten",
+   "farbe": "blau"
+  },
+  {
+   "id": "modell-d",
+   "x": 240,
+   "y": 290,
+   "w": 200,
+   "h": 190,
+   "text": "Datenmodell.md\nBegriffe.md\nArtikeltypen.md\nEbenen · Wissen\nBeziehungen\nVerweisfelder\nRegelsysteme · Durchgang",
+   "farbe": "grau"
+  },
+  {
+   "id": "technik",
+   "x": 480,
+   "y": 150,
+   "w": 200,
+   "h": 64,
+   "text": "Technik\nCode, Server, Oberfläche",
+   "farbe": "violett"
+  },
+  {
+   "id": "technik-d",
+   "x": 480,
+   "y": 290,
+   "w": 200,
+   "h": 190,
+   "text": "Architektur.md\nKarten.md\nSpieltisch.md\nWeb-Arbeitsplan.md\nUI-Arbeitsplan.md\ndesign/",
+   "farbe": "grau"
+  },
+  {
+   "id": "installation",
+   "x": 720,
+   "y": 150,
+   "w": 200,
+   "h": 64,
+   "text": "Installation\nBetrieb, Zugang",
+   "farbe": "gruen"
+  },
+  {
+   "id": "installation-d",
+   "x": 720,
+   "y": 290,
+   "w": 200,
+   "h": 190,
+   "text": "Betrieb.md\nZugang.md\nArchitektur §1–2",
+   "farbe": "grau"
+  },
+  {
+   "id": "mitarbeit",
+   "x": 960,
+   "y": 150,
+   "w": 200,
+   "h": 64,
+   "text": "Mitarbeit\nArbeitsweise",
+   "farbe": "rot"
+  },
+  {
+   "id": "mitarbeit-d",
+   "x": 960,
+   "y": 290,
+   "w": 200,
+   "h": 190,
+   "text": "CONTRIBUTING.md\nCLAUDE.md\nNachtarbeit/\nDecision Log",
+   "farbe": "grau"
+  },
+  {
+   "id": "inhalte",
+   "x": 1200,
+   "y": 150,
+   "w": 200,
+   "h": 64,
+   "text": "Inhalte\nImport, Regelwerke",
+   "farbe": "grau"
+  },
+  {
+   "id": "inhalte-d",
+   "x": 1200,
+   "y": 290,
+   "w": 200,
+   "h": 190,
+   "text": "5etools-Abgleich.md\n5etools-Arbeitsplan.md\n5etools-Bericht.md\nBetrieb › Regelwerk",
+   "farbe": "grau"
+  }
+ ],
+ "pfeile": [
+  {
+   "von": "einstieg",
+   "nach": "produkt"
+  },
+  {
+   "von": "produkt",
+   "nach": "produkt-d"
+  },
+  {
+   "von": "einstieg",
+   "nach": "modell"
+  },
+  {
+   "von": "modell",
+   "nach": "modell-d"
+  },
+  {
+   "von": "einstieg",
+   "nach": "technik"
+  },
+  {
+   "von": "technik",
+   "nach": "technik-d"
+  },
+  {
+   "von": "einstieg",
+   "nach": "installation"
+  },
+  {
+   "von": "installation",
+   "nach": "installation-d"
+  },
+  {
+   "von": "einstieg",
+   "nach": "mitarbeit"
+  },
+  {
+   "von": "mitarbeit",
+   "nach": "mitarbeit-d"
+  },
+  {
+   "von": "einstieg",
+   "nach": "inhalte"
+  },
+  {
+   "von": "inhalte",
+   "nach": "inhalte-d"
+  }
+ ],
+ "texte": [
+  {
+   "x": 0,
+   "y": 520,
+   "w": 1400,
+   "groesse": 14,
+   "text": "Einstieg → Übersicht je Thema (docs/Themen/) → Detailseiten. Erzeugt: Artikeltypen.md, Anforderungen.md, „Das Register heute“, Epic- und Feature-Listen."
+  }
+ ]
+}

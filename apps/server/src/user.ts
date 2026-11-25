@@ -38,7 +38,13 @@ import {
   type TokenScope,
 } from './auth.js';
 import type { Repository } from './repo.js';
-import { isTableRole } from '@nw/model';
+import { currentCampaign, isTableRole } from '@nw/model';
+import { figurDazu } from './figurenzuteilung.js';
+
+/** Die Figuren mit ihrer Kampagne (T-412): `e_1 (in camp)`, ohne bekannte Kampagne nur die Id. */
+const figurenText = (u: { actorIds: string[]; actorCampaigns?: Record<string, string> }): string =>
+  u.actorIds.map((a) => (u.actorCampaigns?.[a] ? `${a} (in ${u.actorCampaigns[a]})` : a)).join(', ');
+import { sorgeSpielerEbene } from './spielerebene.js';
 
 async function askPassword(prompt: string): Promise<string> {
   const fromEnv = process.env['NW_PASSWORD'];
@@ -127,7 +133,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       .map(
         (u) =>
           `${u.name}${u.isAdmin ? '  (Verwaltung)' : ''}` +
-          `${u.actorIds.length ? `  spielt ${u.actorIds.join(', ')}` : ''}` +
+          `${u.actorIds.length ? `  spielt ${figurenText(u)}` : ''}` +
           `${Object.keys(u.roles ?? {}).length
             ? `  ${Object.entries(u.roles).map(([k, r]) => `${r} in ${k}`).join(', ')}`
             : ''}` +
@@ -187,16 +193,22 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       const wie = rest[0] === 'remove' || flags.has('--remove') ? 'remove' : 'add';
       if (!actorId) {
         return existing.actorIds.length
-          ? `${name} spielt ${existing.actorIds.join(', ')}.`
+          ? `${name} spielt ${figurenText(existing)}.`
           : `${name} spielt niemanden.`;
       }
-      const ids = new Set(existing.actorIds);
-      if (wie === 'remove') ids.delete(actorId);
-      else ids.add(actorId);
-      await repo.putUser({ ...existing, actorIds: [...ids] });
-      return wie === 'remove'
-        ? `${name} spielt ${actorId} nicht mehr.`
-        : `${name} spielt jetzt auch ${actorId}.`;
+      if (wie === 'remove') {
+        const ids = existing.actorIds.filter((a) => a !== actorId);
+        await repo.putUser({ ...existing, actorIds: ids });
+        return `${name} spielt ${actorId} nicht mehr.`;
+      }
+      /* **Je Kampagne** (T-412): `--campaign <kampagne>`, sonst die laufende. */
+      const campaignAt = rest.indexOf('--campaign');
+      const kampagne =
+        (campaignAt >= 0 ? rest[campaignAt + 1] : undefined) ??
+        currentCampaign(new Map((await repo.listEntities()).map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null)?.id;
+      if (!kampagne) throw new Error('Keine Kampagne: --campaign <kampagne> angeben.');
+      await repo.putUser(figurDazu(existing, kampagne, actorId));
+      return `${name} spielt jetzt auch ${actorId} (in ${kampagne}).`;
     }
     /* **Die Rolle je Kampagne.** Sie steht am Konto und nicht an einer
        Figur: wer in einer Runde leitet und in einer anderen mitspielt, hat
@@ -211,15 +223,15 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
           ? `${name}: ${r.map(([k, v]) => `${v} in ${k}`).join(', ')}.`
           : `${name} sitzt an keinem Tisch.`;
       }
-      const roles = { ...(existing.roles ?? {}) };
       if (!rolle || rolle === 'none') {
-        delete roles[kampagne];
-        await repo.putUser({ ...existing, roles });
+        await repo.setRole(existing.id, kampagne, null);
         return `${name} hat in ${kampagne} keine Rolle mehr.`;
       }
       if (!isTableRole(rolle)) throw new Error('Rolle: gm | co-gm | player | spectator | none');
-      roles[kampagne] = rolle;
-      await repo.putUser({ ...existing, roles });
+      /* Eine Zeile je Kampagne (T-452): das Konto wird nicht ganz zurückgeschrieben. */
+      await repo.setRole(existing.id, kampagne, rolle);
+      /* Wer mitspielt, bekommt seine Spielerebene (T-164). */
+      if (rolle === 'player') await sorgeSpielerEbene(repo, existing.id, kampagne);
       return `${name} ist in ${kampagne} jetzt ${rolle}.`;
     }
     /* **API-Tokens** (W9) — für ein Werkzeug, das auf dem Server keine

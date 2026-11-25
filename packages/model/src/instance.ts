@@ -37,8 +37,19 @@ export const INSTANCE_RELATION = 'instanceOf';
 export const NOT_INHERITED_CARDS: readonly string[] = ['Identity', 'Visibility'];
 
 /**
+ * Kanten, die einem **Stück** gehören (T-150): das Inventar eines
+ * Behälters (`carries`). Zwei Rucksäcke aus einer Vorlage tragen nicht
+ * denselben Inhalt — also erbt keine Instanz das Inventar ihrer Vorlage.
+ * Anders als `inLayer` ist eine solche Kante aber eine **Abweichung**: ein
+ * Rucksack mit eigenem Inhalt ist kein beliebiges Stück mehr
+ * (`followsTemplate`), und auf ihn kommt kein zweiter.
+ */
+export const PIECE_RELATIONS: readonly string[] = ['carries'];
+
+/**
  * Kanten, die zur Vorlage **als Artikel** gehören und nicht zu ihrem
- * Inhalt: wo sie liegt, wem sie gehört, wovon sie eine Spielart ist. Die
+ * Inhalt: wo sie liegt, wem sie gehört, wovon sie eine Spielart ist, was
+ * sie als Stück trägt. Die
  * übrigen — die Aktionen eines Statblocks (`composedOf`) zum Beispiel —
  * bringt die Vorlage mit, solange die Instanz keine eigenen dieser Art hat.
  */
@@ -48,6 +59,7 @@ export const NOT_INHERITED_RELATIONS: readonly string[] = [
   'inLayer',
   'overrides',
   'variantOf',
+  ...PIECE_RELATIONS,
 ];
 
 /** Weiter als so viele Vorlagen hoch wird nicht gesucht. */
@@ -263,4 +275,112 @@ export function instancesOf(entities: Lookup, template: Entity): Entity[] {
     }
   }
   return raus;
+}
+
+/**
+ * **Ein Stück entsteht als Instanz** (T-133, T-150): was einer Figur in die
+ * Hand kommt — gekauft, erbeutet, gefertigt, geschenkt —, ist ein eigener
+ * Artikel mit `instanceOf` auf den Grundartikel und trägt sonst nur seinen
+ * Namen, seine Nummer und den Stand `ready` (ein Stück am Tisch ist keine
+ * Vorbereitung). Alles Übrige liest es von der Vorlage, bis es abweicht:
+ * eine Gravur, ein anderer Name, verbrauchte Ladungen. Eine Funktion für
+ * alle Wege, damit Kauf, Beute und Handwerk dasselbe Stück anlegen.
+ *
+ * `id` ist die Artikel-Id, `number` der Bezeichner (`nextId` über den Typ
+ * der Vorlage), `layer` die Ebene, in die das Stück gehört — die der
+ * laufenden Kampagne, sonst steht es in keinem Stapel.
+ */
+export function newInstance(template: Entity, opts: { id: EntityId; number: string; layer?: EntityId | null }): Entity {
+  const name = String(template.components?.['Identity']?.['name'] ?? template.name ?? template.id);
+  return {
+    id: opts.id,
+    interfaces: [...(template.interfaces ?? [])],
+    name,
+    components: { Identity: { name, id: opts.number }, Status: { status: 'ready' } },
+    relations: [
+      { id: `${opts.id}~instanceOf`, type: INSTANCE_RELATION, to: template.id, props: {} },
+      ...(opts.layer ? [{ id: `${opts.id}~inLayer`, type: 'inLayer', to: opts.layer, props: {} }] : []),
+    ],
+  };
+}
+
+/**
+ * Weicht diese Instanz in nichts von ihrer Vorlage ab? Dann ist sie ein
+ * beliebiges Stück davon: Gekauftes darf auf ihren Stapel, und wer sie
+ * verkauft, verliert nichts, wenn sie danach wegfällt. Name, Nummer,
+ * Stand und Sichtbarkeit zählen nicht als Abweichung — der Name aber nur,
+ * solange er der der Vorlage ist.
+ */
+export function followsTemplate(entities: Lookup, entity: Entity): boolean {
+  const vorlage = templateOf(entities, entity);
+  if (!vorlage) return false;
+  const name = entity.components?.['Identity']?.['name'];
+  const vorlagenName = vorlage.components?.['Identity']?.['name'] ?? vorlage.name;
+  if (!leer(name) && name !== vorlagenName) return false;
+  for (const [card, werte] of Object.entries(entity.components ?? {})) {
+    if (card === 'Identity' || card === 'Status' || NOT_INHERITED_CARDS.includes(card)) continue;
+    if (Object.values(werte ?? {}).some((w) => !leer(w))) return false;
+  }
+  return (entity.relations ?? []).every((r) => NOT_INHERITED_RELATIONS.includes(r.type) && !PIECE_RELATIONS.includes(r.type));
+}
+
+/**
+ * **Der Grundartikel** eines Stücks: die fernste Vorlage, sonst das Stück
+ * selbst (T-150). Ein Rezept braucht „Eisenbarren", und der gekaufte
+ * Barren ist eine Instanz davon — gezählt wird er als Eisenbarren.
+ */
+export function baseArticle(entities: Lookup, id: EntityId): EntityId {
+  const e = entities.get(id);
+  if (!e) return id;
+  const kette = templateChain(entities, e);
+  return kette.length ? kette[kette.length - 1]!.id : id;
+}
+
+/**
+ * **Ein Nachschlagen, das aufgelöst liefert** (T-275): `get` gibt jeden
+ * Artikel mit seiner Vorlage darunter (`resolveInstance`), erst beim Fragen
+ * und je Artikel einmal. Für Rechnungen, die `byId` „schon aufgelöst"
+ * erwarten (`effectsAt`, `characterStats`) — ein Stück im Inventar ist
+ * eine Instanz und trägt seine Wirkungen sonst nicht. Aufzählen
+ * (`values`) liefert die Artikel, wie sie gespeichert sind.
+ */
+export function resolvedLookup(entities: Lookup): Lookup {
+  if (entities instanceof AufgeloesteMap) return entities;
+  return new AufgeloesteMap(entities);
+}
+
+/* Ohne Kopie: ein Bestand von 24 000 Artikeln wird je Frage nicht abgeschrieben. */
+class AufgeloesteMap implements ReadonlyMap<EntityId, Entity> {
+  private readonly fertig = new Map<EntityId, Entity>();
+  constructor(private readonly roh: Lookup) {}
+  get(id: EntityId): Entity | undefined {
+    const da = this.fertig.get(id);
+    if (da) return da;
+    const e = this.roh.get(id);
+    if (!e) return undefined;
+    const r = resolveInstance(this.roh, e);
+    this.fertig.set(id, r);
+    return r;
+  }
+  has(id: EntityId): boolean {
+    return this.roh.has(id);
+  }
+  get size(): number {
+    return this.roh.size;
+  }
+  forEach(fn: (value: Entity, key: EntityId, map: ReadonlyMap<EntityId, Entity>) => void, thisArg?: unknown): void {
+    this.roh.forEach((v, k) => fn.call(thisArg, v, k, this));
+  }
+  entries() {
+    return this.roh.entries();
+  }
+  keys() {
+    return this.roh.keys();
+  }
+  values() {
+    return this.roh.values();
+  }
+  [Symbol.iterator]() {
+    return this.roh[Symbol.iterator]();
+  }
 }

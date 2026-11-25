@@ -1,0 +1,41 @@
+{
+ "select": {
+  "ids": [
+   "e5_0b75c49d4313",
+   "e5_95fcf8d8ea56",
+   "e5_9b0c8632b68c",
+   "e5_b0e4ae207a94",
+   "e5_b363287024bf"
+  ]
+ },
+ "ops": [
+  {
+   "op": "addRelation",
+   "type": "composedOf",
+   "targets": {
+    "e5_9b0c8632b68c": [
+     "e5_7b28f1b6f07b",
+     "e5_eb02e387a687"
+    ],
+    "e5_0b75c49d4313": [
+     "e5_d955f614cb9d",
+     "e5_f23660f233a7"
+    ],
+    "e5_b363287024bf": [
+     "e5_4e06c8b43a0e",
+     "e5_8d013d71fab6"
+    ],
+    "e5_b0e4ae207a94": [
+     "e5_b254f13fc822",
+     "e5_d3d51f6101f4"
+    ],
+    "e5_95fcf8d8ea56": [
+     "e5_353bb414237f",
+     "e5_5b9ae9c745cc"
+    ]
+   }
+  }
+ ],
+ "note": "T-438: Lair Actions und Regional Effects an die fünf MaBJoV-Statblöcke, die ihre Legendary Group nicht nennen",
+ "allLayers": true
+}

@@ -172,6 +172,8 @@ describe('logging in', () => {
     const keks = cookieOf(angemeldet);
     const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
     expect(me.json().user.name).toBe('Basil');
+    /* Seit wann es das Konto gibt — "What's new" zeigt ab dann (T-163). */
+    expect(me.json().user.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
     await app.inject({ method: 'POST', url: '/api/logout', headers: { cookie: keks } });
     const danach = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
@@ -237,6 +239,13 @@ describe('behind the reverse proxy', () => {
     );
     expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
     expect(loadConfig({ TRUST_PROXY: 'false' }).trustProxy).toBe(false);
+  });
+
+  it('reads ATLAS_ENV, and a typo means no answer rather than prod (T-070)', () => {
+    expect(loadConfig({}).env).toBeNull();
+    expect(loadConfig({ ATLAS_ENV: 'dev' }).env).toBe('dev');
+    expect(loadConfig({ ATLAS_ENV: ' PROD ' }).env).toBe('prod');
+    expect(loadConfig({ ATLAS_ENV: 'prd' }).env).toBeNull();
   });
 });
 
@@ -574,6 +583,29 @@ describe('what a player gets to read', () => {
     expect(res.json().components.Secrets.secret).toHaveLength(1);
   });
 
+  it('shows players the cover name until they are told the name, and the GM always the name (REQ-178)', async () => {
+    /* Ohne jede Information: der Deckname allein verdeckt schon. */
+    const ohne: Entity = { ...geheimnis, id: 'n_gestalt', name: 'Aurinax', components: { Identity: { name: 'Aurinax', id: 'npc-0002', aliases: ['Der Goldschmied'], cover: 'die Gestalt im Mantel' }, Status: { status: 'ready' } }, relations: [] };
+    const repo = new InMemoryRepository(
+      { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_t' } },
+      [rook, inv, ohne, { id: 'camp_t', interfaces: ['Campaign'], name: 'T', components: { Identity: { name: 'T', id: 'campaign-0001', aliases: [] } }, relations: [] }],
+    );
+    const app = buildApp({ repo });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    await addUser(repo, 'Mira', { roles: { camp_t: 'gm' } });
+    const lies = async (wer: string) =>
+      (await app.inject({ method: 'GET', url: '/api/entities/n_gestalt', headers: { cookie: cookieOf(await login(app, wer)) } })).json() as Entity;
+    const sela = await lies('Sela');
+    expect(sela.name).toBe('die Gestalt im Mantel');
+    expect(JSON.stringify(sela)).not.toMatch(/Aurinax|Goldschmied/);
+    expect((await lies('Mira')).name).toBe('Aurinax');
+    /* Aufgedeckt: eine Information nennt den Namen, und Rook kennt sie. */
+    await repo.putEntity({ ...info, id: 'i_gestalt', components: { ...info.components, Information: { tier: 'secret', fields: ['Identity.name'] } }, relations: [{ id: 'rb2', type: 'knownBy', to: 'pc_rook', props: {} }] });
+    const o = (await repo.getEntity('n_gestalt'))!;
+    await repo.putEntity({ ...o, relations: [{ id: 'rk2', type: 'knowledge', to: 'i_gestalt', props: {} }] });
+    expect((await lies('Sela')).name).toBe('Aurinax');
+  });
+
   /* Der eigentliche Prüfstein: der Name steht nicht in der Antwort. Nicht
      „wird nicht angezeigt" — steht nicht drin. */
   it('does not send a player what they have not been told', async () => {
@@ -634,7 +666,9 @@ describe('what a player gets to read', () => {
     name: 'Der Plan hinter allem',
     components: {
       Identity: { name: 'Der Plan hinter allem', id: 'npc-0002', aliases: [] },
-      Status: { status: 'idea' },
+      /* `ready`: hier geht es um die Stufe. Unfertiges sehen Spielende
+         ohnehin nicht (REQ-237) — das prüft der Block weiter unten. */
+      Status: { status: 'ready' },
       Visibility: { audience: 'gm' },
     },
     relations: [],
@@ -1036,8 +1070,10 @@ describe('knowledge shared with the party', () => {
     expect(JSON.stringify((await lesen(leer)).json())).not.toContain('hinter dem Fass');
   });
 
-  it('knows three holders and no fourth', () => {
-    expect(seedRegistry.relations.knownBy.to).toEqual(['Creature', 'Party', 'Faction']);
+  it('knows three holders, what a character is (T-285), and no carrier of accounts', () => {
+    /* Träger sind Figur, Gruppe, Fraktion (A8); dazu, was eine Figur ist
+       oder gewählt hat (REQ-351) — nie etwas, das Konten trägt. */
+    expect(seedRegistry.relations.knownBy.to).toEqual(['Creature', 'Party', 'Faction', 'Ancestry', 'Background', 'Class', 'Subclass', 'Feat']);
     expect(seedRegistry.interfaces.Group).toBeUndefined();
     /* Die Gruppe hängt an ihrer Kampagne, genau einer. */
     expect(seedRegistry.relations.partyOf.to).toEqual(['Campaign']);
@@ -1127,5 +1163,66 @@ describe('the class view', () => {
   it('404s what is not a class', async () => {
     expect((await holt('Basil', 's_abj')).statusCode).toBe(404);
     expect((await holt('Basil', 'gibt-es-nicht')).statusCode).toBe(404);
+  });
+});
+
+describe('GET /api/origins/:id (T-166)', () => {
+  const merkmal = (id: string, name: string): Entity => ({
+    id,
+    interfaces: ['Feature'],
+    name,
+    components: { Identity: { name, id: `feature-${id}`, aliases: [] }, Status: { status: 'ready' } },
+  });
+  const art = (id: string, typ: string, name: string, rel: Entity['relations'], verborgen = false): Entity => ({
+    id,
+    interfaces: [typ],
+    name,
+    components: {
+      Identity: { name, id, aliases: [] },
+      Status: { status: 'ready' },
+      ...(verborgen ? { Visibility: { audience: 'gm' } } : {}),
+    },
+    relations: rel,
+  });
+  const bestand = [
+    art('pc_rook', 'PlayerCharacter', 'Rook', []),
+    art('a_moos', 'Ancestry', 'Mossling', [{ id: 'g1', type: 'grants', to: 'f_haut' }]),
+    art('a_tief', 'Ancestry', 'Mossling (Deep)', [
+      { id: 'g2', type: 'subraceOf', to: 'a_moos' },
+      { id: 'g3', type: 'grants', to: 'f_wurzel' },
+    ]),
+    art('a_geh', 'Ancestry', 'Mossling (Hidden)', [
+      { id: 'g4', type: 'subraceOf', to: 'a_moos' },
+      { id: 'g5', type: 'grants', to: 'f_still' },
+    ], true),
+    merkmal('f_haut', 'Mossy Skin'),
+    merkmal('f_wurzel', 'Root Step'),
+    merkmal('f_still', 'Quiet Spores'),
+  ];
+  async function holt(wer: string, id = 'a_moos') {
+    const repo = new InMemoryRepository(seedRegistry, bestand);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { admin: true });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    const keks = cookieOf(await login(app, wer));
+    return app.inject({ method: 'GET', url: `/api/origins/${id}`, headers: { cookie: keks } });
+  }
+  const namen = (l: Entity[]) => l.map((e) => e.name).sort();
+
+  it('sends the ancestry with its variants and their features', async () => {
+    const b = (await holt('Basil')).json() as { origin: Entity; variants: Entity[]; features: Entity[] };
+    expect(b.origin.name).toBe('Mossling');
+    expect(namen(b.variants)).toEqual(['Mossling (Deep)', 'Mossling (Hidden)']);
+    expect(namen(b.features)).toEqual(['Mossy Skin', 'Quiet Spores', 'Root Step']);
+  });
+
+  it('keeps a hidden variant and what only it grants away from a player', async () => {
+    const b = (await holt('Sela')).json() as { variants: Entity[]; features: Entity[] };
+    expect(namen(b.variants)).toEqual(['Mossling (Deep)']);
+    expect(namen(b.features)).not.toContain('Quiet Spores');
+  });
+
+  it('404s what is not an ancestry or background', async () => {
+    expect((await holt('Basil', 'f_haut')).statusCode).toBe(404);
   });
 });

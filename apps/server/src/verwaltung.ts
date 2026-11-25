@@ -23,19 +23,92 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
+  CAMPAIGN_SETTING,
+  LAYER_COMPONENT,
+  LAYER_RELATION,
+  activeStack,
+  campaignsActivating,
+  activatingIndex,
+  groupMembers,
+  isGroupLayer,
+  layersInGroup,
+  groupingOf,
+  publisherInfo,
+  offLayers,
+  resolvedStack,
+  withOff,
+  groupSwitched,
+  GROUP_RELATION,
   campaignsOf,
+  currentCampaign,
+  playStack,
+  filterOf,
+  withFilter,
+  withRule,
+  withExempt,
+  withEnabled,
+  layerRules,
+  enabledArticles,
+  resolvedEntries,
+  isGroupLayer as istGruppe,
+  type LayerFilter,
+  type Registry,
+  areaOf,
+  ACTIVATES_RELATION,
+  READING_TYPES,
+  resolveArticle,
   entityName,
   isTableRole,
   nextId,
   validateEntity,
+  newCampaignBoard,
+  BOARD_TYPE,
+  withStack,
+  withCompare,
+  campaignLayer,
+  compareLayers,
   type Entity,
   type TableRole,
+  stackOutcomes,
+  type StackClash,
+  type StackOutcome,
+  isLayer,
+  preferencesOf,
+  withPreference,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
-import { foldName, hashToken, newInviteCode, type Invite, type User } from './auth.js';
+import { sorgeSpielerEbene } from './spielerebene.js';
+import { figurenIn, mitFiguren } from './figurenzuteilung.js';
+import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
+import { inDieGruppe, neueGruppe } from './gruppe.js';
+import { BOARD_EVENT } from './kampagnenboard.js';
+import { eigeneEbenen } from './ebenenrechte.js';
+
+/**
+ * **Eine Auswahl aus dem Körper lesen** (T-105, T-187): `{ areas?, types? }`,
+ * beide leer oder fehlend heisst `null` (alles bzw. keine Regel). Bereiche
+ * sind die `area` der Arten, Arten die Typen des Registers; Unbekanntes ist
+ * ein Fehler, denn ein Tippfehler nähme still ein ganzes Buch heraus.
+ */
+function auswahlLesen(body: { areas?: unknown; types?: unknown } | undefined, registry: Registry): LayerFilter | null | string {
+  const liste = (x: unknown, name: string): string[] | undefined | string => {
+    if (x === undefined || x === null) return undefined;
+    if (!Array.isArray(x) || !x.every((y) => typeof y === 'string')) return `${name}: eine Liste von Wörtern.`;
+    return x as string[];
+  };
+  const areas = liste(body?.areas, 'areas');
+  const types = liste(body?.types, 'types');
+  if (typeof areas === 'string') return areas;
+  if (typeof types === 'string') return types;
+  const bereiche = new Set(Object.keys(registry.interfaces).map((t) => areaOf(registry, t)).filter(Boolean));
+  const fremd = [...(areas ?? []).filter((a) => !bereiche.has(a)), ...(types ?? []).filter((t) => !registry.interfaces[t])];
+  if (fremd.length) return `Unbekannt: ${fremd.join(', ')}`;
+  return areas === undefined && types === undefined ? null : { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
+}
 
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
+
 
 export function rechtAn(user: User | null, campaignId: string): Recht {
   if (!user || user.disabledAt) return null;
@@ -46,6 +119,80 @@ export function rechtAn(user: User | null, campaignId: string): Recht {
   return null;
 }
 
+/**
+ * **Wer die Vergleichsebenen sieht** (T-092, E-021 d): die Verwaltung,
+ * die Leitung der laufenden Kampagne (`gm`, `co-gm`) und — wenn die
+ * Kampagne es sagt (`Campaign.compareFor: 'players'`) — wer am Tisch
+ * sitzt. Vorgabe ist nur die Leitung.
+ */
+export function siehtVergleich(user: User | null, kampagne: Entity | null): boolean {
+  if (!kampagne) return false;
+  if (!user) return true;
+  if (rechtAn(user, kampagne.id)) return true;
+  const fuer = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+  return fuer === 'players' && !!user.roles?.[kampagne.id];
+}
+
+/**
+ * **Darf dieses Konto die Ebene in dieser Kampagne aufschalten?** (T-069)
+ * Die Verwaltung immer. Die Leitung, solange die Ebene nicht genau einer
+ * **anderen** Kampagne gehört: eine Ebene, die genau eine Kampagne
+ * aufschaltet, gehört ihr (`campaignsOf`). Schaltete die Leitung der
+ * einen Runde sie dazu, wäre sie gemeinsam, und die Leitung sähe, was in
+ * der anderen nur deren Leitung sieht. Eine schon gemeinsame Ebene oder
+ * eine, die niemand aufschaltet, darf sie nehmen.
+ */
+export function mayActivate(
+  user: User | null,
+  alle: Map<string, Entity>,
+  layerId: string,
+  campaignId: string,
+  members?: Map<string, string[]>,
+  /** Ebene → Kampagnen (`activatingIndex`), wer viele Ebenen fragt (T-143). */
+  aktiv?: ReadonlyMap<string, readonly string[]>,
+): boolean {
+  if (rechtAn(user, campaignId) !== 'manage') return false;
+  if (user?.isAdmin) return true;
+  const frei = (id: string) => {
+    const laufen = campaignsActivating(alle, id, aktiv);
+    return laufen.includes(campaignId) || laufen.length !== 1;
+  };
+  if (!frei(layerId)) return false;
+  /* Eine Gruppe bringt ihre Mitglieder (T-088): sie aufschalten darf nur,
+     wer jedes davon aufschalten dürfte — sonst käme die Ebene einer
+     anderen Runde über die Gruppe herein. */
+  if (!isGroupLayer(alle.get(layerId))) return true;
+  return layersInGroup(alle, layerId, members).every(frei);
+}
+
+/** Was jede Ebene enthält und wem sie gehört — einmal je Bestand (T-143). */
+function zaehle(alle: ReadonlyMap<string, Entity>) {
+  const ebenen = [...alle.values()].filter((e) => isLayer(e));
+  const zahl = new Map<string, number>();
+  /* Was eine Ebene enthält, je Art — gerechnet, nie gespeichert (D8, T-088). */
+  const inhalt = new Map<string, Record<string, number>>();
+  /* Ebenen mit Text (T-091): nur an ihnen steht „Read". */
+  const text = new Set<string>();
+  for (const e of alle.values()) {
+    const art = (e.interfaces ?? [])[0] ?? '';
+    const lesbar = READING_TYPES.includes(art);
+    for (const r of e.relations ?? []) {
+      if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
+      zahl.set(r.to, (zahl.get(r.to) ?? 0) + 1);
+      const je = inhalt.get(r.to) ?? {};
+      je[art] = (je[art] ?? 0) + 1;
+      inhalt.set(r.to, je);
+      if (lesbar) text.add(r.to);
+    }
+  }
+  const mitglieder = groupMembers(alle);
+  const eigene = eigeneEbenen(alle);
+  const aktiv = activatingIndex(alle);
+  const verlage = new Map(ebenen.map((e) => [e.id, publisherInfo(alle, e, eigene)]));
+  const verlag = (e: Entity) => verlage.get(e.id) ?? publisherInfo(alle, e, eigene);
+  return { ebenen, zahl, inhalt, text, mitglieder, aktiv, verlag };
+}
+
 interface Deps {
   repo: Repository;
   viewerOf(request: FastifyRequest): Promise<User | null>;
@@ -54,12 +201,9 @@ interface Deps {
 export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Deps): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
 
+  /* Aus der Tafel je Stand (T-398, P4): die Kampagnen sind wenige, der Bestand nicht. */
   const kampagnen = async (): Promise<Map<string, Entity>> =>
-    new Map(
-      (await repo.listEntities())
-        .filter((e) => (e.interfaces ?? [])[0] === CAMPAIGN_TYPE)
-        .map((e) => [e.id, e]),
-    );
+    new Map([...(await repo.entityMap()).values()].filter((e) => (e.interfaces ?? [])[0] === CAMPAIGN_TYPE).map((e) => [e.id, e]));
 
   /**
    * **Darf diese Kampagne diese Figur vergeben?** Ja, wenn der Artikel da
@@ -83,6 +227,12 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
 
   // ---------------------------------------------------------- Kampagnen
 
+  /** Id und Name der Kampagnenebene (`campaignLayer`), oder `null`. */
+  function kampagnenEbeneKurz(alle: Map<string, Entity>, kampagne: Entity, besessen: ReadonlySet<string>): { id: string; name: string } | null {
+    const l = campaignLayer(alle, kampagne, besessen);
+    return l ? { id: l.id, name: entityName(l) } : null;
+  }
+
   /** Die Kampagnen, an denen dieser Betrachter etwas verwaltet oder sieht.
    *  Spielende bekommen eine leere Liste — die Kopfleiste zeigt den
    *  Eintrag dann nicht. */
@@ -90,6 +240,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const user = await viewerOf(request);
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const da = await kampagnen();
+    const laufend = currentCampaign(da, (await repo.getRegistry()).settings ?? null);
+    const alleJetzt = laufend ? await bestandAls(await repo.version()) : new Map<string, Entity>();
     const ids = new Set<string>(user.isAdmin ? da.keys() : []);
     for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
     return {
@@ -109,36 +261,706 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
          Verwaltung (`mayWrite`). */
       canCreate: user.isAdmin,
       isAdmin: user.isAdmin,
+      /* **Die laufende Kampagne** (T-143) — sie steht in der Kopfleiste,
+         für jeden am Tisch. Ihr Name ist kein Geheimnis: ihr Inhalt ist,
+         was jeder ohnehin sieht. `role` sagt, was man an ihr ist. */
+      current: laufend
+        ? {
+            id: laufend.id,
+            name: entityName(laufend),
+            role: user.roles?.[laufend.id] ?? null,
+            may: rechtAn(user, laufend.id),
+            /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst. */
+            layers: resolvedStack(alleJetzt, laufend).filter((l) => !isGroupLayer(l)).length,
+            /* Wie viele Vergleichsebenen dieser Betrachter sieht (T-213) —
+               ohne eine gibt es den Schalter „Show comparison" nicht. */
+            compare: siehtVergleich(user, laufend) ? compareLayers(alleJetzt, laufend).length : 0,
+            /* **Die Ebene der Kampagne** (T-251, REQ-348): die Listen nennen
+               die Ebene einer Zeile nur, wenn es nicht diese ist — sonst
+               stünde sie an jeder Zeile und sagte nichts. */
+            campaignLayer: kampagnenEbeneKurz(alleJetzt, laufend, new Set((await repo.layerGrants()).filter((g) => g.owner).map((g) => g.layerId))),
+          }
+        : null,
     };
+  });
+
+  /**
+   * **Die laufende Kampagne wechseln** (T-143) — die Einstellung
+   * `campaign` im Register. Sie gilt für die ganze Installation (offen in
+   * CLAUDE.md: „die laufende Kampagne ist eine globale Einstellung"), also
+   * wechselt sie nur die Verwaltung; der Kampagnenmanager (T-141) übernimmt.
+   */
+  app.put<{ Body: { id?: unknown } }>('/api/campaigns/current', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isAdmin) return nein(reply, 403, 'Die laufende Kampagne wechselt die Verwaltung; sie gilt für alle.');
+    const id = request.body?.id;
+    if (typeof id !== 'string' || !(await kampagnen()).has(id)) return nein(reply, 400, 'Diese Kampagne gibt es nicht als Artikel.');
+    const registry = await repo.getRegistry();
+    await repo.putRegistryPart('settings', { ...(registry.settings ?? {}), [CAMPAIGN_SETTING]: id });
+    await repo.appendEvent('registry.written', undefined, { part: 'settings', campaign: id, by: user.id });
+    return { ok: true, current: id };
   });
 
   /** Eine Kampagne anlegen — wenn es noch keine gibt, kann sonst niemand
    *  eingeladen werden. Ein Artikel wie jeder andere, also über
-   *  `validateEntity`. Wer anlegt, leitet sie, wenn er das sagt. */
+   *  `validateEntity`. Wer anlegt, leitet sie, wenn er das sagt.
+   *
+   *  **Sie bekommt gleich ihre Ebene** (T-098, E-001): `ly_<kampagne>`,
+   *  aufgeschaltet und spezifischer als alles andere (100). Darin schreiben
+   *  `gm` und `co-gm`, dorthin legen Spielende an, und dort liegt eine
+   *  Fassung aus einer anderen Ebene. Dieselbe Ebene legt Migration 035
+   *  für jede Kampagne an, die noch keine hatte.
+   *
+   *  **Und ihre Gruppe** (T-100, E-007): eine Party mit `partyOf`, in
+   *  dieser Ebene. Wer als `player` eine Figur zugeteilt bekommt, kommt
+   *  mit ihr hinein (`inDieGruppe`). */
   app.post<{ Body: { name?: string; lead?: boolean } }>('/api/campaigns', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user?.isAdmin) return nein(reply, 403, 'Eine Kampagne legt die Verwaltung an.');
     const name = String(request.body?.name ?? '').trim();
     if (!name) return nein(reply, 400, 'Wie heisst sie?');
     const alle = await repo.listEntities();
+    const id = randomUUID();
+    const ebeneId = `ly_${id}`;
+    const ebene: Entity = {
+      id: ebeneId,
+      interfaces: [LAYER_COMPONENT],
+      name,
+      components: {
+        Identity: { name, id: nextId(alle, LAYER_COMPONENT), aliases: [] },
+        Status: { status: 'ready' },
+        Layer: { kind: 'campaign', order: 100 },
+      },
+      relations: [],
+    };
     const entity: Entity = {
-      id: randomUUID(),
+      id,
       interfaces: [CAMPAIGN_TYPE],
       name,
       components: { Identity: { name, id: nextId(alle, CAMPAIGN_TYPE), aliases: [] } },
-      relations: [],
+      relations: [
+        { id: `${id}~activates-${ebeneId}`, type: 'activates', to: ebeneId, props: { order: 100 } },
+        /* Die Kampagne liegt in ihrer eigenen Ebene (E-183, E-182): jeder
+           Artikel hat eine. Der Stapel nimmt Kampagnen aus — sonst fände
+           man diese nicht, während eine andere läuft. */
+        { id: `${id}~inLayer-1`, type: 'inLayer', to: ebeneId, props: {} },
+      ],
     };
+    const gruppe = neueGruppe(alle, entity, ebeneId);
+    /* **Und ihr Board** (T-342): der Startpunkt für Spielende, aus der
+       Vorlage im Modell; bestehende bekommen es beim ersten Öffnen. */
+    const board = newCampaignBoard([...alle, gruppe], entity, ebeneId);
     const registry = await repo.getRegistry();
-    const issues = validateEntity(registry, entity, {});
+    const known = new Map([
+      ...alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
+      [ebeneId, LAYER_COMPONENT] as const,
+      [id, CAMPAIGN_TYPE] as const,
+      [board.id, BOARD_TYPE] as const,
+    ]);
+    const issues = [
+      ...validateEntity(registry, ebene, {}),
+      ...validateEntity(registry, entity, { knownTypes: known }),
+      ...validateEntity(registry, gruppe, { knownTypes: known }),
+      ...validateEntity(registry, board, { knownTypes: known }),
+    ];
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(ebene);
     await repo.putEntity(entity);
-    await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'] });
+    await repo.putEntity(gruppe);
+    await repo.putEntity(board);
+    await repo.appendEvent(BOARD_EVENT, entity.id, { board: board.id, on: 'create' });
+    await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'], layer: ebeneId });
     if (request.body?.lead === true) {
-      const ich = await repo.getUser(user.id);
-      if (ich) await repo.putUser({ ...ich, roles: { ...(ich.roles ?? {}), [entity.id]: 'gm' } });
+      await repo.setRole(user.id, entity.id, 'gm');
       await repo.appendEvent('member.role', user.id, { campaign: entity.id, role: 'gm', by: user.id });
     }
     return reply.code(201).send({ id: entity.id, name });
+  });
+
+  // ---------------------------------------------------------- Ebenen
+
+  /**
+   * **Der Bestand und was jede Ebene enthält, je Stempel** (T-143). Die
+   * Ebenenseite zählte bei jedem Abruf den ganzen Bestand durch und fragte
+   * je Ebene alle Artikel nach Kampagnen — mit 174 Ebenen und gut 150 000
+   * Artikeln eine halbe Sekunde auf dev, und das Popup in der Kopfleiste
+   * fragt nach jedem Häkchen. Nichts davon hängt an der Kampagne oder am
+   * Betrachter; ändert sich ein Artikel, ändert sich der Stempel.
+   */
+  let gehalten: { stempel: string; alle: Map<string, Entity> } | null = null;
+  const bestandAls = async (stempel: string): Promise<Map<string, Entity>> => {
+    if (gehalten?.stempel !== stempel) gehalten = { stempel, alle: new Map((await repo.listEntities()).map((e) => [e.id, e])) };
+    return gehalten.alle;
+  };
+  let gezaehlt: { stempel: string; alle: Map<string, Entity>; z: ReturnType<typeof zaehle> } | null = null;
+  const zaehlung = async (stempel: string, alle: Map<string, Entity>) => {
+    if (gezaehlt?.stempel === stempel && gezaehlt.alle === alle) return gezaehlt.z;
+    /* Hat sich seither nur eine Kampagne geändert — das Häkchen im Popup —,
+       bleibt die Zählung: sie hängt an Ebenen und Inhalt, nicht am Stapel.
+       Neu ist dann nur, wer was aufschaltet. Der gehaltene Bestand teilt
+       die unveränderten Artikel (`PgRepository`), also reicht der
+       Vergleich der Objekte. */
+    const vorher = gezaehlt;
+    const nurKampagne = (e: Entity | undefined) =>
+      !e || ((e.interfaces ?? [])[0] === CAMPAIGN_TYPE && !(e.relations ?? []).some((r) => r.type === LAYER_RELATION));
+    let gleich = !!vorher && vorher.alle.size === alle.size;
+    if (vorher && gleich) {
+      for (const [id, e] of alle) {
+        const alt = vorher.alle.get(id);
+        if (alt !== e && !(nurKampagne(alt) && nurKampagne(e) && alt)) {
+          gleich = false;
+          break;
+        }
+      }
+    }
+    gezaehlt = { stempel, alle, z: vorher && gleich ? { ...vorher.z, aktiv: activatingIndex(alle) } : zaehle(alle) };
+    return gezaehlt.z;
+  };
+
+  /**
+   * **Was die Reihenfolge bewirkt** (T-188, `stackOutcomes`), je Stempel
+   * und Kampagne gehalten: ein Gang über den ganzen Bestand, und das Popup
+   * fragt nach jedem Häkchen. Ein Häkchen ändert die Kampagne, also den
+   * Stempel — dann wird neu gerechnet, denn genau dann ändert sich, wer
+   * gewinnt.
+   */
+  let ausgerechnet: { stempel: string; kampagne: Entity; m: Map<string, StackOutcome> } | null = null;
+  const ausgang = async (stempel: string, alle: Map<string, Entity>, kampagne: Entity) => {
+    if (ausgerechnet?.stempel === stempel && ausgerechnet.kampagne === kampagne) return ausgerechnet.m;
+    const m = stackOutcomes(alle, kampagne, await repo.getRegistry());
+    ausgerechnet = { stempel, kampagne, m };
+    return m;
+  };
+
+  /**
+   * **Die Ebenen einer Kampagne** (T-069, E-008): alle Ebenen des
+   * Bestands, die aufgeschalteten von unten nach oben, darunter die
+   * übrigen. Was eine Kampagne zeigt, ist ihre wichtigste Einstellung —
+   * die Kante `activates` hiess in der Maske „runs on", und die Leitung
+   * fand sie nicht. Sehen dürfen Verwaltung, Leitung und Mitleitung;
+   * ändern die Verwaltung und die Leitung (`rechtAn`).
+   */
+  app.get<{ Params: { c: string } }>('/api/campaigns/:c/layers', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    const sicht = await ebenenSicht(user, c, recht);
+    if (!sicht) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    return sicht;
+  });
+
+  /** Was `GET …/layers` antwortet — auch nach jedem Schreiben am Stapel
+   *  mitgeschickt (`state`, T-143), damit das Popup nicht noch einmal fragt. */
+  async function ebenenSicht(user: User, c: string, recht: Recht) {
+    const stempel = await repo.version();
+    const alle = await bestandAls(stempel);
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return null;
+    const { ebenen, zahl, inhalt, text, mitglieder, aktiv, verlag } = await zaehlung(stempel, alle);
+    const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
+    /* Im Spiel ist auch, was eine aufgeschaltete Gruppe bringt (E-022 b). */
+    const imSpiel = new Set(resolvedStack(alle, kampagne, mitglieder).map((l) => l.id));
+    const abgeschaltet = offLayers(kampagne);
+    const vergleich = compareLayers(alle, kampagne).map((x) => x.id);
+    const auswahl = new Map(
+      (kampagne.relations ?? [])
+        .filter((r) => r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode !== 'off')
+        .map((r) => [r.to, filterOf(r)] as const),
+    );
+    /* Typ-Regeln (T-187): je Gruppe ihre, je Ebene die, die für sie gilt. */
+    const regeln = layerRules(kampagne);
+    const regelVon = new Map(
+      resolvedEntries(alle, kampagne, mitglieder)
+        .filter((x) => x.ruleFrom)
+        .map((x) => [x.layer.id, { id: x.ruleFrom!, name: entityName(alle.get(x.ruleFrom!)), only: x.filter }] as const),
+    );
+    const ausgenommen = new Set(activeStack(alle, kampagne).filter((x) => x.exempt).map((x) => x.layer.id));
+    /* Was die Reihenfolge bewirkt (T-188): wer über wen gewinnt, in Artikeln. */
+    const folgen = await ausgang(stempel, alle, kampagne);
+    const treffer = (l: StackClash[] | undefined) =>
+      (l ?? []).map((x) => ({ ...x, name: x.layer ? entityName(alle.get(x.layer)) : 'articles without a layer' }));
+    const zeile = (e: Entity) => {
+      const andere = campaignsActivating(alle, e.id, aktiv)
+        .filter((k) => k !== c)
+        .map((k) => entityName(alle.get(k)));
+      const karte = (e.components?.[LAYER_COMPONENT] as Record<string, unknown> | undefined) ?? {};
+      const wort = (k: string) => (typeof karte[k] === 'string' || typeof karte[k] === 'number' ? String(karte[k]) : '');
+      const beschreibung = (e.components?.['Description'] as { description?: unknown } | undefined)?.description;
+      const gruppe = isGroupLayer(e);
+      const verlag_ = verlag(e);
+      return {
+        id: e.id,
+        name: entityName(e),
+        kind: wort('kind'),
+        /* Wer sie herausgibt, gerechnet (T-094, E10), und warum (T-109); bei einer Gruppe, wonach sie ordnet. */
+        publisher: verlag_.name,
+        publisherWhy: verlag_.why,
+        ...(gruppe ? { groupBy: groupingOf(e) } : {}),
+        /* Die Gruppen, an denen sie hängt, und bei einer Gruppe ihre Mitglieder (T-088). */
+        groups: (e.relations ?? []).filter((r) => r.type === GROUP_RELATION && isGroupLayer(alle.get(r.to))).map((r) => r.to),
+        ...(gruppe ? { members: mitglieder.get(e.id) ?? [] } : {}),
+        articles: zahl.get(e.id) ?? 0,
+        content: inhalt.get(e.id) ?? {},
+        about: {
+          abbreviation: wort('abbreviation'),
+          published: wort('published'),
+          author: wort('author'),
+          version: wort('version'),
+          levels: wort('levels'),
+          storyline: wort('storyline'),
+          description: typeof beschreibung === 'string' ? beschreibung : '',
+        },
+        readable: text.has(e.id),
+        active: stapel.includes(e.id),
+        inPlay: imSpiel.has(e.id),
+        off: abgeschaltet.has(e.id),
+        compare: vergleich.includes(e.id),
+        /* Was sie bringt (T-105): die Auswahl an ihrer eigenen Kante; ohne
+           Kante (nur über eine Gruppe) gilt die der Gruppe. */
+        ...(auswahl.get(e.id) ? { only: auswahl.get(e.id)! } : {}),
+        /* Die Typ-Regel dieser Gruppe (T-187) und die, die für diese Ebene gilt. */
+        ...(regeln.get(e.id) ? { rule: regeln.get(e.id)! } : {}),
+        ...(regelVon.get(e.id) ? { ruleFrom: regelVon.get(e.id)! } : {}),
+        ...(ausgenommen.has(e.id) ? { exempt: true } : {}),
+        ...(folgen.has(e.id) ? { wins: treffer(folgen.get(e.id)?.wins), loses: treffer(folgen.get(e.id)?.loses) } : {}),
+        alsoIn: andere,
+        canActivate: mayActivate(user, alle, e.id, c, mitglieder, aktiv),
+      };
+    };
+    const an = stapel.map((id) => alle.get(id)!).map(zeile);
+    const aus = ebenen
+      .filter((e) => !stapel.includes(e.id))
+      .map(zeile)
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    const compareFor = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+    /* Einzeln freigegeben (T-187): Name, Art, Ebenen — und ob er gerade
+       wirklich im Spiel ist (eine Herausnahme schlägt die Freigabe). */
+    const frei = [...enabledArticles(kampagne)];
+    const sicht = frei.length ? playStack(alle, kampagne, await repo.getRegistry()) : null;
+    const extra = frei
+      .map((id) => alle.get(id))
+      .filter((e): e is Entity => !!e)
+      .map((e) => ({
+        id: e.id,
+        name: entityName(e),
+        type: (e.interfaces ?? [])[0] ?? '',
+        layers: (e.relations ?? [])
+          .filter((r) => r.type === LAYER_RELATION && (r.props as { mode?: unknown } | undefined)?.mode !== 'removes')
+          .map((r) => entityName(alle.get(r.to))),
+        inPlay: sicht!.inPlay(e),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    return {
+      campaign: { id: c, name: entityName(kampagne) },
+      may: recht,
+      layers: [...an, ...aus],
+      extra,
+      /* Vorrang (T-403): je Artikel oder je Ebene für Arten, mit Namen. */
+      preferences: preferencesOf(kampagne).map((p) => {
+        const z = alle.get(p.to);
+        return {
+          to: p.to,
+          name: entityName(z) || p.to,
+          kind: isLayer(z) ? ('layer' as const) : ('article' as const),
+          ...(z && !isLayer(z) ? { type: (z.interfaces ?? [])[0] ?? '' } : {}),
+          types: p.types,
+          ...(p.over ? { over: p.over, overName: entityName(alle.get(p.over)) || p.over } : {}),
+        };
+      }),
+      /* Wer die Vergleichsebenen sieht (T-092): `gm` (Vorgabe) oder `players`. */
+      compareFor: compareFor === 'players' ? ('players' as const) : ('gm' as const),
+    };
+  }
+
+  /** Die Kanten `activates` schreiben — der ganze Stapel, von unten nach
+   *  oben. Was fehlt, ist danach abgeschaltet; gelöscht wird nichts. */
+  async function stapelSchreiben(
+    request: FastifyRequest<{ Params: { c: string } }>,
+    reply: FastifyReply,
+    neu: (alle: Map<string, Entity>, kampagne: Entity) => string[] | string | { layers: string[]; off: string[] },
+    abgeschaltetVorgabe?: string[],
+  ): Promise<unknown> {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    if (recht !== 'manage') return nein(reply, 403, 'Die Ebenen schaltet die Leitung auf; ein Mitleiter sieht sie nur.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const roh = neu(alle, kampagne);
+    if (typeof roh === 'string') return nein(reply, 400, roh);
+    const ids = Array.isArray(roh) ? roh : roh.layers;
+    const abgeschaltet = Array.isArray(roh) ? abgeschaltetVorgabe : roh.off;
+    const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
+    const mitglieder = groupMembers(alle);
+    const aktiv = activatingIndex(alle);
+    for (const id of ids) {
+      if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
+      if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
+        return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
+      }
+    }
+    /* Abschalten (T-088) darf die Leitung jede Ebene: aus nimmt nur weg. */
+    for (const id of abgeschaltet ?? []) {
+      if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
+    }
+    let geschrieben = withStack(kampagne, ids);
+    if (abgeschaltet) geschrieben = withOff(geschrieben, abgeschaltet);
+    const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(geschrieben);
+    await repo.appendEvent('campaign.layers', c, { layers: ids, ...(abgeschaltet ? { off: abgeschaltet } : {}), by: user.id });
+    return { ok: true, layers: ids, ...(abgeschaltet ? { off: [...offLayers(geschrieben)] } : {}), state: await ebenenSicht(user, c, recht) };
+  }
+
+  /** `{ layers, off? }` — `off` (T-088): die Ebenen, die aus sind, obwohl
+   *  eine aufgeschaltete Gruppe sie brächte. Ohne `off` bleiben die
+   *  Abschaltungen, wie sie sind. */
+  app.put<{ Params: { c: string }; Body: { layers?: unknown; off?: unknown } }>('/api/campaigns/:c/layers', (request, reply) => {
+    const off = request.body?.off;
+    if (off !== undefined && (!Array.isArray(off) || !off.every((x) => typeof x === 'string'))) {
+      return nein(reply, 400, 'off: eine Liste von Ebenen-Ids.');
+    }
+    return stapelSchreiben(
+      request,
+      reply,
+      () => {
+        const l = request.body?.layers;
+        if (!Array.isArray(l) || !l.every((x) => typeof x === 'string')) return 'layers: eine Liste von Ebenen-Ids.';
+        return l as string[];
+      },
+      off as string[] | undefined,
+    );
+  });
+
+  /** Eine Ebene dazuschalten — der Knopf im Hinweis der Listen. Sie kommt
+   *  an die Stelle, die ihre eigene Spezifität (`Layer.order`) sagt: ein
+   *  Regelwerk nach unten, eine Kampagnenebene nach oben. */
+  app.post<{ Params: { c: string; layer: string } }>('/api/campaigns/:c/layers/:layer', (request, reply) =>
+    stapelSchreiben(request, reply, (alle, kampagne) => {
+      const stapel = activeStack(alle, kampagne);
+      const id = request.params.layer;
+      if (stapel.some((x) => x.layer.id === id)) return stapel.map((x) => x.layer.id);
+      const roh = (alle.get(id)?.components?.[LAYER_COMPONENT] as { order?: unknown } | undefined)?.order;
+      const eigene = roh != null && Number.isFinite(Number(roh)) ? Number(roh) : 10;
+      const spez = (e: Entity) => {
+        const o = (e.components?.[LAYER_COMPONENT] as { order?: unknown } | undefined)?.order;
+        return o != null && Number.isFinite(Number(o)) ? Number(o) : 10;
+      };
+      const ids = stapel.map((x) => x.layer.id);
+      const bei = stapel.findIndex((x) => spez(x.layer) > eigene);
+      ids.splice(bei < 0 ? ids.length : bei, 0, id);
+      return ids;
+    }),
+  );
+
+  /**
+   * **Eine ganze Gruppe an oder aus** (T-185): `{ on }`. Alles darin geht
+   * mit, auch Bücher, die einzeln aufgeschaltet oder abgeschaltet waren —
+   * keine alte Teilwahl kommt zurück (`groupSwitched`).
+   */
+  app.put<{ Params: { c: string; layer: string }; Body: { on?: unknown } }>('/api/campaigns/:c/layers/:layer/group', (request, reply) =>
+    stapelSchreiben(request, reply, (alle, kampagne) => {
+      const on = request.body?.on;
+      if (typeof on !== 'boolean') return 'on: true oder false.';
+      const g = alle.get(request.params.layer);
+      if (!isGroupLayer(g)) return 'Keine Gruppe.';
+      return groupSwitched(alle, kampagne, g!.id, on);
+    }),
+  );
+
+  /**
+   * **Was eine Ebene bringt** (T-105, REQ-255): `{ areas?, types? }` an
+   * ihrer Kante `activates` — aufgeschaltet, als Gruppe oder zum Vergleich.
+   * Beide leer oder fehlend (`null`) heisst wieder alles. Bereiche sind die
+   * `area` der Arten im Register, Arten seine Typen; Unbekanntes lehnt die
+   * Route ab, denn ein Tippfehler nähme still ein ganzes Buch heraus.
+   */
+  app.put<{ Params: { c: string; layer: string }; Body: { areas?: unknown; types?: unknown; exempt?: unknown } }>(
+    '/api/campaigns/:c/layers/:layer/only',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Was eine Ebene bringt, wählt die Leitung; ein Mitleiter sieht es nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      }
+      const registry = await repo.getRegistry();
+      const filter = auswahlLesen(request.body, registry);
+      if (typeof filter === 'string') return nein(reply, 400, filter);
+      let geschrieben = withFilter(kampagne, request.params.layer, filter);
+      if (!geschrieben) {
+        return nein(reply, 409, 'Diese Ebene schaltet die Kampagne nicht selbst auf; sie bringt, was ihre Gruppe bringt.');
+      }
+      /* Von den Typ-Regeln ausnehmen (T-187): „alles, trotz Regel". */
+      const exempt = request.body?.exempt;
+      if (exempt !== undefined) {
+        if (typeof exempt !== 'boolean') return nein(reply, 400, 'exempt: ja oder nein.');
+        geschrieben = withExempt(geschrieben, request.params.layer, exempt) ?? geschrieben;
+      }
+      const issues = validateEntity(registry, geschrieben, {});
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.layers', c, {
+        layer: request.params.layer,
+        only: filter,
+        ...(exempt !== undefined ? { exempt } : {}),
+        by: user.id,
+      });
+      return { ok: true, only: filter, state: await ebenenSicht(user, c, recht) };
+    },
+  );
+
+  /**
+   * **Eine Typ-Regel setzen** (T-187): `{ areas?, types? }` für jede Ebene
+   * der Gruppe `:group`, die selbst nichts sagt — einmal statt je Quelle.
+   * Leer heisst: keine Regel. Rechte wie am Stapel.
+   */
+  app.put<{ Params: { c: string; group: string }; Body: { areas?: unknown; types?: unknown } }>(
+    '/api/campaigns/:c/rules/:group',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Typ-Regeln setzt die Leitung; ein Mitleiter sieht sie nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      }
+      if (!istGruppe(alle.get(request.params.group))) return nein(reply, 400, 'Eine Typ-Regel gilt für eine Gruppe von Ebenen.');
+      const registry = await repo.getRegistry();
+      const filter = auswahlLesen(request.body, registry);
+      if (typeof filter === 'string') return nein(reply, 400, filter);
+      const geschrieben = withRule(kampagne, request.params.group, filter);
+      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.rules', c, { group: request.params.group, only: filter, by: user.id });
+      return { ok: true, rule: filter, state: await ebenenSicht(user, c, recht) };
+    },
+  );
+
+  /**
+   * **Einen Artikel freigeben** (T-187): `PUT` bringt ihn ins Spiel, auch
+   * wenn seine Ebene es nicht ist (Kante `enables`), `DELETE` nimmt das
+   * zurück. Freigegeben wird nur, was eine Ebene hat und nicht schon im
+   * Stapel steht — ein Artikel ohne Ebene ist immer da. Nur die Leitung
+   * der laufenden Kampagne, wie „Übernehmen".
+   */
+  const freigabe = (on: boolean) => async (request: FastifyRequest<{ Params: { c: string; id: string } }>, reply: FastifyReply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    if (recht !== 'manage') return nein(reply, 403, 'Freigeben darf die Leitung; ein Mitleiter sieht es nur.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const ziel = alle.get(request.params.id);
+    if (!ziel) return nein(reply, 404, 'Nicht gefunden');
+    const registry = await repo.getRegistry();
+    if (on) {
+      if (!(ziel.relations ?? []).some((r) => r.type === LAYER_RELATION)) {
+        return nein(reply, 409, 'Ein Artikel ohne Ebene ist ohnehin im Spiel.');
+      }
+      if (enabledArticles(kampagne).has(ziel.id)) return { ok: true, state: await ebenenSicht(user, c, recht) };
+      if (playStack(alle, kampagne, registry).inStack(ziel)) return nein(reply, 409, 'Dieser Artikel ist schon im Spiel.');
+    } else if (!enabledArticles(kampagne).has(ziel.id)) {
+      return nein(reply, 404, 'Dieser Artikel ist in dieser Kampagne nicht freigegeben.');
+    }
+    const geschrieben = withEnabled(kampagne, ziel.id, on);
+    const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+    const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(geschrieben);
+    await repo.appendEvent(on ? 'campaign.enabled' : 'campaign.disabled', c, { article: ziel.id, by: user.id });
+    return { ok: true, enabled: on, state: await ebenenSicht(user, c, recht) };
+  };
+  /**
+   * **Vorrang setzen** (T-403, E-111 a): `PUT { to, over?, types? }` — ein
+   * Artikel im Spiel steht dann vor seinen anderen Fassungen, eine Ebene im
+   * Spiel für die genannten Arten vor den anderen Ebenen (`over`: nur vor
+   * dieser). `DELETE …/prefers/:to` nimmt ihn weg, mit `?type=` nur eine
+   * Art. Nur die Leitung, wie die Freigabe; kein Buch wird beschrieben.
+   */
+  app.put<{ Params: { c: string }; Body: { to?: unknown; over?: unknown; types?: unknown } | null }>(
+    '/api/campaigns/:c/prefers',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Den Vorrang setzt die Leitung; ein Mitleiter sieht ihn nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      const b = request.body ?? {};
+      const ziel = typeof b.to === 'string' ? alle.get(b.to) : undefined;
+      if (!ziel) return nein(reply, 404, 'Nicht gefunden');
+      const registry = await repo.getRegistry();
+      const types = Array.isArray(b.types) ? b.types.filter((t): t is string => typeof t === 'string' && !!t) : [];
+      const fremd = types.filter((t) => !registry.interfaces[t]);
+      if (fremd.length) return nein(reply, 400, `Diese Art gibt es nicht: ${fremd.join(', ')}`);
+      const over = typeof b.over === 'string' && b.over ? b.over : null;
+      if (over && !alle.has(over)) return nein(reply, 404, 'Worüber der Vorrang gelten soll, gibt es nicht.');
+      if (isLayer(ziel)) {
+        if (!types.length) return nein(reply, 400, 'Eine ganze Ebene stellt die Reihenfolge in Order in play nach vorn; hier nennt der Vorrang Arten.');
+        if (!resolvedStack(alle, kampagne).some((l) => l.id === ziel.id)) return nein(reply, 409, 'Diese Ebene ist in dieser Kampagne nicht im Spiel.');
+      } else {
+        if (types.length) return nein(reply, 400, 'Arten nennt nur der Vorrang einer Ebene.');
+        if (!playStack(alle, kampagne, registry).inPlay(ziel)) return nein(reply, 409, 'Dieser Artikel ist in dieser Kampagne nicht im Spiel.');
+      }
+      const geschrieben = withPreference(kampagne, ziel.id, { over, types });
+      const known = new Map([...alle.values()].map((e) => [e.id, (e.interfaces ?? [])[0] ?? ''] as const));
+      const issues = validateEntity(registry, geschrieben, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.prefers', c, { to: ziel.id, over, types, by: user.id });
+      return { ok: true, state: await ebenenSicht(user, c, recht) };
+    },
+  );
+  app.delete<{ Params: { c: string; to: string }; Querystring: { type?: string } }>(
+    '/api/campaigns/:c/prefers/:to',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Den Vorrang setzt die Leitung; ein Mitleiter sieht ihn nur.');
+      const kampagne = await repo.getEntity(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      if (!preferencesOf(kampagne).some((p) => p.to === request.params.to)) return nein(reply, 404, 'Diesen Vorrang gibt es hier nicht.');
+      const geschrieben = withPreference(kampagne, request.params.to, null, request.query.type || undefined);
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.prefers', c, { to: request.params.to, removed: request.query.type || true, by: user.id });
+      return { ok: true, state: await ebenenSicht(user, c, recht) };
+    },
+  );
+  app.put<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(true));
+  app.delete<{ Params: { c: string; id: string } }>('/api/campaigns/:c/enabled/:id', freigabe(false));
+
+  /**
+   * **Die Vergleichsebenen schreiben** (T-092, E-021 d): `{ layers, players? }`
+   * — die Ebenen, deren Fassungen auf Wunsch an den Feldern stehen, ohne
+   * im Spiel zu sein (`activates` mit `mode: 'compare'`). `players` sagt,
+   * ob auch die Spielenden sie sehen (`Campaign.compareFor`); Vorgabe ist
+   * nur die Leitung. Dieselben Rechte wie der Stapel: die Leitung ändert,
+   * ein Mitleiter sieht; eine Ebene, die einer anderen Kampagne gehört,
+   * nimmt nur die Verwaltung — ihr Inhalt ist die Arbeit einer anderen Runde.
+   */
+  app.put<{ Params: { c: string }; Body: { layers?: unknown; players?: unknown } }>(
+    '/api/campaigns/:c/compare',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Die Vergleichsebenen wählt die Leitung; ein Mitleiter sieht sie nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      }
+      const l = request.body?.layers;
+      if (l !== undefined && (!Array.isArray(l) || !l.every((x) => typeof x === 'string'))) {
+        return nein(reply, 400, 'layers: eine Liste von Ebenen-Ids.');
+      }
+      const ids = (l as string[] | undefined) ?? compareLayers(alle, kampagne).map((x) => x.id);
+      const vorher = new Set(compareLayers(alle, kampagne).map((x) => x.id));
+      const mitglieder = groupMembers(alle);
+      const aktiv = activatingIndex(alle);
+      for (const id of ids) {
+        if (!isLayer(alle.get(id))) return nein(reply, 400, `Keine Ebene: ${id}`);
+        if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
+          return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; vergleichen kann damit die Verwaltung.`);
+        }
+      }
+      let geschrieben = withCompare(kampagne, ids);
+      const players = request.body?.players;
+      if (players !== undefined) {
+        if (typeof players !== 'boolean') return nein(reply, 400, 'players: ja oder nein.');
+        const karte = { ...((geschrieben.components?.[CAMPAIGN_TYPE] ?? {}) as Record<string, unknown>) };
+        karte['compareFor'] = players ? 'players' : 'gm';
+        geschrieben = { ...geschrieben, components: { ...geschrieben.components, [CAMPAIGN_TYPE]: karte } };
+      }
+      const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.compare', c, { layers: ids, ...(players !== undefined ? { players } : {}), by: user.id });
+      alle.set(c, geschrieben);
+      return {
+        ok: true,
+        layers: compareLayers(alle, geschrieben).map((x) => x.id),
+        state: await ebenenSicht(user, c, recht),
+      };
+    },
+  );
+
+  /**
+   * **Die Geschichte der Kampagne** (T-082, REQ-240): ihre eigenen
+   * Geschichtsartikel (`partOf` die Kampagne) und, je aufgeschaltetes
+   * Abenteuer, dessen Kapitel (`Arc`, E-026) — in der Fassung, die in **dieser** Kampagne
+   * gilt (`resolveArticle`, E-018): ein angepasstes Kapitel steht als ihre
+   * Fassung da. Ein Abenteuer ist eine `Story` mit `kind: 'adventure'` in
+   * einer aufgeschalteten Ebene; meist ist es eine Abenteuerebene, manchmal
+   * ein Quellenbuch, das eines enthält. Sehen dürfen es wie die Ebenen
+   * Verwaltung, Leitung und Mitleitung.
+   */
+  app.get<{ Params: { c: string } }>('/api/campaigns/:c/story', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    if (!user || !rechtAn(user, c)) return nein(reply, 403, 'Nicht für dich.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const registry = await repo.getRegistry();
+    const ebenen = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
+    const art = (e: Entity) => (e.interfaces ?? [])[0] ?? '';
+    const sorte = (e: Entity) => String((e.components?.['Story'] as { kind?: unknown } | undefined)?.kind ?? '');
+    const nummer = (e: Entity) => String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? '');
+    const nachNummer = (a: Entity, b: Entity) => nummer(a).localeCompare(nummer(b), 'en', { numeric: true });
+    const teilVon = (e: Entity, ziel: string) => (e.relations ?? []).some((r) => r.type === 'partOf' && r.to === ziel);
+    const zeile = (e: Entity) => {
+      const gilt = resolveArticle(alle, e, kampagne, registry);
+      /* Angepasst ist, was eine Fassung ist — ob sie hier über das Original
+         oder für sich in die Liste kam. */
+      const adapted = (gilt.relations ?? []).some((r) => r.type === 'overrides');
+      return { id: gilt.id, name: entityName(gilt), type: art(gilt), kind: sorte(gilt), adapted };
+    };
+    /* Der Stapel einmal, mit der Bereichsauswahl der Ebenen (T-086, T-105). */
+    const stapel = playStack(alle, kampagne, registry);
+    const geschichte = [...alle.values()].filter((e) => stapel.inStack(e));
+    const eigene = geschichte.filter((e) => teilVon(e, c) && stapel.inPlay(e)).sort(nachNummer).map(zeile);
+    const abenteuer = geschichte
+      .filter((e) => art(e) === 'Story' && sorte(e) === 'adventure' && (e.relations ?? []).some((r) => r.type === LAYER_RELATION && ebenen.has(r.to)))
+      .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en'))
+      .map((a) => ({
+        ...zeile(a),
+        layer: (a.relations ?? []).find((r) => r.type === LAYER_RELATION && ebenen.has(r.to))?.to ?? '',
+        chapters: geschichte
+          /* Die Originale, nach ihrer Nummer — eine Fassung steht an der
+             Stelle dessen, was sie ersetzt (`zeile`), nicht am Ende. */
+          /* Ein Kapitel ist ein Arc (E-026). */
+          .filter((k) => art(k) === 'Arc' && teilVon(k, a.id) && !(k.relations ?? []).some((r) => r.type === 'overrides'))
+          .sort(nachNummer)
+          .map(zeile),
+      }));
+    return { campaign: c, own: eigene, adventures: abenteuer };
   });
 
   // ---------------------------------------------------------- Mitglieder
@@ -150,16 +972,22 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
     const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
     const kampagne = alle.get(c);
+    /* „View as" nur in der laufenden Kampagne (REQ-241): gerechnet wird mit
+       ihrem Stapel, und eine andere zu zeigen hiesse, etwas anderes zu
+       zeigen, als der Spieler sieht. Der Server sagt es je Mitglied. */
+    const laufend = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     const members = (await repo.listUsers())
       .filter((u) => isTableRole(u.roles?.[c]))
       .map((u) => ({
+        viewAs: laufend === c && u.id !== user.id && mayViewAs(user, u, laufend),
         id: u.id,
         name: u.name,
         role: u.roles[c] as TableRole,
         isAdmin: u.isAdmin,
         disabled: !!u.disabledAt,
         self: u.id === user.id,
-        actors: figurenMitNamen(alle, u.actorIds ?? []),
+        /* Nur die Figuren dieser Kampagne (T-412). */
+        actors: figurenMitNamen(alle, figurenIn(u, c)),
       }))
       .sort((a, b) => ORDNUNG[a.role] - ORDNUNG[b.role] || a.name.localeCompare(b.name, 'de'));
     /* Die Figuren, die diese Kampagne vergeben darf — für die Auswahl beim
@@ -229,8 +1057,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         return nein(reply, 403, 'Die eigene Rolle ändert die Verwaltung.');
       }
       const c = request.params.c;
-      await repo.putUser({ ...ziel, roles: { ...(ziel.roles ?? {}), [c]: role } });
+      /* Eine Zeile je Kampagne (T-452), nicht das ganze Konto zurück. */
+      await repo.setRole(ziel.id, c, role);
       await repo.appendEvent('member.role', ziel.id, { campaign: c, role, by: ok.user.id });
+      /* Wer mitspielt, bekommt seine Spielerebene (T-164). */
+      if (role === 'player') await sorgeSpielerEbene(repo, ziel.id, c, ok.user.id);
       return reply.code(201).send({ id: ziel.id, name: ziel.name, role });
     },
   );
@@ -243,8 +1074,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const role = request.body?.role;
       if (!isTableRole(role)) return nein(reply, 400, 'Rolle: gm, co-gm, player oder spectator.');
       const c = request.params.c;
-      await repo.putUser({ ...ok.ziel, roles: { ...(ok.ziel.roles ?? {}), [c]: role } });
+      await repo.setRole(ok.ziel.id, c, role);
       await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role, by: ok.user.id });
+      if (role === 'player') await sorgeSpielerEbene(repo, ok.ziel.id, c, ok.user.id);
       return { id: ok.ziel.id, role };
     },
   );
@@ -258,9 +1090,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       if (!ok?.ziel) return reply;
       const c = request.params.c;
       if (!ok.ziel.roles?.[c]) return nein(reply, 404, 'Nicht in dieser Kampagne.');
-      const roles = { ...ok.ziel.roles };
-      delete roles[c];
-      await repo.putUser({ ...ok.ziel, roles });
+      await repo.setRole(ok.ziel.id, c, null);
       await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role: null, by: ok.user.id });
       return { ok: true };
     },
@@ -270,8 +1100,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
    * Welche Figuren ein Mitglied führt. Gesetzt wird die ganze Liste; geändert
    * wird nur, was diese Kampagne vergeben darf (`vergebbar`) — eine Figur
    * einer anderen Runde bleibt, wo sie ist, auch wenn sie in der Liste fehlt.
+   *
+   * **Eine neue Figur eines Spielers kommt in die Gruppe** (T-100, E-007),
+   * ausser die Leitung sagt `party: false`. Wer eine Figur abgibt, bleibt
+   * mit ihr, wo er ist: die Gruppe ist Fiktion, nicht das Konto — und eine
+   * Kante, die man wegnimmt, nimmt man an der Figur weg.
    */
-  app.put<{ Params: { c: string; u: string }; Body: { actorIds?: unknown } }>(
+  app.put<{ Params: { c: string; u: string }; Body: { actorIds?: unknown; party?: unknown } }>(
     '/api/campaigns/:c/members/:u/actors',
     async (request, reply) => {
       const ok = await aendern(request, reply, request.params.u);
@@ -284,7 +1119,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       }
       const gewollt = new Set(roh as string[]);
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-      const bisher = ok.ziel.actorIds ?? [];
+      /* Gefragt und ersetzt wird nur in dieser Kampagne (T-412): die Figuren
+         anderer Runden bleiben, wie sie sind. */
+      const bisher = figurenIn(ok.ziel, c);
       const admin = ok.user.isAdmin;
       for (const id of gewollt) {
         if (bisher.includes(id)) continue;
@@ -299,9 +1136,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         (id) => gewollt.has(id) || (!admin && alle.has(id) && !vergebbar(alle, id, c)),
       );
       const neu = [...bleibt, ...[...gewollt].filter((id) => !bisher.includes(id))];
-      await repo.putUser({ ...ok.ziel, actorIds: neu });
+      await repo.putUser(mitFiguren(ok.ziel, c, neu));
       await repo.appendEvent('member.actors', ok.ziel.id, { campaign: c, actors: neu, by: ok.user.id });
-      return { id: ok.ziel.id, actors: figurenMitNamen(alle, neu) };
+      const party =
+        ok.ziel.roles[c] === 'player' && request.body?.party !== false
+          ? await inDieGruppe(repo, c, neu.filter((id) => !bisher.includes(id)), ok.user.id)
+          : [];
+      return { id: ok.ziel.id, actors: figurenMitNamen(alle, neu), party };
     },
   );
 
@@ -321,6 +1162,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       disabled: !!u.disabledAt,
       self: u.id === user.id,
       actors: figurenMitNamen(alle, u.actorIds ?? []),
+      /* In welchen Ebenen es schreibt (T-098) — ohne die der Kampagnen,
+         die es leitet: die kommen aus der Rolle. */
+      layers: (u.layerIds ?? []).map((id) => ({
+        id,
+        name: alle.has(id) ? entityName(alle.get(id)) : null,
+        owner: (u.ownedLayerIds ?? []).includes(id),
+      })),
       roles: Object.entries(u.roles ?? {}).map(([id, role]) => ({
         campaign: id,
         name: da.has(id) ? entityName(da.get(id)) : id,

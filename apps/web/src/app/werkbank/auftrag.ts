@@ -9,7 +9,9 @@
 
 import type { BulkOp, BulkRequest, ConditionOp } from '@nw/model';
 
-export type OpArt = BulkOp['op'];
+/* `addLinked` (T-169) gibt es nur über die API und `scripts/atlas.mjs`: es
+   legt Artikel an, und eine Maske dafür bräuchte Art, Kante und Karten. */
+export type OpArt = Exclude<BulkOp['op'], 'addLinked'>;
 
 export interface Bedingung {
   field: string;
@@ -42,6 +44,7 @@ export const OPS: { op: OpArt; label: string }[] = [
   { op: 'addRelation', label: 'Add edge' },
   { op: 'removeRelation', label: 'Remove edge' },
   { op: 'merge', label: 'Merge duplicates' },
+  { op: 'delete', label: 'Delete articles' },
 ];
 
 export const BEDINGUNGEN: { op: ConditionOp; label: string; ohneWert?: boolean }[] = [
@@ -114,6 +117,9 @@ export function auftragAus(f: Formular): Pick<BulkRequest, 'select' | 'ops'> {
       break;
     case 'merge':
       op = { op: 'merge', mode: f.mode, by: f.by, ...(f.keep.trim() ? { keep: f.keep.trim() } : {}) };
+      break;
+    case 'delete':
+      op = { op: 'delete' };
       break;
   }
   return { select, ops: [op] };

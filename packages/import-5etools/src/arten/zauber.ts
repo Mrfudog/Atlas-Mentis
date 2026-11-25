@@ -4,9 +4,8 @@
  * Levels" bleiben Markdown mit Würfeln darin.
  *
  * Die Klassenlisten (welche Klasse welchen Zauber kennt) stehen bei
- * 5e.tools in einer eigenen Nachschlagedatei und bei uns an keiner Kante —
- * `casts` geht von Statblock, Figur, Gegenstand, Unterklasse und Abstammung
- * aus, nicht von der Klasse. Sie bleiben offen (Bericht).
+ * 5e.tools in einer eigenen Nachschlagedatei; sie werden die Kante
+ * `spellList` an der Klasse (T-212, `zauberlisten.ts`).
  */
 
 import type { Zuordnung } from '../zuordnung.js';

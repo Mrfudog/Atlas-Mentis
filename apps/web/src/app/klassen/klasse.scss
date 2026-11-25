@@ -9,6 +9,19 @@
   flex-direction: column;
   gap: 1rem;
 }
+/* Auf der Artikelseite (T-191): die Spalte gibt Breite und Rand vor. */
+.buch.eingebettet {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+/* Die Artikelseite ist schon das Blatt — kein zweites darin. */
+.buch.eingebettet .blatt {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
 .brot {
   display: flex;
   flex-wrap: wrap;

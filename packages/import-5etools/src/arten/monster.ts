@@ -16,11 +16,13 @@
  */
 
 import type { Entity } from '@nw/model';
+import { linkedPeg } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import { profAusCr } from '../copy.js';
 import { inline, OHNE, zauberwirken } from '../text.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
+import { SPIELART } from '../lesen.js';
 import { ATTRIBUTE, gesinnung, GROESSE, liste, zahl } from '../zuordnung.js';
 import { aktionsart, fertigkeit } from './regeln.js';
 import { zerlegeAngriff } from './angriff.js';
@@ -222,7 +224,9 @@ function teil(
      der Statblock (D51, `angriff.ts`). */
   const z = wort ? zerlegeAngriff(roh['entries'] ?? roh['entry']) : null;
   if (wort && z) {
-    const schluessel = `Angriff|${wort}|${name}|${z.sorten.join(',')}|${z.schadensart}|${recharge ?? ''}|${uses ?? ''}`;
+    /* Geteilt wird nur innerhalb einer Teilung (T-087): sonst rechneten
+       2024-Monster die Vorgaben der 2014-Angriffe mit. */
+    const schluessel = `${wb.teilung ? `${wb.teilung}|` : ''}Angriff|${wort}|${name}|${z.sorten.join(',')}|${z.schadensart}|${recharge ?? ''}|${uses ?? ''}`;
     let ziel = geteilt.get(schluessel);
     if (ziel) {
       wb.bericht.geteilt.verwendungen += 1;
@@ -251,7 +255,7 @@ function teil(
   if (wort && JSON.stringify(roh['entries'] ?? '').includes('{@atk')) wb.bericht.angriffe.alsText += 1;
   const { text, wort: genannt } = platzhalter(vorlagenwerte(wb.text(roh['entries'] ?? roh['entry'], 5), e), selbst);
   const benutzt = text.includes('{CREATURE}');
-  const schluessel = `${typ}|${wort ?? ''}|${name}|${text}`;
+  const schluessel = `${wb.teilung ? `${wb.teilung}|` : ''}${typ}|${wort ?? ''}|${name}|${text}`;
   let ziel = geteilt.get(schluessel);
   if (ziel) {
     wb.bericht.geteilt.verwendungen += 1;
@@ -262,7 +266,7 @@ function teil(
       wb.geteiltGezaehlt.add(ziel.id);
     }
   } else {
-    ziel = wb.anlegen(typ, name, `${typ}|${wort ?? ''}|${name}|${text}`, e);
+    ziel = wb.anlegen(typ, name, schluessel, e);
     if (wort) {
       wb.feld(ziel, 'Action', 'actionType', aktionsart(wb, wort).id);
       wb.feld(ziel, 'Action', 'recharge', recharge);
@@ -359,7 +363,7 @@ const GENUTZT_MONSTER = [
 ];
 
 /** Monster und Objekte als Statblock. */
-function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
+export function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   const S = 'Statblock';
   wb.feld(sb, S, 'size', GROESSE[String(liste(e['size'])[0] ?? '')]);
   const typ = e['type'];
@@ -405,19 +409,30 @@ function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   wb.feld(sb, S, 'resistances', schadenSatz(wb, e['resist'], 'resist'));
   wb.feld(sb, S, 'immunities', schadenSatz(wb, e['immune'], 'immune'));
   wb.feld(sb, S, 'vulnerabilities', schadenSatz(wb, e['vulnerable'], 'vulnerable'));
+  /* Zustandsimmunitäten zeigen auf `Condition`-Artikel (T-078). Was
+     keiner ist — „disease" —, steht als Notiz am Statblock, nicht als
+     Verweis ins Leere. */
   const zustaende: string[] = [];
+  const keinZustand: string[] = [];
   const zustandNoten: string[] = [];
+  const zustand = (roh: string) => {
+    const ziel = wb.finde('condition', [roh]);
+    if (ziel) zustaende.push(ziel.id);
+    else keinZustand.push(roh.replace(/^./, (x) => x.toUpperCase()));
+  };
   for (const c of liste(e['conditionImmune'])) {
-    if (typeof c === 'string') zustaende.push(wb.finde('condition', [c])?.name ?? c.replace(/^./, (x) => x.toUpperCase()));
+    if (typeof c === 'string') zustand(c);
     else {
       const o = c as Knoten;
-      for (const x of liste(o['conditionImmune'])) zustaende.push(wb.finde('condition', [String(x)])?.name ?? String(x));
+      for (const x of liste(o['conditionImmune'])) zustand(String(x));
       if (o['note']) zustandNoten.push(wb.zeile(String(o['note'])));
     }
   }
   wb.feld(sb, S, 'conditionImmunities', [...new Set(zustaende)]);
+  if (keinZustand.length) wb.anmerkung(sb, 'condition-immunities', `Condition immunities: ${[...new Set(keinZustand)].join(', ')}`);
   if (zustandNoten.length) wb.notiz('Zustandsimmunität mit Bedingung (Bedingung entfällt)');
   wb.feld(sb, S, 'legendaryActions', zahl(e['legendaryActions']) ?? (e['legendary'] ? 3 : undefined));
+  wb.feld(sb, S, 'legendaryActionsLair', zahl(e['legendaryActionsLair']));
 
   /* Werte, Rettungswürfe, Fertigkeiten. Was nicht aus Übung und
      Übungsbonus folgt, steht als fester Bonus (S1). */
@@ -539,6 +554,43 @@ export function vorlagenwerte(text: string, e: Knoten): string {
   });
 }
 
+/**
+ * **Eine benannte Kreatur ist eine Figur** (T-169): Strahd, Venomfang, Gar
+ * stehen bei 5e.tools nur als Zahlen da. Dazu gehört eine `Creature`
+ * (`kind: npc`), der der Statblock über `belongsTo` gehört — direkt, keine
+ * Instanz: eine benannte Kreatur gibt es einmal. Sie liegt in der Ebene des
+ * Statblocks (dieselbe Quelle), heisst wie er ohne Klammer am Ende
+ * („(Wraith Form)") und trägt dieselbe Peg-Id, die die Werkbank für sie
+ * vergibt (`linkedPeg`). Der Statblock behält das Merkmal als Marke
+ * `named`. Erkannt wird nur `isNamedCreature`: ein grossgeschriebener
+ * `shortName` allein ist kein Eigenname, er wird gezählt.
+ * Spielarten (`_versions`) bekommen keine eigene — die Grundfassung trägt sie.
+ */
+export function benannteKreatur(wb: Werkbank, sb: Entity, e: Knoten): Entity | undefined {
+  /* Eine Spielart verliert `isNamedCreature` beim Auflösen, wenn 5e.tools
+     es nicht ausdrücklich behält — sie bekommt ohnehin keine eigene. */
+  if (e[SPIELART]) {
+    if (e['isNamedCreature']) {
+      wb.marke(sb, 'named');
+      wb.notiz('benannte Spielart: keine eigene Kreatur');
+    }
+    return undefined;
+  }
+  if (!e['isNamedCreature']) {
+    if (typeof e['shortName'] === 'string' && /^\p{Lu}/u.test(e['shortName'])) wb.notiz('shortName gross, ohne isNamedCreature: keine Kreatur');
+    return undefined;
+  }
+  wb.marke(sb, 'named');
+  const voll = String(e['name']);
+  const name = voll.replace(/\s*\([^)]*\)\s*$/, '').trim() || voll;
+  const k = wb.anlegen('Creature', name, `named|${sb.id}`, e, linkedPeg(sb.id, 'Creature'));
+  wb.feld(k, 'Creature', 'kind', 'npc');
+  wb.kante(sb, 'belongsTo', k.id);
+  wb.benannt.add(k.id);
+  wb.notiz('benannte Kreatur angelegt');
+  return k;
+}
+
 export const MONSTER: Zuordnung[] = [
   {
     art: 'monster',
@@ -559,10 +611,17 @@ export const MONSTER: Zuordnung[] = [
         const teile = gruppe ? wb.legendaer.get(gruppe.id) : undefined;
         if (teile) for (const t of teile) wb.kante(sb, 'composedOf', t.id);
         else wb.ctx.insLeere('legroup', `${String(lg['name'])}|${String(lg['source'])}`);
+      } else {
+        /* Manche Statblöcke nennen ihre Gruppe nicht, obwohl eine gleichen
+           Namens in derselben Quelle steht (T-438: fünf Erzteufel und
+           Fürsten in MaBJoV) — ihre Lair Actions hingen dann an keinem.
+           Nur dieser genaue Treffer zählt; aus dem Text wird nicht geraten. */
+        const gruppe = wb.hole('legroup', e['name'], e['source']);
+        for (const t of (gruppe ? wb.legendaer.get(gruppe.id) : undefined) ?? []) wb.kante(sb, 'composedOf', t.id);
       }
       const f = wb.fluff('monsterFluff', String(e['name']), String(e['source']));
       if (f) wb.lore(sb, wb.text(f['entries']));
-      if (e['_versions']) wb.notiz('Spielarten (_versions) nicht ausgeschrieben');
+      benannteKreatur(wb, sb, e);
     },
   },
   {

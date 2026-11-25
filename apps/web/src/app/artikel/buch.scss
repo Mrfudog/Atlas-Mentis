@@ -77,3 +77,58 @@ h2 {
   color: var(--dim);
   font-style: italic;
 }
+/* Enhancements an einem Stück (T-300): eine kurze Liste, darunter die
+   Wahl. Am Telefon bricht die Zeile um. */
+.aufw {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.aufw h4 {
+  margin: 0;
+  font-family: var(--serif);
+  color: var(--heading);
+}
+.aufw ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.aufw li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.aufw .leise {
+  color: var(--dim);
+  font-size: 0.9rem;
+  margin: 0;
+}
+.aufw .warn {
+  color: var(--warn);
+  font-size: 0.9rem;
+  margin: 0;
+}
+.aufw .ab {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--dim);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+}
+.aufw .dazu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.aufw .dazu select {
+  max-width: 100%;
+}

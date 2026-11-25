@@ -1,9 +1,10 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { classTable, entityName, levelFeatures, linkIndex, proficiencyBonus } from '@nw/model';
+import { choiceText, choicesOf, classTable, entityName, levelFeatures, linkIndex, proficiencyBonus } from '@nw/model';
 import type { Entity, LevelFeature, VarScopes } from '@nw/model';
 import { Api, ApiError, type KlassenBuendel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Quellen, QuelleText } from '../kern/quellen';
 import { Text } from '../artikel/text';
 import { Merkmal } from './merkmal';
 import { Klassentabelle, type KlassenTabelle } from './klassentabelle';
@@ -40,12 +41,14 @@ const KERN = ['PHB', 'DMG', 'MM'];
  */
 @Component({
   selector: 'nw-klasse',
-  imports: [RouterLink, Text, Merkmal, Klassentabelle],
+  imports: [RouterLink, Text, Merkmal, Klassentabelle, QuelleText],
   templateUrl: './klasse.html',
   styleUrl: './klasse.scss',
 })
 export class Klasse {
   readonly id = input.required<string>();
+  /** Als Element auf der Artikelseite (T-191): ohne eigenen Pfad und Titel. */
+  readonly eingebettet = input(false);
   /** `?sub=a,b` — die gewählten Unterklassen. */
   readonly sub = input<string | undefined>();
   /** `?opt=1` — optionale Merkmale und Varianten zeigen. */
@@ -54,6 +57,12 @@ export class Klasse {
   private readonly api = inject(Api);
   private readonly router = inject(Router);
   protected readonly bestand = inject(Bestand);
+  private readonly quellenTitel = inject(Quellen);
+
+  /** Der volle Titel eines Quellenkürzels (T-088) — an einem Knopf als `title`. */
+  protected quellTitel(kuerzel: string): string {
+    return this.quellenTitel.titel(kuerzel);
+  }
 
   protected readonly daten = signal<KlassenBuendel | null>(null);
   protected readonly fehlt = signal(false);
@@ -267,7 +276,7 @@ export class Klasse {
       }));
       const hatUnter = unter.some((x) => x.merkmale.length);
       if (!k.length && !hatUnter) continue;
-      out.push({ level, pb: proficiencyBonus(level), klasse: k, unter: hatUnter ? unter : null });
+      out.push({ level, pb: proficiencyBonus(level) ?? 2, klasse: k, unter: hatUnter ? unter : null });
     }
     return out;
   });
@@ -307,25 +316,23 @@ export class Klasse {
       proficient?: string[];
       saves?: string[];
     };
-    const w = (k.components?.['ProficiencyChoice'] ?? {}) as {
-      chooseFrom?: string[];
-      chooseCount?: number;
-      chooseNote?: string;
-    };
+    /* Was zu wählen ist, steht als Wahl am Artikel (REQ-238). Hier stehen
+       die Übungswahlen; Unterklasse, Talente und Zusatzmerkmale stehen
+       mit ihrer Stufe in der Tabelle, die Ausrüstung im Text darunter. */
+    const wahlen = choicesOf(k).filter((x) => x.kind === 'proficiency');
     const zeilen: { label: string; wert: string; lang?: boolean }[] = [];
     const liste = (l?: unknown) => (Array.isArray(l) ? l.map(String).join(', ') : '');
     if (p.saves?.length)
       zeilen.push({ label: 'Saving throws', wert: p.saves.map((s) => s.toUpperCase()).join(', ') });
     if (p.proficient?.length) zeilen.push({ label: 'Proficiencies', wert: liste(p.proficient) });
-    if (w.chooseFrom?.length) {
-      zeilen.push({
-        label: 'Skills',
-        wert: `Choose ${w.chooseCount ?? 1} from ${w.chooseFrom.join(', ')}`,
-      });
+    for (const x of wahlen.filter((x) => x.when !== 'multiclass')) {
+      zeilen.push({ label: x.id === 'skills' ? 'Skills' : 'Choose', wert: choiceText(x) });
     }
-    if (w.chooseNote) zeilen.push({ label: 'Also', wert: w.chooseNote });
     if (c['multiclassRequirement']) {
-      const mit = liste(c['multiclassProficient']);
+      const mit = [
+        liste(c['multiclassProficient']),
+        ...wahlen.filter((x) => x.when === 'multiclass').map(choiceText),
+      ].filter(Boolean).join('; ');
       zeilen.push({
         label: 'Multiclassing',
         wert: `${String(c['multiclassRequirement'])}${mit ? ` · gains ${mit}` : ''}`,

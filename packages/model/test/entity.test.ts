@@ -327,6 +327,34 @@ describe('link targets', () => {
     expect(issue?.message).toContain('Statblock');
   });
 
+  /* Eine Liste von Verweisen prüft jeden Eintrag (T-068): „Revealed to"
+     ist eine Liste, und ein falscher Träger darin ist so falsch wie in
+     einem einzelnen Feld. */
+  it('rejects an article of the wrong type in a list of links', () => {
+    const mitListe: Registry = {
+      ...registry,
+      interfaces: {
+        ...registry.interfaces,
+        NPC: {
+          ...registry.interfaces['NPC']!,
+          schema: {
+            ...registry.interfaces['NPC']!.schema!,
+            properties: {
+              ...registry.interfaces['NPC']!.schema!.properties,
+              sbs: { type: 'array', format: 'link', items: { type: 'string' }, target: { interfaces: ['Statblock'] } },
+            },
+          },
+        },
+      },
+    };
+    const gut = validateEntity(mitListe, mit({ sbs: ['sb1', 'sb2'] }), { knownTypes: arten });
+    expect(gut.map((i) => i.code)).not.toContain('link_wrong_type');
+    const schlecht = validateEntity(mitListe, mit({ sbs: ['sb1', 'n_floon'] }), { knownTypes: arten })
+      .filter((i) => i.code === 'link_wrong_type');
+    expect(schlecht).toHaveLength(1);
+    expect(schlecht[0]?.property).toBe('sbs');
+  });
+
   it('lets a field without a target point anywhere', () => {
     expect(validateEntity(registry, mit({ irgendwas: 'sb1' }), { knownTypes: arten })
       .map((i) => i.code)).not.toContain('link_wrong_type');
@@ -585,5 +613,14 @@ describe('enumRef auf eine Artikelart (M6)', () => {
     const e = art('x', 'Sheet', 'Bogen', { Sheet: { proficient: ['Nebelkunde'], saves: ['str', 'heavy'] } });
     const codes = validateEntity(reg, e).filter((i) => i.code === 'value_not_allowed');
     expect(codes.map((i) => i.property)).toEqual(['saves']);
+  });
+
+  /* T-423: „frei mit Vorschlag" — die Liste schlägt vor, ein eigenes Wort
+     darf stehen, wenn das Feld `suggest` sagt. */
+  it('mit suggest schlägt auch eine Zeile nur vor', () => {
+    const offen = { ...reg.interfaces['Sheet']!.schema!.properties['saves']!, suggest: true };
+    expect(enumHolds(reg, offen)).toBe(false);
+    expect(enumHolds(reg, { enum: ['a', 'b'], suggest: true })).toBe(false);
+    expect(enumHolds(reg, { enum: ['a', 'b'] })).toBe(true);
   });
 });

@@ -13,8 +13,9 @@
  */
 
 import { z } from 'zod';
-import { articleId, entityName, setTags, tagsOf, typeChain } from './entity.js';
+import { articleId, entityName, nextId, setTags, tagsOf, typeChain } from './entity.js';
 import { stableJson } from './checks.js';
+import { detachInstance, INSTANCE_RELATION, isInstance } from './instance.js';
 import type { Entity, Registry, Relation } from './types.js';
 import { LAYER_RELATION } from './visibility.js';
 
@@ -40,19 +41,63 @@ const SelectSchema = z.object({
   where: z.array(ConditionSchema).optional(),
 });
 export type BulkSelect = z.infer<typeof SelectSchema>;
+/** Dieselbe Auswahl für die Übernahme (T-130). */
+export const BulkSelectSchema = SelectSchema;
 
 const OpSchema = z.discriminatedUnion('op', [
-  z.object({ op: z.literal('set'), field: z.string().min(1), value: z.unknown() }),
+  /** `values` (T-144): je Artikel ein eigener Wert, nach Peg-Id oder
+   *  Nummer — wer darin fehlt, bleibt unberührt. `ifEmpty`: nur setzen, wo
+   *  das Feld noch leer ist; was jemand schon gewählt hat, gilt weiter. */
+  z.object({
+    op: z.literal('set'),
+    field: z.string().min(1),
+    value: z.unknown().optional(),
+    values: z.record(z.string(), z.unknown()).optional(),
+    ifEmpty: z.boolean().optional(),
+  }),
   z.object({ op: z.literal('unset'), field: z.string().min(1) }),
   z.object({ op: z.literal('addTag'), tag: z.string().min(1) }),
   z.object({ op: z.literal('removeTag'), tag: z.string().min(1) }),
+  /** `targets` (T-212): je Artikel eigene Ziele, nach Peg-Id oder Nummer —
+   *  ein Ziel ist eine Id oder `{to, props}`; wer darin fehlt, bleibt
+   *  unberührt. So geht eine Zauberliste je Klasse in **eine** Änderung,
+   *  statt einer je Klasse. */
+  /** **Ziel aus Kante** (T-182): `to` darf ein Weg über Kanten sein —
+   *  `<-describedIn` (wer mit `describedIn` auf den Artikel zeigt),
+   *  `->mapOf->happensAt` (seine `mapOf`-Ziele, von dort deren
+   *  `happensAt`). So bekommt jeder Artikel sein eigenes Ziel, ohne dass
+   *  jemand je Artikel eine Liste schreibt. Ein Weg mit mehr als einem
+   *  Ziel ist mehrdeutig und wird übersprungen (gezählt, nicht geraten).
+   *  `toTypes` engt die Ziele auf Arten ein (Untertypen zählen mit),
+   *  `ifNone` setzt nur, wo der Artikel noch keine Kante dieser Art hat. */
   z.object({
     op: z.literal('addRelation'),
     type: z.string().min(1),
-    to: z.string().min(1),
+    to: z.string().min(1).optional(),
+    toTypes: z.array(z.string().min(1)).optional(),
+    ifNone: z.boolean().optional(),
     props: z.record(z.string(), z.unknown()).optional(),
+    targets: z
+      .record(
+        z.string(),
+        z.array(z.union([z.string().min(1), z.object({ to: z.string().min(1), props: z.record(z.string(), z.unknown()).optional() })])),
+      )
+      .optional(),
   }),
   z.object({ op: z.literal('removeRelation'), type: z.string().min(1), to: z.string().optional() }),
+  /** Je ausgewähltem Artikel einen neuen anlegen, an den er über `relation`
+   *  gebunden wird (T-169: zu jedem benannten Statblock seine Kreatur). Der
+   *  neue liegt in denselben Ebenen, heisst wie der ausgewählte (ohne
+   *  Klammer am Ende mit `stripBracket`) und nimmt die Karten aus `copy` mit. */
+  z.object({
+    op: z.literal('addLinked'),
+    type: z.string().min(1),
+    relation: z.string().min(1),
+    /** `Karte.feld` → Wert am neuen Artikel. */
+    fields: z.record(z.string(), z.unknown()).optional(),
+    copy: z.array(z.string()).optional(),
+    stripBracket: z.boolean().optional(),
+  }),
   z.object({
     op: z.literal('merge'),
     /** `variant`: die anderen zeigen mit `variantOf` auf den bleibenden.
@@ -64,6 +109,9 @@ const OpSchema = z.discriminatedUnion('op', [
     /** `name`: eine Gruppe je Art und Name. `content`: dazu gleicher Inhalt. */
     by: z.enum(['name', 'content']).optional(),
   }),
+  /** Die Auswahl löschen (T-176), mit ihren Teilen; was von aussen auf sie
+   *  zeigt, verliert die Kante. Steht allein, wie `merge`. */
+  z.object({ op: z.literal('delete') }),
 ]);
 export type BulkOp = z.infer<typeof OpSchema>;
 
@@ -75,6 +123,11 @@ export const BulkRequestSchema = z.object({
   confirmDelete: z.number().int().optional(),
   /** Schreiben, was besteht, und die Abgelehnten liegen lassen (nicht beim Zusammenführen). */
   skipRejected: z.boolean().optional(),
+  /** Auch Artikel, die nur fehlen, weil ihre Ebene in der laufenden
+   *  Kampagne nicht aufgeschaltet ist (T-182, wie die Werkbank mit
+   *  `allLayers=1`, T-207) — nur für die Verwaltung. Ein Buch, das keine
+   *  Runde spielt, bekäme sonst nie eine Kante nachgetragen. */
+  allLayers: z.boolean().optional(),
   /** Wie viele Beispiele die Antwort trägt. */
   limit: z.number().int().min(0).max(5000).optional(),
   note: z.string().optional(),
@@ -222,6 +275,13 @@ function passend(registry: Pick<Registry, 'interfaces'>, karte: string, feld: st
   return wert;
 }
 
+/** Der Wert eines Feldes (`name` oder `Karte.feld`) am Artikel. */
+function feldwert(e: Entity, field: string): unknown {
+  if (field === 'name') return e.name;
+  const punkt = field.indexOf('.');
+  return (e.components[field.slice(0, punkt)] as Record<string, unknown> | undefined)?.[field.slice(punkt + 1)];
+}
+
 function setzeFeld(registry: Pick<Registry, 'interfaces'>, e: Entity, field: string, wert: unknown): void {
   if (field === 'name') {
     const name = String(wert ?? '').trim();
@@ -319,7 +379,8 @@ export function repoint(
   nummern: ReadonlyMap<string, string>,
 ): Map<string, Entity> {
   const raus = new Map<string, Entity>();
-  if (!pegs.size) return raus;
+  /* Nur Nummern umhängen geht auch (T-130: prod vergibt eine neue). */
+  if (!pegs.size && !nummern.size) return raus;
   const flucht = (s: string) => s.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
   const alle = new Map<string, string>([...nummern, ...pegs]);
   const muster = new RegExp(`\\[\\[(${[...alle.keys()].map(flucht).join('|')})(?=[|\\]])`, 'g');
@@ -376,6 +437,73 @@ const ohneVerwaltung = (e: Entity) => {
 };
 
 /**
+ * **Die Teile, die mit einem gelöschten Artikel gehen** (T-176) — dieselbe
+ * Regel wie beim Löschen eines einzelnen (`DELETE /api/entities/:id`):
+ * eine Instanz, die über eine Kante mit `asField: 'to'` an ihm hängt (der
+ * eigene Statblock aus einer Vorlage), das Inventar, das nur er trägt
+ * (`asField: 'from'`), und die Stücke (Instanzen, T-150), die nur ein
+ * gehendes Inventar hält. Ein eigener Statblock ohne Vorlage und ein
+ * Grundartikel im Inventar stehen für sich und bleiben. Bis nichts mehr
+ * dazukommt: ein Rucksack im Inventar einer Figur trägt selbst eines.
+ */
+export function teileDazu(
+  registry: Pick<Registry, 'relations'>,
+  raw: ReadonlyMap<string, Entity>,
+  geloescht: ReadonlySet<string>,
+): Map<string, string> {
+  const anArt = new Set<string>();
+  const traegtArt = new Set<string>();
+  for (const r of Object.values(registry.relations)) {
+    if (r.asField === 'to') anArt.add(r.type);
+    if (r.asField === 'from') traegtArt.add(r.type);
+  }
+  /** Wer etwas trägt oder hält, je Ziel. */
+  const halter = new Map<string, { von: string; stueck: boolean }[]>();
+  for (const e of raw.values()) {
+    for (const r of e.relations ?? []) {
+      if (!traegtArt.has(r.type) && r.type !== 'holds') continue;
+      (halter.get(r.to) ?? halter.set(r.to, []).get(r.to)!).push({ von: e.id, stueck: r.type === 'holds' });
+    }
+  }
+  const weg = new Set(geloescht);
+  const raus = new Map<string, string>();
+  for (let neu = true; neu; ) {
+    neu = false;
+    for (const e of raw.values()) {
+      if (weg.has(e.id)) continue;
+      let von = isInstance(e) ? (e.relations ?? []).find((r) => anArt.has(r.type) && weg.has(r.to))?.to : undefined;
+      const h = halter.get(e.id) ?? [];
+      if (!von && h.length && h.every((x) => weg.has(x.von)) && h.every((x) => !x.stueck || isInstance(e))) von = h[0]!.von;
+      if (!von) continue;
+      weg.add(e.id);
+      raus.set(e.id, von);
+      neu = true;
+    }
+  }
+  return raus;
+}
+
+/** Ein Weg über Kanten statt einer Id (T-182): `<-art` oder `->art`, auch hintereinander. */
+export function istWeg(to: string): boolean {
+  return /^(<-|->)/.test(to.trim());
+}
+
+/** Die Schritte eines Wegs: `<-describedIn->partOf` → zurück über describedIn, dann vor über partOf. */
+export function wegSchritte(weg: string): { zurueck: boolean; art: string }[] {
+  return [...weg.trim().matchAll(/(<-|->)\s*([A-Za-z][\w]*)/g)].map((m) => ({ zurueck: m[1] === '<-', art: m[2]! }));
+}
+
+/**
+ * Die Peg-Id des Artikels, den `addLinked` zu `vonId` anlegt (T-169). Sie
+ * folgt aus dem ausgewählten Artikel, damit der 5e.tools-Importer dieselbe
+ * vergibt (`monster.ts`, benannte Kreatur): was die Werkbank auf dev
+ * nachgetragen hat, legt ein späteres `--only-new` nicht ein zweites Mal an.
+ */
+export function linkedPeg(vonId: string, type: string): string {
+  return `${vonId}-${type.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+/**
  * Was ein Lauf ändern würde. `raw` ist der gespeicherte Bestand (Instanzen
  * dünn, wie sie liegen) — geändert wird, was gespeichert ist, nicht die
  * aufgelöste Fassung. `selected` sind die Ids, die die Auswahl traf.
@@ -391,6 +519,8 @@ export function planBulk(
   const geloescht = new Set<string>();
   /** Gelöscht → wohin umgehängt; nur für die Zeile „merged into …". */
   const wohin = new Map<string, string>();
+  /** Gelöscht als Teil von → wem; nur für die Zeile „part of …". */
+  const teilVon = new Map<string, string>();
   const problem = (e: Entity, reason: string) =>
     skipped.push({ id: e.id, name: entityName(e), type: e.interfaces?.[0] ?? '', reason });
   const vergeben = new Set<string>();
@@ -402,9 +532,62 @@ export function planBulk(
   }
   const peg = (x: string) => (raw.has(x) ? x : nachNummer.get(x));
   const ziele = selected.map((id) => raw.get(id)).filter((e): e is Entity => !!e);
+  /* Für Wege über Kanten (T-182): wer auf wen zeigt, je Art — einmal
+     gerechnet und nur, wenn ein Weg gefragt ist. */
+  let eingehend: Map<string, Map<string, string[]>> | null = null;
+  const vonHer = (id: string, art: string): string[] => {
+    if (!eingehend) {
+      eingehend = new Map();
+      for (const x of raw.values()) {
+        for (const r of x.relations ?? []) {
+          const je = eingehend.get(r.to) ?? eingehend.set(r.to, new Map()).get(r.to)!;
+          (je.get(r.type) ?? je.set(r.type, []).get(r.type)!).push(x.id);
+        }
+      }
+    }
+    return eingehend.get(id)?.get(art) ?? [];
+  };
+  const folgeWeg = (start: string, weg: string): string[] => {
+    let stand = [start];
+    for (const schritt of wegSchritte(weg)) {
+      const weiter = new Set<string>();
+      for (const id of stand) {
+        const ziele = schritt.zurueck ? vonHer(id, schritt.art) : (raw.get(id)?.relations ?? []).filter((r) => r.type === schritt.art).map((r) => r.to);
+        for (const z of ziele) if (raw.has(z)) weiter.add(z);
+      }
+      stand = [...weiter];
+    }
+    return stand;
+  };
+  const passtArt = (id: string, arten: string[] | undefined): boolean => {
+    if (!arten?.length) return true;
+    const kette = typeChain(registry, raw.get(id)?.interfaces?.[0] ?? '');
+    return arten.some((a) => kette.includes(a));
+  };
+  /** Was `addLinked` in diesem Lauf schon an Nummern vergab. */
+  const nummern: string[] = [];
+  const nenne = (e: Entity | undefined) => (e ? `${entityName(e)} (${articleId(e) || e.id})` : '?');
 
   const merge = ops.find((o) => o.op === 'merge');
-  if (merge && merge.op === 'merge') {
+  if (ops.some((o) => o.op === 'delete')) {
+    for (const e of ziele) geloescht.add(e.id);
+    for (const [id, von] of teileDazu(registry, raw, geloescht)) {
+      geloescht.add(id);
+      teilVon.set(id, von);
+    }
+    /* Was bleibt, zeigt danach nicht ins Leere (T-176): eine Kante auf
+       einen gehenden Artikel geht mit, und eine Instanz einer gehenden
+       Vorlage bekommt vorher, was sie von ihr las (wie beim Löschen eines
+       einzelnen Artikels). Verweise im Fliesstext bleiben stehen — sie
+       sind Text, und `brokenLinks` zählt sie. */
+    for (const e of raw.values()) {
+      if (geloescht.has(e.id)) continue;
+      const vorlage = (e.relations ?? []).find((r) => r.type === INSTANCE_RELATION)?.to;
+      const basis = vorlage && geloescht.has(vorlage) ? detachInstance(raw, e) : e;
+      const kanten = (basis.relations ?? []).filter((r) => !geloescht.has(r.to));
+      if (basis !== e || kanten.length !== (e.relations ?? []).length) nachher.set(e.id, { ...klon(basis), relations: kanten });
+    }
+  } else if (merge && merge.op === 'merge') {
     const gruppen = new Map<string, Entity[]>();
     for (const e of ziele) {
       const k = `${e.interfaces?.[0] ?? ''}\u0000${entityName(e).trim().toLowerCase()}${merge.by === 'content' ? `\u0000${ohneVerwaltung(e)}` : ''}`;
@@ -483,7 +666,20 @@ export function planBulk(
               problem(e, 'a name cannot be emptied');
               break;
             }
-            setzeFeld(registry, neu, feld, op.op === 'set' ? op.value : undefined);
+            let wert: unknown = undefined;
+            if (op.op === 'set') {
+              if (!op.values && !('value' in op)) {
+                problem(e, `${feld}: set needs a value or values`);
+                break;
+              }
+              if (op.values) {
+                const eigen = Object.hasOwn(op.values, e.id) ? op.values[e.id] : Object.hasOwn(op.values, articleId(e)) ? op.values[articleId(e)] : undefined;
+                if (eigen === undefined) break;
+                wert = eigen;
+              } else wert = op.value;
+              if (op.ifEmpty && !leer(feldwert(neu, feld))) break;
+            }
+            setzeFeld(registry, neu, feld, wert);
             break;
           }
           case 'addTag':
@@ -493,27 +689,94 @@ export function planBulk(
             setTags(neu, tagsOf(neu).filter((t) => t.toLowerCase() !== op.tag.trim().toLowerCase()));
             break;
           case 'addRelation': {
-            const to = peg(op.to);
-            if (!to) {
-              problem(e, `${op.type} → ${op.to}: no such article`);
+            if (!op.to === !op.targets) {
+              problem(e, `${op.type}: addRelation needs either to or targets`);
               break;
             }
-            if ((neu.relations ?? []).some((r) => r.type === op.type && r.to === to)) break;
-            if (registry.relations[op.type]?.cardinality === 'one' && (neu.relations ?? []).some((r) => r.type === op.type)) {
-              problem(e, `already has a ${op.type}`);
-              break;
+            if (op.ifNone && (neu.relations ?? []).some((r) => r.type === op.type)) break;
+            let eigen = op.targets
+              ? (Object.hasOwn(op.targets, e.id) ? op.targets[e.id] : Object.hasOwn(op.targets, articleId(e)) ? op.targets[articleId(e)] : undefined) ?? []
+              : [{ to: op.to!, props: op.props }];
+            if (op.to && istWeg(op.to)) {
+              const gefunden = folgeWeg(e.id, op.to).filter((id) => id !== e.id && passtArt(id, op.toTypes));
+              if (gefunden.length > 1) {
+                problem(e, `${op.type} via ${op.to}: ambiguous (${gefunden.length} targets: ${gefunden.slice(0, 3).map((x) => nenne(raw.get(x))).join(', ')}${gefunden.length > 3 ? ', …' : ''})`);
+                break;
+              }
+              eigen = gefunden.map((to) => ({ to, props: op.props }));
             }
-            (neu.relations ??= []).push({
-              id: neueKantenId(neu, op.type, vergeben),
-              type: op.type,
-              to,
-              ...(op.props ? { props: op.props } : {}),
-            });
+            for (const t of eigen) {
+              const ziel = typeof t === 'string' ? t : t.to;
+              const props = typeof t === 'string' ? op.props : t.props ?? op.props;
+              const to = peg(ziel);
+              if (!to) {
+                problem(e, `${op.type} → ${ziel}: no such article`);
+                continue;
+              }
+              if ((neu.relations ?? []).some((r) => r.type === op.type && r.to === to)) continue;
+              if (registry.relations[op.type]?.cardinality === 'one' && (neu.relations ?? []).some((r) => r.type === op.type)) {
+                problem(e, `already has a ${op.type}`);
+                continue;
+              }
+              (neu.relations ??= []).push({
+                id: neueKantenId(neu, op.type, vergeben),
+                type: op.type,
+                to,
+                ...(props ? { props } : {}),
+              });
+            }
             break;
           }
           case 'removeRelation': {
             const to = op.to ? peg(op.to) ?? op.to : undefined;
             neu.relations = (neu.relations ?? []).filter((r) => !(r.type === op.type && (!to || r.to === to)));
+            break;
+          }
+          case 'addLinked': {
+            const def = registry.relations[op.relation];
+            if (!def) {
+              problem(e, `${op.relation}: no such edge type`);
+              break;
+            }
+            /* Hängt schon einer an, gibt es nichts anzulegen — eine benannte
+               Kreatur gibt es einmal. */
+            const schon = (neu.relations ?? []).find((r) => r.type === op.relation);
+            if (schon && def.cardinality === 'one') {
+              problem(e, `already has a ${op.relation} (${nenne(raw.get(schon.to))})`);
+              break;
+            }
+            if (isInstance(e)) {
+              problem(e, 'an instance gets nothing of its own');
+              break;
+            }
+            const id = linkedPeg(e.id, op.type);
+            if (raw.has(id) || nachher.has(id)) {
+              problem(e, `${id} exists already`);
+              break;
+            }
+            const roh = entityName(e).trim();
+            const name = op.stripBracket ? roh.replace(/\s*\([^)]*\)\s*$/, '').trim() || roh : roh;
+            const nummer = nextId(raw.values(), op.type, nummern);
+            nummern.push(nummer);
+            const kind: Entity = {
+              id,
+              interfaces: [op.type],
+              name,
+              components: { Identity: { name, id: nummer } },
+              relations: [],
+            };
+            for (const karte of op.copy ?? []) {
+              if (karte === 'Identity') continue;
+              const k = e.components?.[karte];
+              if (k) kind.components[karte] = JSON.parse(JSON.stringify(k)) as Record<string, unknown>;
+            }
+            for (const [feld, wert] of Object.entries(op.fields ?? {})) setzeFeld(registry, kind, feld, wert);
+            /* In denselben Ebenen wie der ausgewählte. */
+            for (const r of e.relations ?? []) {
+              if (r.type === LAYER_RELATION) kind.relations!.push({ id: neueKantenId(kind, LAYER_RELATION, vergeben), type: LAYER_RELATION, to: r.to });
+            }
+            nachher.set(id, kind);
+            (neu.relations ??= []).push({ id: neueKantenId(neu, op.relation, vergeben), type: op.relation, to: id });
             break;
           }
         }
@@ -525,8 +788,12 @@ export function planBulk(
   const changes: BulkChange[] = [];
   for (const id of geloescht) {
     const before = raw.get(id)!;
-    const ziel = raw.get(wohin.get(id) ?? '');
-    changes.push({ id, before, after: null, summary: [`deleted — merged into ${ziel ? `${entityName(ziel)} (${articleId(ziel) || ziel.id})` : '?'}`] });
+    const zeile = wohin.has(id)
+      ? `deleted — merged into ${nenne(raw.get(wohin.get(id)!))}`
+      : teilVon.has(id)
+        ? `deleted — part of ${nenne(raw.get(teilVon.get(id)!))}`
+        : 'deleted';
+    changes.push({ id, before, after: null, summary: [zeile] });
   }
   for (const [id, after] of nachher) {
     const before = raw.get(id) ?? null;

@@ -53,7 +53,13 @@ describe('GET /api/health', () => {
     const { inject } = await makeApp();
     const res = await inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    expect(res.json()).toEqual({ ok: true, env: null });
+  });
+
+  it('says which environment answers (T-070)', async () => {
+    const app = buildApp({ repo: new InMemoryRepository(seedRegistry, []), env: 'dev' });
+    expect((await app.inject({ method: 'GET', url: '/api/health' })).json()).toEqual({ ok: true, env: 'dev' });
+    expect((await app.inject({ method: 'GET', url: '/api/me' })).json().env).toBe('dev');
   });
 });
 
@@ -119,6 +125,46 @@ describe('entities', () => {
     expect(get.json().name).toBe('Volo Geddarm');
   });
 
+  /* REQ-192: zwei Geräte, ein Artikel. Wer gegen einen alten Stand
+     schreibt, wird abgewiesen und bekommt den neuen mit. */
+  it('counts a revision and refuses a write against an old one', async () => {
+    const erst = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: volo });
+    expect(erst.json().revision).toBe(1);
+    const gelesen = (await ctx.inject({ method: 'GET', url: `/api/entities/${volo.id}` })).json();
+    expect(gelesen.revision).toBe(1);
+
+    const geraetA = { ...gelesen, name: 'Volo A', components: { ...gelesen.components, Identity: { ...gelesen.components.Identity, name: 'Volo A' } } };
+    const geraetB = { ...gelesen, name: 'Volo B', components: { ...gelesen.components, Identity: { ...gelesen.components.Identity, name: 'Volo B' } } };
+    const a = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: geraetA });
+    expect(a.statusCode).toBe(200);
+    expect(a.json().revision).toBe(2);
+
+    const b = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: geraetB });
+    expect(b.statusCode).toBe(409);
+    expect(b.json().revision).toBe(2);
+    expect(b.json().current.name).toBe('Volo A');
+    expect((await ctx.repo.getEntity(volo.id))?.name).toBe('Volo A');
+
+    /* Gegen den neuen Stand geht es. */
+    const b2 = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: { ...geraetB, revision: 2 } });
+    expect(b2.statusCode).toBe(200);
+    expect(b2.json().revision).toBe(3);
+  });
+
+  it('refuses to overwrite an existing article without a revision', async () => {
+    await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: volo });
+    const blind = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: volo });
+    expect(blind.statusCode).toBe(409);
+    expect(blind.json().current.id).toBe(volo.id);
+    expect(ctx.repo.events.filter((e) => e.name === 'entity.written')).toHaveLength(1);
+  });
+
+  it('refuses a revision for an article that does not exist (any more)', async () => {
+    const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: { ...volo, revision: 4 } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().current).toBeNull();
+  });
+
   it('records every write in the change chain (REQ-003)', async () => {
     await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: volo });
     expect(ctx.repo.events.map((e) => e.name)).toContain('entity.written');
@@ -160,6 +206,37 @@ describe('entities', () => {
     const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: dangling });
     expect(res.statusCode).toBe(422);
     expect(res.json().issues.map((i: { code: string }) => i.code)).toContain('dangling_relation');
+  });
+
+  /* „Revealed to" nennt Träger — Figur, Gruppe, Fraktion —, und jeder
+     Eintrag der Liste wird geprüft, nicht nur ein einzelnes Feld (T-068). */
+  it('refuses a list of links that names an article of the wrong type', async () => {
+    const ruestung: Entity = {
+      id: '44444444-4444-4444-8444-444444444444',
+      interfaces: ['Armor'],
+      name: 'Kettenhemd',
+      components: { Identity: { name: 'Kettenhemd', id: 'item-0001' } },
+      relations: [],
+    };
+    const mia: Entity = {
+      ...volo,
+      id: '55555555-5555-4555-8555-555555555555',
+      name: 'Mia',
+      components: { ...volo.components, Identity: { name: 'Mia', id: 'npc-0002' } },
+    };
+    ctx = await makeApp([ruestung, mia]);
+    const falsch: Entity = {
+      ...volo,
+      components: { ...volo.components, Visibility: { revealedTo: [mia.id, ruestung.id] } },
+    };
+    const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: falsch });
+    expect(res.statusCode).toBe(422);
+    const issues = res.json().issues as { code: string; property?: string }[];
+    expect(issues.find((i) => i.code === 'link_wrong_type')?.property).toBe('revealedTo');
+
+    const richtig: Entity = { ...volo, components: { ...volo.components, Visibility: { revealedTo: [mia.id] } } };
+    const ok = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: richtig });
+    expect(ok.statusCode).toBe(200);
   });
 
   it('refuses a body whose id disagrees with the path', async () => {

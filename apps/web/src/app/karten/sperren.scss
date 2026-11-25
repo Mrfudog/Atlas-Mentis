@@ -1,0 +1,89 @@
+/* Die Sperren der Karte (T-118) — eigene Datei, weil karte.scss am Budget
+   für Komponentenstile steht. */
+/* Die Sperren (T-118): nur die Leitung sieht die Linien, nach Art gefärbt.
+   Was nur den Schritt hält, ist gestrichelt — der Blick geht hindurch. */
+.sperren {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.sperre {
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+}
+.sperre.k-wall {
+  stroke: #c0392b;
+}
+.sperre.k-door {
+  stroke: #d98b19;
+}
+.sperre.k-secret {
+  stroke: #8e44ad;
+}
+.sperre.k-window {
+  stroke: #2e86c1;
+  stroke-dasharray: 8 5;
+}
+.sperre.k-chasm {
+  stroke: #6d4c41;
+  stroke-dasharray: 3 4;
+}
+.sperre.k-invisible {
+  stroke: #7f8c8d;
+  stroke-dasharray: 2 6;
+}
+.sperre.offen {
+  stroke-dasharray: 4 8;
+  opacity: 0.7;
+}
+.sperre.entwurf {
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  opacity: 0.85;
+}
+
+/* Eine Tür: ein Knopf quer zur Linie, gross genug für einen Finger. */
+.tuer {
+  position: absolute;
+  width: 26px;
+  height: 14px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid var(--surface);
+  border-radius: 3px;
+  background: #d98b19;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+  cursor: pointer;
+  touch-action: none;
+}
+.tuer.offen {
+  background: transparent;
+  border-style: dashed;
+  border-color: #d98b19;
+}
+.tuer.zu {
+  background: #7a4a0e;
+}
+.tuer.zu {
+  border-color: #3b2205;
+}
+.tuer.geheim {
+  background: #8e44ad;
+}
+.tuer.geheim.offen {
+  background: transparent;
+  border-color: #8e44ad;
+}
+.tuer.still {
+  cursor: default;
+  pointer-events: none;
+}
+.tuer:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-13. 68 Schnittstellen, 54 Kantenarten.
+Stand 2026-11-04. 94 Schnittstellen, 76 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -14,11 +14,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## World
 
-*Wer und was es gibt.* — 14 Arten.
+*Wer und was es gibt.* — 15 Arten.
 
 ### Armor
 
-`Armor` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Armor` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
@@ -26,25 +26,28 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `describedIn` → Article — „described in"
+- `enchantedWith` → Enhancement — „enhanced with"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -55,21 +58,28 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `shape`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### Article
 
@@ -77,12 +87,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Todos`* — `items` *array*
@@ -91,7 +101,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -99,6 +110,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -106,10 +118,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Creature
 
@@ -121,17 +135,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*, `concentration` *link → Spell*, `durations` *object*, `hidden` *boolean*, `turnUsed` *action | bonus | reaction*
 - *`Lore`* — `lore` *long*
 - *`Facts`* — `fact` *long*
 - *`Secrets`* — `secret` *long*
@@ -141,12 +155,15 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `worships` → Deity — „worships"
 - `owes` → Creature — „owes"
+- `inCollection` → Collection — „in collection"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
-- `describedIn` → Article — „described in"
+- `discount` → Creature | Party | Faction — „discount for"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -156,10 +173,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `belongsTo` → „statblock of"
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `owes` → „creditor of"
+- Shop | Faction | Creature — `discount` → „discount from"
+- Shop — `shopkeeper` → „keeps shop"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -167,15 +187,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
-  - **Combat** — `composed`
+  - **Overview** — `image`, `token`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
+  - **Combat** — `turn`, `composed`
+  - **Spells** — `spells`
   - **Gear** — `inventory`
-  - **Craft** — `crafting`
+  - **Crafting** — `crafting`
+  - **Campaign** — `campaign`
   - **Ties** — `standing`, `relations`
 
 ### Deity
@@ -184,16 +208,16 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `pantheon` *string*, `title` *string*, `alignment` *string*, `domains` *array*, `symbol` *string*, `province` *string*, `plane` *string*
+- `pantheon` *string*, `title` *string*, `alignment` *string*, `domains` *link → Subclass*, `symbol` *string*, `province` *string*, `plane` *string*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
@@ -202,7 +226,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -211,16 +236,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature | Faction — `worships` → „worshipped by"
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Event
 
@@ -232,12 +260,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
@@ -246,8 +274,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `involves` → * — „involves"
 - `inLayer` → Layer — „from"
@@ -256,17 +285,20 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Faction
 
@@ -278,12 +310,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -292,8 +324,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `worships` → Deity — „worships"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
 - `controls` → Place — „controls"
-- `describedIn` → Article — „described in"
+- `discount` → Creature | Party | Faction — „discount for"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -302,21 +338,26 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `memberOf` → „members"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Shop | Faction | Creature — `discount` → „discount from"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Faction (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `structure`
 
 ### Hazard
 
@@ -328,12 +369,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
@@ -341,7 +382,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -349,45 +391,52 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
+- Story | Encounter — `features` → „appears in"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Item
 
-`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
-- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `describedIn` → Article — „described in"
+- `enchantedWith` → Enhancement — „enhanced with"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -398,25 +447,32 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `shape`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### Material
 
-`Material` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Material` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
@@ -424,25 +480,28 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `describedIn` → Article — „described in"
+- `enchantedWith` → Enhancement — „enhanced with"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -453,21 +512,28 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `shape`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### Party
 
@@ -479,11 +545,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -491,10 +557,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `abilityPool` → AbilityMethod — „rolled ability pool"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `partyOf` → Campaign — „party of"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -503,6 +572,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
+- Shop | Faction | Creature — `discount` → „discount from"
 - Creature — `memberOfParty` → „members"
 - Quest — `questAbout` → „concerned by"
 - Information | Knowledge — `knownBy` → „knows"
@@ -512,38 +583,42 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `Party`): `description`, `fields`, `inventory`, `crafting`, `relations`
+**Gezeichnet** (aus `Party`): `image`, `description`, `travel`, `fields`, `inventory`, `crafting`, `relations`
 
 ### Place
 
-`Place` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `ReadAloud` ← `Secrets`
+`Place` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `ReadAloud` ← `Secrets` ← `Source`
 
 **Eigene Felder**
 
-- `kind` *Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `state` *hidden | discovered | explored*, `arrival` *long*
+- `kind` *PlaceKind: Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `state` *hidden | discovered | explored*, `arrival` *long*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
 - *`ReadAloud`* — `readaloud` *long*
 - *`Secrets`* — `secret` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
 - `route` → Place — „leads to"
@@ -553,11 +628,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
-- Story — `happensAt` → „scenes here"
+- Story | Encounter — `happensAt` → „scenes and encounters here"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -565,10 +641,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Place — `route` → „reached from"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Place`): `image`, `description`, `fields`, `prose`, `crawl`, `table`, `relations`
+**Gezeichnet** (aus `Place`): `image`, `description`, `fields`, `prose`, `crawl`, `table`, `collection`, `collection`, `relations`
 
 ### Player character
 
@@ -581,17 +659,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*, `concentration` *link → Spell*, `durations` *object*, `hidden` *boolean*, `turnUsed` *action | bonus | reaction*
 - *`Lore`* — `lore` *long*
 - *`Facts`* — `fact` *long*
 - *`Secrets`* — `secret` *long*
@@ -604,13 +682,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `hasClass` → Class — „class"
 - `hasAncestry` → Ancestry — „ancestry"
 - `hasBackground` → Background — „background"
+- `chose` → Choices — „chose"
 - `owes` → Creature — „owes"
+- `inCollection` → Collection — „in collection"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
-- `describedIn` → Article — „described in"
+- `discount` → Creature | Party | Faction — „discount for"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -620,10 +702,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `belongsTo` → „statblock of"
+- GlossaryTerm — `explains` → „explained by"
 - Creature — `owes` → „creditor of"
+- Shop | Faction | Creature — `discount` → „discount from"
+- Shop — `shopkeeper` → „keeps shop"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -631,46 +716,115 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
-  - **Combat** — `composed`
+  - **Overview** — `image`, `token`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
+  - **Combat** — `turn`, `composed`
+  - **Spells** — `spells`
   - **Gear** — `inventory`
-  - **Craft** — `crafting`
+  - **Crafting** — `crafting`
+  - **Campaign** — `campaign`
   - **Ties** — `standing`, `relations`
 
-### Weapon
+### Shop
 
-`Weapon` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Shop` · erbt von `Place` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `ReadAloud` ← `Secrets` ← `Source`
 
 **Eigene Felder**
 
-- `category` *simple | martial*, `damage` *string*, `damage2` *string*, `damageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*, `range` *measure in ft*, `ammoType` *string*
+- `priceMod` *string*, `buyRate` *0…∞*
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Place`* — `kind` *PlaceKind: Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `state` *hidden | discovered | explored*, `arrival` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`ReadAloud`* — `readaloud` *long*
+- *`Secrets`* — `secret` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `sells` → Item | Collection — „sells"
+- `buys` → Item | Collection — „buys"
+- `discount` → Creature | Party | Faction — „discount for"
+- `shopkeeper` → Creature — „shopkeeper"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `tableFor` → Table — „rolls on"
+- `route` → Place — „leads to"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Creature — `livesIn` → „residents"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Faction — `controls` → „controlled by"
+- Quest — `questAbout` → „concerned by"
+- Story | Encounter — `happensAt` → „scenes and encounters here"
+- Map — `mapOf` → „maps"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Place — `route` → „reached from"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Shop (angepasst)`): `image`, `description`, `fields`, `wares`, `prose`, `crawl`, `table`, `collection`, `collection`, `relations`
+
+### Weapon
+
+`Weapon` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
+
+**Eigene Felder**
+
+- `category` *simple | martial*, `damage` *string*, `damage2` *string*, `damageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*, `range` *measure in ft*, `ammoType` *link → Item*
+
+**Geerbte Felder**
+
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `availability` *string*, `copperPrice` *number*, `priceNote` *string*, `stackSize` *number*, `weight` *number in lb*, `lightBright` *measure in ft*, `lightDim` *measure in ft*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*, `inventoryImage` *asset*, `inventoryFrame` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
 - `casts` → Spell — „casts"
 - `hasProperty` → ItemProperty — „has property"
-- `describedIn` → Article — „described in"
+- `enchantedWith` → Enhancement — „enhanced with"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -681,21 +835,28 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- GlossaryTerm — `explains` → „explained by"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Inventory — `holds` → „held in"
+- Session — `leftBehind` → „left behind at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `shape`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `crafting`, `usedBy`, `standing`, `relations`
 
 ### World
 
@@ -707,10 +868,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -718,7 +879,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -726,6 +888,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -733,29 +896,35 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Campaign — `inWorld` → „campaigns"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ---
 
 ## story
 
-5 Arten.
+6 Arten.
 
-### Campaign
+### Arc
 
-`Campaign` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Arc` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+
+**Eigene Felder**
+
+- `levelFrom` *1…20*, `levelTo` *1…20*, `hook` *long*, `outcome` *long*
 
 **Geerbte Felder**
 
 - *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
@@ -766,23 +935,94 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
-- `inWorld` → World — „in the world"
-- `activates` → Layer — „runs on"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `mapOf` → „maps"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Story (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
+
+### Campaign
+
+`Campaign` · erbt von `Story` ← `VisibilityRules` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+
+**Eigene Felder**
+
+- `compareFor` *gm | players*, `playerStart` *board | compendium*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `turnPlanner` *off | move | actions | full*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `passageTrigger` *gm | players | both*, `passageWhen` *any | turn | roundEnd*, `passageMove` *none | square | half | all*, `passageAction` *none | action | bonus*, `passageConfirm` *moves | always | never*, `mapLinkShow` *jump | frame | icon | hidden*, `mapLinkShowPlayers` *jump | frame | icon | hidden*, `mapLinkOuter` *faded | none*, `mapTools` *object*, `markerViews` *object*
+
+**Geerbte Felder**
+
+- *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
+- *`VisibilityRules`* — `visibilityRules` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Todos`* — `items` *array*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`ReadAloud`* — `readaloud` *long*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `allowsMethod` → AbilityMethod — „allows ability method"
+- `allowsSubstitution` → Substitution — „allows substitution"
+- `allowsEquipment` → EquipmentMethod — „allows equipment method"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `happensAt` → Place — „happens at"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
+- `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
+- `onMap` → Map — „fought on"
+- `loot` → Item | Information | Feat | Skill — „loot"
+- `tableFor` → Table — „rolls on"
+- `inLayer` → Layer — „from"
+- `inWorld` → World — „in the world"
+- `activates` → Layer — „Layers in play"
+- `layerRule` → Layer — „Type rule for"
+- `enables` → * — „Extra content"
+- `prefers` → * — „Prefers"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
+- * — `describedIn` → „describes"
 - Party — `partyOf` → „parties"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -791,10 +1031,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
+**Gezeichnet** (aus `Campaign`): `description`, `rules`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
 
 ### Quest
 
@@ -806,12 +1048,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
@@ -820,8 +1062,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
 - `knowledge` → Information — „knowledge about it"
@@ -832,12 +1075,15 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -856,11 +1102,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
 - *`Tactics`* — `tactics` *long*
 - *`Difficulty`* — `difficulty` *1…20*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
@@ -871,10 +1117,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -885,7 +1132,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
+- * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -893,10 +1143,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Scene (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
 
 ### Session
 
@@ -904,16 +1156,16 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `nowPlaying` *string*, `moves` *array*, `log` *array*, `partyNote` *long*, `stewardship` *gm | table*
+- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `mapNavigation` *boolean*, `nowPlaying` *string*, `moves` *array*, `log` *array*, `partyNote` *long*, `stewardship` *gm | table*
 
 **Geerbte Felder**
 
 - *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
@@ -924,10 +1176,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `leftBehind` → Item — „left behind"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -938,7 +1192,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
+- * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -946,10 +1203,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Session`): `live`, `prep`, `description`, `fields`, `prose`, `relations`
+**Gezeichnet** (aus `Session`): `live`, `prep`, `description`, `fields`, `prose`, `relations`, `collection`
 
 ### Story
 
@@ -961,11 +1220,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
@@ -976,10 +1235,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
@@ -990,7 +1250,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
+- * — `describedIn` → „describes"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -998,16 +1261,73 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Story (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
 
 ---
 
 ## Rules
 
-*Woran man sich hält.* — 22 Arten.
+*Woran man sich hält.* — 31 Arten.
+
+### Ability score method
+
+`AbilityMethod` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `method` **Pflicht** *array | pointBuy | roll*, `scores` *array*, `budget` *0…∞*, `costs` *object*, `dice` *string*, `count` *1…12*, `scope` *character | party*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Campaign — `allowsMethod` → „allowed in"
+- GlossaryTerm — `explains` → „explained by"
+- Party — `abilityPool` → „pool of"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Action
 
@@ -1019,13 +1339,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1033,7 +1353,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1043,17 +1366,21 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Action type
 
@@ -1065,13 +1392,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1079,7 +1406,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1089,21 +1419,25 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Ancestry
 
-`Ancestry` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Ancestry` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1111,17 +1445,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1132,7 +1466,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `casts` → Spell — „casts"
 - `subraceOf` → Ancestry — „subrace of"
 - `grants` → Rule — „grants"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
@@ -1145,21 +1481,27 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Ancestry — `subraceOf` → „subraces"
 - PlayerCharacter — `hasAncestry` → „ancestry of"
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Ancestry (angepasst)`): `image`, `description`, `originOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Background
 
-`Background` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Background` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1167,17 +1509,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1185,8 +1527,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
@@ -1198,39 +1543,45 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
 - PlayerCharacter — `hasBackground` → „background of"
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Background (angepasst)`): `image`, `description`, `originOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Class
 
-`Class` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Class` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
-- `hitDie` *4…12*, `primaryAbility` *Ability: str | dex | con | int | wis | cha*, `startingEquipment` *long*, `multiclassRequirement` *string*, `multiclassProficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `subclassTitle` *string*, `casterProgression` *full | half | third | pact | artificer*, `spellAbility` *Ability: str | dex | con | int | wis | cha*
+- `hitDie` *4…12*, `primaryAbility` *Ability: str | dex | con | int | wis | cha*, `startingEquipment` *long*, `startingGold` *string*, `multiclassRequirement` *string*, `multiclassProficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `subclassTitle` *string*, `casterProgression` *full | half | third | pact | artificer*, `spellAbility` *Ability: str | dex | con | int | wis | cha*
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1238,8 +1589,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `spellList` → Spell — „spell list"
 - `grants` → Rule — „grants"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
@@ -1252,21 +1607,83 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Subclass — `subclassOf` → „subclasses"
 - PlayerCharacter — `hasClass` → „taken by"
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Class (angepasst)`): `image`, `description`, `classOverview`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Collection
+
+`Collection` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `types` *array*, `tags` *array*, `fields` *array*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- * — `inCollection` → „members (by hand)"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Collection (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
 
 ### Condition
 
-`Condition` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Condition` · erbt von `Rule` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1274,13 +1691,14 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1289,7 +1707,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1300,21 +1721,25 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Condition — `stageOf` → „has stages"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Disease
 
-`Disease` · erbt von `Condition` ← `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Disease` · erbt von `Condition` ← `Rule` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1323,13 +1748,14 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Condition`* — `kind` *condition | status*, `stage` *1…∞*, `recovery` *none | shortRest | longRest | longRestStep | save | special*
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1338,7 +1764,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1349,21 +1778,139 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Condition — `stageOf` → „has stages"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Enhancement
+
+`Enhancement` · erbt von `ItemFeature` ← `Rule` ← `Effects` ← `Image` ← `Lore` ← `Secrets` ← `Facts` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `rarity` *Item.rarity*, `attunement` *boolean*, `attunementNote` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*
+
+**Geerbte Felder**
+
+- *`ItemFeature`* — `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `mechanics` *two-handed | versatile | light | finesse*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Item — `enchantedWith` → „enhances"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Starting equipment method
+
+`EquipmentMethod` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `method` **Pflicht** *rules | gold | free*, `gold` *string*, `budget` *0…∞*, `magic` *object*, `itemTypes` *Item.itemType*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Campaign — `allowsEquipment` → „allowed in"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Feat
 
-`Feat` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Feat` · erbt von `Rule` ← `Choices` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1371,13 +1918,15 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Choices`* — `choices` *array*
+- *`Effects`* — `effects` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1385,8 +1934,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1396,22 +1948,28 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Feature
 
-`Feature` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Feature` · erbt von `Rule` ← `Choices` ← `Effects` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1419,13 +1977,15 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Choices`* — `choices` *array*
+- *`Effects`* — `effects` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1433,7 +1993,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1443,17 +2006,76 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Glossary term
+
+`GlossaryTerm` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `sort` *app | rule | condition | property | action | other*, `effect` *long*, `example` *long*, `translations` *array*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `explains` → * — „explains"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Information
 
@@ -1461,31 +2083,33 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `fields` *array*, `tier` *open | rumour | secret*
+- `fields` *array*, `applies` *object*, `tier` *open | rumour | secret*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction — „known by"
+- `knownBy` → Creature | Party | Faction | Ancestry | Background | Class | Subclass | Feat — „known by"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - * — `knowledge` → „about"
 - Knowledge — `includes` → „part of"
@@ -1495,10 +2119,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Inventory
 
@@ -1510,17 +2136,18 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `holds` → Item — „holds"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1529,6 +2156,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Creature | Party | Item — `carries` → „carried by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1536,28 +2164,35 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Inventory`): `inventory`, `description`, `fields` (ohne Inventory.copper), `relations`
 
-### Item property
+### Item feature — *abstrakt*
 
-`ItemProperty` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`ItemFeature` · erbt von `Rule` ← `Effects` ← `Image` ← `Lore` ← `Secrets` ← `Facts` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
-- `abbreviation` *string*
+- `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `mechanics` *two-handed | versatile | light | finesse*
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1565,7 +2200,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1575,18 +2213,81 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
-- Weapon | Item | Armor — `hasProperty` → „property of"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Item property
+
+`ItemProperty` · erbt von `ItemFeature` ← `Rule` ← `Effects` ← `Image` ← `Lore` ← `Secrets` ← `Facts` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `abbreviation` *string*
+
+**Geerbte Felder**
+
+- *`ItemFeature`* — `appliesTo` *array*, `namePrefix` *string*, `nameSuffix` *string*, `priceAdd` *0…∞*, `priceMult` *0…∞*, `mechanics` *two-handed | versatile | light | finesse*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Effects`* — `effects` *array*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Weapon | Item | Armor — `hasProperty` → „property of"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Knowledge
 
@@ -1594,19 +2295,20 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction — „known by"
+- `knownBy` → Creature | Party | Faction | Ancestry | Background | Class | Subclass | Feat — „known by"
 - `includes` → Information — „includes"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1614,16 +2316,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Knowledge (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `knowledgeContents`
 
 ### Language
 
@@ -1635,13 +2340,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1649,7 +2354,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1659,17 +2367,79 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Material group
+
+`MaterialGroup` · erbt von `Collection` ← `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `materialTypes` *array*, `rarityMin` *Item.rarity*, `rarityMax` *Item.rarity*, `tags` *array*, `items` *Item articles*
+
+**Geerbte Felder**
+
+- *`Collection`* — `types` *array*, `tags` *array*, `fields` *array*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- * — `inCollection` → „members (by hand)"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Shop — `sells` → „sold at"
+- Shop — `buys` → „bought at"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Recipe — `needs` → „used in"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Collection (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `collection`
 
 ### Recipe
 
@@ -1677,15 +2447,15 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `trade` *string*, `tool` *string*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
+- `trade` *Trade articles*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *string*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Notes`* — `note` *long*
@@ -1694,9 +2464,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `needs` → Item — „needs"
+- `needs` → Item | MaterialGroup — „needs"
 - `yields` → Item — „yields"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1704,12 +2475,16 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 - Creature | PlayerCharacter | Party — `crafting` → „worked on by"
@@ -1722,16 +2497,16 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1739,7 +2514,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1749,17 +2527,21 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Skill
 
@@ -1771,13 +2553,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1785,7 +2567,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1795,7 +2580,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1803,10 +2590,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Spell
 
@@ -1818,13 +2607,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1832,7 +2621,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1842,14 +2634,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
-- Statblock | PlayerCharacter | Item | Subclass | Ancestry — `casts` → „cast by"
+- Statblock | PlayerCharacter | Item | Subclass | Ancestry | Feat | Faction | Rule — `casts` → „cast by"
+- Class | Subclass — `spellList` → „on the spell list of"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1861,16 +2658,16 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *Condition articles*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `legendaryActionsLair` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Abilities`* — `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*
@@ -1886,7 +2683,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `belongsTo` → Creature — „belongs to"
 - `casts` → Spell — „casts"
 - `equips` → Item — „equips"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `instanceOf` → same — „instance of"
@@ -1895,23 +2693,26 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
+- Story | Encounter — `features` → „appears in"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Statblock`): `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
+**Gezeichnet** (aus `Statblock`): `image`, `token`, `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
 
 ### Subclass
 
-`Subclass` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Subclass` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1919,17 +2720,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -1938,9 +2739,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `affects` → Rule — „affects"
 - `casts` → Spell — „casts"
+- `spellList` → Spell — „spell list"
 - `subclassOf` → Class — „subclass of"
 - `grants` → Rule — „grants"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
@@ -1951,17 +2755,77 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Information | Knowledge — `knownBy` → „knows"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Material substitution
+
+`Substitution` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `replaces` *array*, `with` *array*, `withTags` *array*, `rarity` *same | atLeast | any*, `ratio` *1…∞*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Campaign — `allowsSubstitution` → „allowed in"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Table
 
@@ -1969,15 +2833,15 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *loot | encounter | name | shop | event | generic*, `die` *string*, `columns` *array*, `rows` *array*
+- `kind` *loot | encounter | name | shop | event | generic | deck*, `die` *string*, `columns` *array*, `rows` *array*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Notes`* — `note` *long*
@@ -1985,7 +2849,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `entry` → * — „entry"
 - `inLayer` → Layer — „from"
@@ -1994,6 +2859,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2001,10 +2867,65 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - Place | Story | Encounter | Class | Subclass | Ancestry | Background — `tableFor` → „used at"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Table`): `table`, `description`, `fields` (ohne Table.rows), `prose`
+
+### Trade
+
+`Trade` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `tools` *Item articles*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Trade (angepasst)`): `image`, `description`, `crafting`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Zone kind
 
@@ -2016,13 +2937,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option | upgrade | facility | card | system*, `autolink` *boolean*, `key` *string*, `graph` *object*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
@@ -2030,7 +2951,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
-- `describedIn` → Article — „described in"
+- `casts` → Spell — „casts"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2040,7 +2964,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- GlossaryTerm — `explains` → „explained by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `zone` → „lies on"
@@ -2048,16 +2974,18 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ---
 
 ## Play
 
-*Worauf man während der Sitzung schaut.* — 3 Arten.
+*Worauf man während der Sitzung schaut.* — 5 Arten.
 
 ### Board
 
@@ -2065,22 +2993,23 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `width` *number*, `height` *number*, `snap` *number*, `background` *asset*, `rules` *object*, `shapes` *array*, `anchors` *array*
+- `width` *number*, `height` *number*, `snap` *number*, `background` *asset*, `backgroundColor` *string*, `backgroundFit` *stretch | tile | fixed*, `backgroundMap` *link → Map*, `rules` *object*, `shapes` *array*, `anchors` *array*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `placed` → * — „on the board"
 - `inLayer` → Layer — „from"
@@ -2089,32 +3018,88 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Board`): `board`, `fields` (ohne Board.shapes, Board.anchors)
 
-### Encounter
+### Crafting order
 
-`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty`
+`CraftingOrder` · erbt von `Recipe` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Notes` ← `Secrets` ← `Lore`
 
 **Eigene Felder**
 
-- `xpBudget` *number*, `phase` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*
+- `progress` *0…∞*, `outcome` *open | succeeded | failed | aborted*, `started` *string*, `checks` *array*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Recipe`* — `trade` *Trade articles*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+- *`Secrets`* — `secret` *long*
+- *`Lore`* — `lore` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `needs` → Item | MaterialGroup — „needs"
+- `yields` → Item — „yields"
+- `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+- Creature | PlayerCharacter | Party — `crafting` → „worked on by"
+
+**Gezeichnet** (aus `CraftingOrder`): `crafting`, `fields`, `prose`, `relations`
+
+### Encounter
+
+`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty` ← `Played`
+
+**Eigene Felder**
+
+- `kind` *EncounterKind: combat | social | puzzle | exploration | hazard | trap | resource | story*, `xpBudget` *number*, `phase` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*, `solution` *long*, `hint` *long*, `goal` *long*, `check` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Tactics`* — `tactics` *long*
@@ -2122,56 +3107,68 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Secrets`* — `secret` *long*
 - *`Difficulty`* — `difficulty` *1…20*
+- *`Played`* — `playedAt` *string*, `playedIn` *link → Session*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `happensAt` → Place — „happens at"
+- `features` → Creature | Statblock | Faction | Hazard — „features"
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `fields`, `prose`
+**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `prose`, `fields`, `prose`, `fields`, `standing`, `collection`, `fields`, `collection`, `collection`, `collection`, `fields`, `prose`
 
 ### Map
 
-`Map` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Notes` ← `Secrets` ← `ReadAloud`
+`Map` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Notes` ← `Secrets` ← `ReadAloud` ← `Played`
 
 **Eigene Felder**
 
-- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
+- `sheets` *array*, `floors` *array*, `floorReveal` *object*, `floorReleased` *object*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `markerView` *symbol | name | image | card*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `gridColor` *color*, `gridOpacity` *0…1*, `gridHidden` *boolean*, `snapTokens` *boolean*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `released` *boolean*, `reveal` *array*, `revealOnMove` *boolean*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Notes`* — `note` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
+- *`Played`* — `playedAt` *string*, `playedIn` *link → Session*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `mapOf` → Place | Story — „map of"
 - `insideMap` → Map — „inside"
@@ -2179,11 +3176,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `zone` → ZoneKind — „zone"
 - `territory` → * — „territory"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `insideMap` → „zoom into"
 - Map — `marker` → „on the map"
@@ -2192,16 +3191,56 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story — `onMap` → „fights here"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- Statblock | Item | CraftingOrder | Map | Encounter — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Map`): `map`, `description`, `fields`
 
+### Note
+
+`Note` · erbt von `Identity` ← `Description` ← `Status` ← `Visibility` ← `Tags`
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Description`* — `description` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
 ---
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 24 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 37 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -2213,7 +3252,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2221,16 +3261,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Asset
 
@@ -2238,23 +3281,24 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
+- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `kind` *image | map | token | prop*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*, `round` *boolean*, `frame` *object*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2262,16 +3306,138 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Book part — *abstrakt*
+
+`BookPart` · erbt von `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Chapter
+
+`Chapter` · erbt von `Identity` ← `Prose` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `ordinal` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `chapterOf` → Story — „chapter of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Choices — *abstrakt*
+
+`Choices`
+
+**Eigene Felder**
+
+- `choices` *array*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- PlayerCharacter — `chose` → „chosen by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Description — *abstrakt*
 
@@ -2283,7 +3449,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2291,16 +3458,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Difficulty — *abstrakt*
 
@@ -2312,7 +3482,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2320,16 +3491,95 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Effects — *abstrakt*
+
+`Effects`
+
+**Eigene Felder**
+
+- `effects` *array*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Embedded article
+
+`Embed` · erbt von `BookPart` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `target` **Pflicht** *link → Identity*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Facts — *abstrakt*
 
@@ -2341,7 +3591,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2349,16 +3600,62 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Heading
+
+`Heading` · erbt von `BookPart` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `level` *1…6*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Identity — *abstrakt*
 
@@ -2366,11 +3663,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2378,16 +3676,59 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Illustration
+
+`Illustration` · erbt von `BookPart` ← `Image` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Image — *abstrakt*
 
@@ -2399,7 +3740,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2407,16 +3749,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Layer
 
@@ -2424,21 +3769,23 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *system | expansion | world | pack | campaign | overrides*, `order` *number*, `version` *string*
+- `kind` *system | expansion | book | adventure | world | pack | campaign | player | test | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*, `defaultAudience` *Audience: public | campaign | players | gm*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2446,6 +3793,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2453,11 +3802,14 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `inLayer` → „brings"
-- Campaign — `activates` → „used by"
+- Campaign — `activates` → „In play in"
+- Campaign — `layerRule` → „Type rule in"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `contents`, `reader`
 
 ### Lore — *abstrakt*
 
@@ -2469,7 +3821,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2477,16 +3830,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Notes — *abstrakt*
 
@@ -2498,7 +3854,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2506,16 +3863,96 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Paragraph
+
+`Paragraph` · erbt von `BookPart` ← `Prose` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `kind` *text | list | table | sidebar | quote*
+
+**Geerbte Felder**
+
+- *`Prose`* — `paragraph` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Played — *abstrakt*
+
+`Played`
+
+**Eigene Felder**
+
+- `playedAt` *string*, `playedIn` *link → Session*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Proficiencies — *abstrakt*
 
@@ -2527,7 +3964,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2535,45 +3973,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
-
-### Proficiency choice — *abstrakt*
-
-`ProficiencyChoice`
-
-**Eigene Felder**
-
-- `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Text — *abstrakt*
 
@@ -2585,7 +3997,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2593,16 +4006,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Read aloud — *abstrakt*
 
@@ -2614,7 +4030,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2622,16 +4039,164 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Read-aloud text
+
+`ReadAloudText` · erbt von `BookPart` ← `ReadAloud` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`ReadAloud`* — `readaloud` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- * — `describedIn` → „describes"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Rule mechanic
+
+`RuleMechanic` · erbt von `Layer` ← `ShapeDefaults` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
+
+**Eigene Felder**
+
+- `method` *weight | slots | grid | shapes*
+
+**Geerbte Felder**
+
+- *`Layer`* — `kind` *system | expansion | book | adventure | world | pack | campaign | player | test | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*, `defaultAudience` *Audience: public | campaign | players | gm*
+- *`ShapeDefaults`* — `shapeGroups` *array*, `shapeItems` *array*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `compatibleWith` → RuleMechanic — „compatible with"
+- `extendsMechanic` → RuleMechanic — „extends"
+- `excludesMechanic` → RuleMechanic — „excludes"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- RuleMechanic — `compatibleWith` → „also works with"
+- RuleMechanic — `extendsMechanic` → „extended by"
+- RuleMechanic — `excludesMechanic` → „excluded by"
+- * — `inLayer` → „brings"
+- Campaign — `activates` → „In play in"
+- Campaign — `layerRule` → „Type rule in"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `contents`, `reader`
+
+### Rule system
+
+`RuleSystem` · erbt von `Layer` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
+
+**Eigene Felder**
+
+- `sort` *inventory | partyInventory | items | crafting | abilities | equipment | character | magic | creatures | travel | units | map | combat | table*
+
+**Geerbte Felder**
+
+- *`Layer`* — `kind` *system | expansion | book | adventure | world | pack | campaign | player | test | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*, `defaultAudience` *Audience: public | campaign | players | gm*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `partOf` → Place | Story | Event | Layer | Chapter | Rule | Faction — „part of"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart | Rule | Faction — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `inLayer` → „brings"
+- Campaign — `activates` → „In play in"
+- Campaign — `layerRule` → „Type rule in"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Layer (angepasst)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`, `contents`, `reader`
 
 ### Secrets — *abstrakt*
 
@@ -2643,7 +4208,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2651,16 +4217,52 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Default shapes — *abstrakt*
+
+`ShapeDefaults`
+
+**Eigene Felder**
+
+- `shapeGroups` *array*, `shapeItems` *array*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Source — *abstrakt*
 
@@ -2672,7 +4274,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2680,16 +4283,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Status — *abstrakt*
 
@@ -2701,7 +4307,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2709,16 +4316,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Tactics — *abstrakt*
 
@@ -2730,7 +4340,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2738,16 +4349,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Tags — *abstrakt*
 
@@ -2759,7 +4373,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2767,16 +4382,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Time — *abstrakt*
 
@@ -2788,7 +4406,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2796,16 +4415,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Todos — *abstrakt*
 
@@ -2817,7 +4439,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2825,16 +4448,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Variables — *abstrakt*
 
@@ -2846,7 +4472,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2854,16 +4481,19 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Visibility — *abstrakt*
 
@@ -2871,11 +4501,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- `audience` *Audience: public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2883,16 +4514,52 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
+
+### Visibility by group — *abstrakt*
+
+`VisibilityRules`
+
+**Eigene Felder**
+
+- `visibilityRules` *array*
+
+**Kanten von hier**
+
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- GlossaryTerm — `explains` → „explained by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Vitals — *abstrakt*
 
@@ -2900,11 +4567,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
+- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*, `concentration` *link → Spell*, `durations` *object*, `hidden` *boolean*, `turnUsed` *action | bonus | reaction*
 
 **Kanten von hier**
 
-- `describedIn` → Article — „described in"
+- `inCollection` → Collection — „in collection"
+- `describedIn` → Article | Story | BookPart — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -2912,14 +4580,17 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- GlossaryTerm — `explains` → „explained by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Campaign — `enables` → „Enabled in"
+- Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `parts`, `composed`, `usedBy`, `standing`, `relations`
 

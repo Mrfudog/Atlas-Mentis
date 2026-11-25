@@ -1,0 +1,399 @@
+{
+  "chapters": [
+    {
+      "id": "start",
+      "title": "First steps",
+      "intro": "Atlas Mentis is the site for a GM and their groups: the world, the story, the rules and the table in one place.",
+      "sections": [
+        {
+          "heading": "Finding your way",
+          "text": [
+            "The header leads to the areas World, Story, Rules and Play, and to the Compendium, which lists everything at once. Under the mark at the left you see the running campaign and how many layers it plays with.",
+            "Search with Ctrl+K or /. Each hit opens its quick view with +; Enter opens the article."
+          ]
+        },
+        {
+          "heading": "Where players start",
+          "text": [
+            "Every campaign has a campaign board: the campaign itself, what is being played, the next session, the party, the open quests and the rumours. It is an ordinary board under the campaign — the GM moves, removes and adds cards as on any board. Its cards read the current state when it is opened: set the scene in play on the session and the card “Now playing” follows.",
+            "Players land on it after signing in. A bar — at the top, on a phone at the bottom — leads back to the board, to their character, to the maps, to search and to what they know. The GM keeps their own start; under Rules & options › At the table, “Players start on” sends players to the compendium instead."
+          ]
+        },
+        {
+          "heading": "How a page is built",
+          "text": [
+            "Article, character and type pages are split into chapters — on an article Fields, Relations, Linked here, Admin and Log. On a phone each chapter is a tab at the top, one at a time, and the address keeps the chosen one (?k=…). On a wider screen every chapter is a framed area with its title and count: the wide ones (the fields, the sheet) on the left, the narrow ones (relations, what links here) beside them, and Admin and Log below, collapsed until you open them. The row of chapter names at the top jumps to each.",
+            "A chapter with nothing in it is not shown, not even as a tab. Admin is on every kind of article: its layers and where it comes from, who can see it and why, what is known about it, and its versions.",
+            "Long text that a kind of article offers — read-aloud text, notes, secrets — stands as text sections, not as fields: a kind can hold several, and each section can be revealed to players on its own. Below the fields the page lists the kinds with their count; “+ Text” adds one. A passage is something else: the stairs or portal between floors of a map."
+          ]
+        },
+        {
+          "heading": "Long pages: folding and jumping",
+          "text": [
+            "Long pages and long lists are made of sections that fold — on the campaign page the parts of Layers, in a book its sections. A bar above them does the same everywhere: Expand all and Collapse all fold every section at once, ‹ and › go to the previous or next section and open it.",
+            "With the keyboard: Alt+↓ and Alt+↑ jump, Alt+Shift+↓ expands and Alt+Shift+↑ collapses everything. Inside a text field the keys keep their usual meaning. On a phone the bar sits at the bottom of the screen, where your thumb is.",
+            "Where a page remembers what is open — the groups of layers, for instance — it remembers it for your account, whether you folded one section or all of them."
+          ]
+        },
+        {
+          "heading": "What you see",
+          "text": [
+            "A campaign plays with layers — books, homebrew, its own layer and one per player. What no switched-on layer brings is not there, for anyone. Under an article’s title you see which layer this version is in. Its chapter Admin — on every article — names the layers of its other versions too and why it shows: in play, from a compare layer, enabled as extra content, or in no layer.",
+            "Players see what is ready, what was revealed to their character and what they made themselves. Nothing has a separate “player view”: you see the same page with less in it.",
+            "As GM, “View as ▾” under the campaign in the header shows the site as one of your members — players with their characters, spectators, co-GMs. Every page then shows what they would see, read only; the band at the top and Alt+Shift+V lead back. On a phone, View as is in the campaign popup.",
+            "Knowledge decides which fields players read. On any article, the Knowledge box (GMs) sets which information exists and which knowledge it belongs to; give the knowledge to characters, a party, a faction — or to an ancestry, background, class or feat, and everyone who has it knows. An information can also hold for a whole group, like every orc. The page of a knowledge writes out all it brings together, so players read what they know in one place. The GM and co-GMs of a campaign read its articles whole — secrets, tactics, solutions, hints and every combatant — even without a character of their own; whoever runs another campaign reads here like any player."
+          ]
+        },
+        {
+          "heading": "Creating and writing",
+          "text": [
+            "“New article” asks for a kind and a name. New articles go into your write layer (set in the layers popup); an article you may not write is edited as your own adapted version.",
+            "In long texts, [[Name]] links an article and {{1d6+2}} is a die to roll. Terms from the glossary are underlined with dots: hover for a preview, Ctrl/⌘+click to open the entry beside the page."
+          ]
+        },
+        {
+          "heading": "Help on every page",
+          "text": [
+            "The “?” in the header opens the help for the page you are on — the same text as in the chapter Pages below — with what is new there."
+          ]
+        },
+        {
+          "heading": "Icons and where they come from",
+          "text": [
+            "A type carries an icon in the registry (Registry › a type › Icon), its subtypes inherit it, a field may carry one, and an article may choose its own under Identity › Icon. The same icon then stands before the name wherever the article is named: lists, quick views, the title, edges and board cards. Where no name stands beside it, the icon names itself for screen readers.",
+            "The icon set is Lucide (https://lucide.dev), used under the ISC licence — portions of it come from Feather Icons under the MIT licence (© 2013–2023 Cole Bemis; © 2025 Lucide Contributors). Icons for game content (weapons, spells, monsters) and a library of your own symbols are planned as modules of a shared asset collection."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pages",
+      "title": "Pages",
+      "intro": "What each page does and how to use it. The “?” in the header shows the part for the page you are on."
+    },
+    {
+      "id": "rules",
+      "title": "Rules & options",
+      "intro": "The choices a campaign makes about how it plays. They are set on the campaign page under Rules & options — pick “Use this” beside an option. Every system, rule and option there is a rule article of its own."
+    },
+    {
+      "id": "workflows",
+      "title": "Workflows",
+      "intro": "Step by step through what you do often.",
+      "sections": [
+        {
+          "heading": "Preparing a session",
+          "text": [
+            "Give a story its shape with part of: an encounter group (a scene) is part of its chapter (an arc), an encounter part of its group, and part of the session in which you play it. Arc, scene and session list what hangs on them under Contains — the session only its own encounters, the chapter all of them.",
+            "Create the session under Play, put the scene, the encounter and the map you need on it, and set what you prepare to ready when players may see it.",
+            "An encounter carries what you prepare: where it happens (happens at → a place), the map it is fought on, its loot with quantity and chance, and its combatants. Add them under Edit › Relations — the picker offers Create “…” as … for anything that does not exist yet — and the encounter's page shows Place, Map and Loot as groups. Several of the same foe are added in one go in the tracker (Add a combatant, How many): each gets its own row.",
+            "To set the foes on the map before the session, press Prepare on map in the encounter's initiative tracker: the map opens with its combatants placed in the middle, hidden from the players until you start the encounter. Drag them where they lurk.",
+            "During play the session says which map, encounter and scene run; Play shows them to the table.",
+            "Taking a map into play (Take into play on Play, or Start encounter) makes the session's own copy of it — a map in play: tokens, fog and the fight live there, the prepared map stays untouched, and the next session on the same map starts fresh. Players see it only once you press Release to players, with the fog already on. Afterwards the map's page lists every table under Played, to look at again.",
+            "Players stay on the map on the table: frames of sub-maps are only picture for them. To let them zoom into a sub-map or out to the map above, press Players stay here on the map in play — it turns into Players change maps and is saved on the session. They still reach only maps you took into play and released in this session; you can always change maps yourself.",
+            "While the fog is on, players get only the revealed part of the map image — the server cuts it out, and the full picture goes to them once everything is revealed (Reveal all) or the fog is off."
+          ]
+        },
+        {
+          "heading": "Adding an image from your phone",
+          "text": [
+            "At any image field (an article, a character, a map, a board) tap Upload image; on Images, Upload images.",
+            "Your phone shows its file menu (on Android it may open Files or Recent first): choose Browse or Files, then OneDrive (or another storage) and the image. Photos and the camera are in the same menu; Take photo goes straight to the camera.",
+            "Any file can be chosen; it is checked afterwards. JPEG, PNG, WebP, GIF and AVIF are taken; animated GIF and WebP are kept as they are. A HEIC photo from Files is refused with a note — save it as JPEG or PNG first."
+          ]
+        },
+        {
+          "heading": "Changing one campaign decision",
+          "text": [
+            "Open the campaign page; the Overview shows Decisions: the layers in play, compare layers, members and roles, and every rule of Rules & options, one row each.",
+            "Each row says what is decided now — decided, default or open — and what a change does. Ability scores and starting equipment apply to characters made from now on; most rules are read at once and nothing stored is rewritten.",
+            "Press Change on the row. The tab where just this decision is made opens — for a rule, at its system. Make the change there; the other decisions stay as they are."
+          ]
+        },
+        {
+          "heading": "Deciding who sees single articles",
+          "text": [
+            "Open the campaign page and the Layers or Visibility tab. Under the layers or the groups stands “Articles and their layers”: every article in play with its layer and who sees it.",
+            "Narrow the list: type part of a name, or pick a layer, a type or a visibility. Sort by layer to see each book's articles together.",
+            "For one article, pick Public, Table, Players or GM in its row. Click a player's name in the row to show it to that player only; click again to hide it from them, a third time to follow the visibility again.",
+            "For several, tick them (or “all shown”) and use the bar above the list: the same levels, Follow the group, and Show to / Hide from each player. The selection stays, so you can set a level and then show the same articles to one player.",
+            "The message says how many changed. Articles in a layer you do not write — a rulebook several campaigns share — can be set too: the choice becomes a rule of this campaign for that one article (“campaign (this article)”), and the book stays as it is. It wins over every group; the article’s own setting still wins over it.",
+            "↺ in a row, or Follow the group, removes the article's own setting: the campaign's rule for its group or the layer's default applies again."
+          ]
+        },
+        {
+          "heading": "Moving an article to another layer",
+          "text": [
+            "Open the article and press Edit. The first field is Layer, on the phone as on a wide screen.",
+            "Choose the layer it should belong to. The list holds the layer it is in now and every layer you write in — the same ones as under Writes to in the header. Layers this campaign does not turn on are marked “not in this campaign”: after saving, the article no longer shows here until the campaign turns that layer on.",
+            "Save. If something hangs on the article — the parts of a chapter or place, its own statblock, its inventory and the pieces in it — a list opens first: what goes along? Everything in the same old layer that you write is ticked. A line says where else an article is linked (“also linked from …”, text means a [[link]] in a text), so you see a part that another chapter also uses before you take it along. Untick what should stay, then Move with … or Move only the article.",
+            "The page says Moved to … (with how many more) and the layer mark under the title shows the new one. Undo move puts the articles that went along back. Links to the article stay, and so do its versions.",
+            "Several at once: on the campaign page under Layers and Visibility, tick articles in Articles and their layers, choose Move to layer…, then Move…. The same list asks what goes along; the move is one run you can undo there or in the Workbench.",
+            "A layer you do not write in is refused with a message; choose one of your write layers or ask the GM."
+          ]
+        },
+        {
+          "heading": "A version, a variant or a copy",
+          "text": [
+            "When you cannot save an article — it comes from a rulebook several campaigns share — or want your own take on one, open it and press Copy….",
+            "Choose what to make: a Version takes its place in this campaign, a Variant stands beside it and names where it comes from, a Copy is a new article of its own with “(copy)” in its name.",
+            "Choose the layer it goes into — your write layer is chosen first; a version never goes into a player layer. If parts, a statblock or an inventory hang on the article, tick what goes along; it hangs on the new article afterwards.",
+            "The page opens the new article and says where it lies. The original stays as it is."
+          ]
+        },
+        {
+          "heading": "Choosing which version shows",
+          "text": [
+            "When two layers in play bring a version of the same thing — the Dagger of 2014 and of 2024 — lists and links show the one from the higher layer in Order in play.",
+            "To change that for one article, open it and press Prefer this version in Versions, or press it in Articles and their layers on the campaign page. Stop preferring goes back to the order.",
+            "To change it for a whole type, open Layers › Order in play, and under First for some types choose a type and a layer, then Put first — “Weapons: PHB 2024 first” while 2014 stays higher for everything else. × removes it.",
+            "A preferred article wins over a type, a type over the order. Nothing is written into the books, and nothing comes into play that was not. The GM sets it; a co-GM sees it."
+          ]
+        },
+        {
+          "heading": "Making a new kind of article",
+          "text": [
+            "Registry › Types › New type: name it, choose its area and what it takes in, add its fields. It can be created right away — no code change."
+          ]
+        },
+        {
+          "heading": "Playing your character",
+          "text": [
+            "Open your character. The header stays above the tabs: set the amount, then Damage, Heal or Temp — damage takes temporary hit points first. Click pips to spend hit dice, spell slots and inspiration. After a fight, Rest › Short · hit die spends a hit die; after a night, Long rest resets hit points, hit dice, slots and a level of exhaustion.",
+            "Conditions and concentration stand in the status row with how long they last. When you take damage while concentrating, the sheet asks for the Constitution save; roll it, then Passed or Failed.",
+            "On your turn open Combat: Your turn lists what you can do, by action type. Mark what you used; New turn clears it. A locked row says why — stow or drop something to free a hand.",
+            "To cast, open Spells and press Cast: it uses the lowest free slot, starts concentration where the spell asks for it and marks the action used. Slots come back on a long rest — click the pips in the header.",
+            "To pack, open the Inventory tab. Tap a piece on the cell you want to hold it by, then tap a free cell: it lands with that cell there. Rotate and Mirror turn it; Not stowed holds what you just got until you put it into the grid."
+          ]
+        },
+        {
+          "heading": "Equipping your hands",
+          "text": [
+            "Open your character and the Gear tab. At the top are your hands: Main hand and Off hand, each with what it holds and what drawing or stowing costs.",
+            "Tap the item you want in the grid (or in the list, or under “Not stowed”). The hands it may go into light up; on the right, “Where it can go” lists every place with ✓, ⚠ or ✗ and the reason.",
+            "Tap Main hand — or Put here in the list. A two-handed weapon takes both hands. For a versatile weapon, One hand / Two hands under the main hand switches the grip and the damage die.",
+            "Tap the shield, then Off hand. If the main hand holds something in two hands, a warning asks what to do: stow it, drop it (free) or cancel — a versatile weapon only goes to one hand.",
+            "Read the lines under the hands: without training a shield gives no AC bonus and blocks spellcasting. Open Combat: Your turn shows the blocked spells with 🔒 and the same reason.",
+            "Stow under a hand puts the item back into the first free place in the grid; when there is none it waits under “Not stowed”."
+          ]
+        },
+        {
+          "heading": "Getting rid of gear",
+          "text": [
+            "Open the character (or the party) and the Gear tab. Tap the piece in the list or under “Not stowed”.",
+            "Discard asks first and, for a stack, how many. Confirm: the pieces are gone, and the last one takes its own piece record with it. “Discarded … — Undo” stays below the inventory; Undo puts everything back where it was, as long as nothing else changed in that inventory meanwhile.",
+            "Sell lists the shops you can see and what each pays for one piece. Under Here are the shops where the scene or map in play is; the others follow under Elsewhere. A shop that only buys certain wares says “doesn’t buy this”.",
+            "Pick the shop and the quantity and press “Sell for …”: the coins go into the purse of this inventory, and the shop keeps the piece if it counts that ware. Selling from the party’s chest pays into the chest.",
+            "A piece reserved for a crafting order says why it can’t go; the GM releases it first."
+          ]
+        },
+        {
+          "heading": "Putting on rings and armor",
+          "text": [
+            "Open your character and the Gear tab. Under Body are the places your campaign’s sheet names — Armor, Legs, Rings on the right and left hand, Necklaces — with what each holds.",
+            "Tap the ring in the grid. The places it may go light up green; the others are faded, and their tooltip says why (only a ring). On the right, Wear offers the first free place of each group.",
+            "Tap a ring place on your right hand. If something was there, it goes back into the first free place in the grid.",
+            "The ring asks for attunement: with it picked, press Attune. The counter next to Body goes to Attuned 1 / 3; at the limit Attune is greyed out with the reason. End attunement frees the slot.",
+            "Read the line under the item: Draw: action (Rings · right hand 1) — what pulling it off costs. Items in containers say which container added a step."
+          ]
+        },
+        {
+          "heading": "Giving a character a +1 dagger",
+          "text": [
+            "Give the character a dagger as usual — bought, looted or handed over, it arrives as their own piece. Open the piece (from the inventory) and, under Enhancements, choose Add enhancement: +1 Weapon. Add Silvered too if you like; only enhancements whose “Variant applies to” fits are offered first, and one that does not fit is refused.",
+            "The piece now reads “+1 Silvered Dagger”: its name, rarity and bonuses are worked out from the dagger and the enhancements, and so is its price — dagger 2 gp, plus 1,000 gp for +1 Weapon, plus 100 gp for silvering: 1,102 gp. Nothing of that is stored; change the dagger or an enhancement and every piece follows.",
+            "Which price counts is a campaign rule (Rules & options › Items › Item prices): combined, base price only, or not calculated. Who may add enhancements is a rule there too — the GM, unless you let players do it for their own pieces."
+          ]
+        },
+        {
+          "heading": "Designing a view",
+          "text": [
+            "Registry › Views lists every view; Design opens one in the view designer — from a type’s page with that type chosen, from an article with “Design this view” in Full edit. The preview stands on top; add elements from the groups of the bar below it (or find one by name), move them with ↑ ↓ → ← in the bar of the selected element or by dragging, duplicate, copy and paste them, undo and redo every step until you save, and give each its values — follow an edge to show fields of linked articles, such as the wares of the shop a creature keeps.",
+            "Saving asks where the change goes: every article, every article of a type (preselected when you come from a type; saved as an adjustment — only the difference, so new fields of the view still come — wherever that can say it, otherwise as the type’s own arrangement), only this article, or a new view with a condition. The most specific view that applies wins — everywhere: the popup on a named article and on a map marker, the preview beside a list, a board card, the article page and the print ask the same question. Board cards and the View row above an article offer every one that applies.",
+            "Every kind of article comes with views that fit it: the card (Quick) — also under the + of a search hit — shows the values you recognise it by at the top — level, school, casting time and range of a spell, phase of an encounter, kind of a map — then its description, and its picture last, where a popup or board tile cuts it off at the bottom when space runs out; the Handout adds what you hand the players with it, such as an item’s rarity or a place’s environment; a spell becomes a spell card. Change any of them in the designer.",
+            "For the rows of a random table use the element Table: its die column and Roll, which saves the roll in the rolls log and marks the row. To show the articles at the end of an edge in their own view — the scenes of a session —, use Collection: follow an edge (from a session: ← partOf), name the types, choose tiles, a list or a table (with the edge’s values and fields as columns), the view of each article, the order and whether to group by type. Or let it gather from a filter — types, tags, field conditions, text — like the Compendium. For a single linked article — the place a scene happens at — use Linked article and follow the edge: it shows the article in the view you choose; without an edge it stays the editable statblock or inventory of a creature. Elements marked “article page only” are drawn by the page and the print; a designed view shows a note in their place."
+          ]
+        },
+        {
+          "heading": "Designing what creating asks",
+          "text": [
+            "Open Registry › Views and design Create for a type: the fields it names are what the quick dialog asks when you create such an article from a picker — in that order, as many as you like. Required fields are always asked; the designer warns when the form leaves one out.",
+            "Design Create (full) for the type, too: New article then opens the new article in edit with exactly those fields first, even while they are empty. Everything else stays behind + Add field.",
+            "A type without a design keeps the old behaviour: the dialog asks required fields and the simple fields of the card, New article opens the full page.",
+            "To guide through several pages, add Steps to Create (full) and put a section with its fields inside for each page; its heading is the page’s title. Creating then shows one page at a time with Back and Next. Nothing tracks the progress: reopening starts after the last page that has something filled in, or at the first page that misses a required field.",
+            "Put the element Character builder into Create of a type, and New article opens the character builder with the name you typed. The player character does this by default."
+          ]
+        },
+        {
+          "heading": "Creating a creature: Roleplay or Fight",
+          "text": [
+            "New article, type Creature: the dialog shows Form with Roleplay and Fight. In World and Story Roleplay is preselected, in Play and Rules Fight; change it if you like, then Create.",
+            "Roleplay opens the new creature with what you need to play them, in this order: Appearance (one or two things the players notice first), Roleplaying (two or three cues — a mannerism, how they speak, what they want), Background, Key info (what the party can learn from or through them, one entry per piece), Agenda, Secrets. Relationships are “regards” relations under Relations. The order follows the Universal Roleplaying Template by The Alexandrian; the help texts are our own words.",
+            "Fight opens with the fight first: at a statblock size, AC, hit points, speed, challenge, the six abilities, senses, resistances, immunities, legendary actions and the token, then combat role and tactics; at a creature the hit points now, hit dice, conditions, and a note that the numbers live on its statblock, with a link to edit it. A creature without a statblock is told so — save, then add one on the sheet.",
+            "Focus any field to see its help below the title; it goes away when you leave the field.",
+            "Switch between Roleplay, Fight and All fields at any time above the fields: both forms write the same fields, nothing is stored twice, and what already has a value stays visible. Save writes everything you entered, whichever form is open.",
+            "Editing later: Edit offers the same Form row with All fields chosen; pick Roleplay to bring its fields forward, even empty ones. The forms are views in Registry › Views (group Create (full), applying to Creature or to Creature and Statblock): change their fields or add a third there."
+          ]
+        },
+        {
+          "heading": "Sorting what waits in Unassigned",
+          "text": [
+            "Every article has a layer. What has no other one waits in the layer Unassigned — for example an image uploaded without an article, or something the administration took out of every layer.",
+            "Open the workbench and run the check Unassigned. It lists those articles; open one and move it under Admin › Layer, or select them all and move them with a bulk change.",
+            "To see them in a campaign meanwhile, switch the layer Unassigned on like any other layer."
+          ]
+        },
+        {
+          "heading": "Requiring a field for a state",
+          "text": [
+            "Open the field under Registry › the type that declares it, and set Required to “to be prepared” or “to be ready”. For an edge kind, set Required on the edge.",
+            "An idea may stay without it. Setting the article to that state — in the edit form or with Mark ready — is refused until it is filled, and the message says what is missing.",
+            "A character counts its open choices the same way: while one from its ancestry, background, class or a granted feature is undecided, it stays an idea, and the message names the choice. Equipment may wait.",
+            "An article that already has the state keeps it. The workbench check Ready with gaps lists those that miss something; fill it in or set a lower state. When a player changes a ready article, it falls back to the highest state it still meets."
+          ]
+        },
+        {
+          "heading": "Grouping articles in a collection",
+          "text": [
+            "Create a Collection under Rules and give it a rule: the types it takes (with their subtypes), the tags they must all carry, and field conditions like Weapon.category:simple melee — the same as the filters of the Compendium.",
+            "To add an article the rule does not take, link it with the edge “in collection”; to take one out that the rule would take, use the same edge with Exclude.",
+            "The collection’s page lists its members by type. Players see only the members they may see. A material group is a collection too: a recipe needs “any reagent”, and the group says which pieces count."
+          ]
+        },
+        {
+          "heading": "Stocking a shop by category",
+          "text": [
+            "On a shop, draw a “sells” edge to an item or to a collection. A collection stands for all its items: “sells → Simple weapons” offers every simple weapon, each with the collection’s mark-down; quantity and own price belong on an edge to a single item.",
+            "A single item beats the collection: sell the dagger directly with its own price, and it is listed once, at that price.",
+            "Without a “buys” edge the shop buys everything at its Buy rate (empty: half the list price). Draw “buys” edges to say what it takes — an item or a collection, each with its own rate — and it buys nothing else; the sell list says “not bought here”."
+          ]
+        },
+        {
+          "heading": "Giving a view its colours",
+          "text": [
+            "Select an element in the view designer and open Design. Head, Surface, Frame and Text each take a token — a named colour with a light and a dark value. Tokens the view already uses come first, marked ●.",
+            "To give every element of that kind the same design, press “Use for every … in this view”; an element can still set its own. Save as usual.",
+            "Registry › Tokens holds the colours: change a value, add a token, see the contrast in both modes. The workbench check Token contrast lists a text below 4.5:1 or an accent below 3:1 on its surface."
+          ]
+        },
+        {
+          "heading": "Changing a view with an overlay",
+          "text": [
+            "Open the view in the designer (Registry › Views › Full, say). To change it for one article, pick it as the example and choose Save for … › only this article; for all articles with a field value or an edge, choose all with a condition and add it. Tick “as an overlay”.",
+            "Add, move or remove elements as usual. An overlay keeps only that difference: a new element gets a position between its neighbours (10, 20, 30 … are the elements of the view; 15 lands between the first and the second), a changed one is replaced where it stands, a removed one is left out. Everything else keeps following the view, also when it changes later.",
+            "Set a priority if two overlays of the same kind meet. Save. The overlay stands under its view in Registry › Views; elements it brings show its name in the designer’s tree.",
+            "Overlays stack from general to specific: every article › type › condition › one article. If two overlays change the same element, the more specific one wins; ⚠ in the designer and Workbench › View conflicts say where."
+          ]
+        },
+        {
+          "heading": "Drawing a map",
+          "text": [
+            "First set the map's kind (battle, region, world …) in its fields: the tool bar shows the tools of that kind — walls, fog and light on battle maps, Sub-maps on the others. ⚙ Tools at the end of the bar changes which, for the whole campaign. On a world or region map, Sub-maps › Link map drags a frame and links the map that lies there; Link shape taps the corners of a free shape. Link settings sets per link how deep you zoom before it opens, how the GM and the players see it, and whether the sub-map shows this map faded around it. Align to parent grid makes a town map take exactly the hexes of a region map its feet cover: its size comes from both scales, its centre snaps into a hex (on squares, its corner to a grid corner). The stored frame stays, so switching it off restores the free size. A measured distance inside a sub-map is also given in the unit of the map above, and Measure › Add to route sums up legs over several maps — the start of a journey. Markers you set on the region inside a town's area wait in the town under To place until you confirm or move them; what stands in the town shows on the region by itself.",
+            "Open the map and set its grid first: Grid (G) › Pick a square on two corners of one square on the image, then line it up with the arrows (Shift for bigger steps) and the fine size slider, choose what one square or hex is (5 ft on a battle map, 6 mi on a region map), and Save grid. Colour, Opacity and Show grid change how it looks. On a phone, hold to open the loupe and aim with the crosshair.",
+            "Walls (W): draw the rooms with Rectangle or Polygon, corridors with a closed or open Polyline; Snap keeps the corners together. Then pick Door and draw each door across its opening — with Cut walls on, the wall underneath ends at the door's edges.",
+            "Check with View as › all players: doors are boxes the players can click, and the walls hold sight and light. Points moves a corner later; erasing a door offers to close the wall again.",
+            "Put the tokens on: with Tokens snap to the grid on they cover their squares — a token takes its size from its statblock, one size larger or smaller while an effect with target size (Enlarge, Reduce) is on the creature; set a token's own size with Tokens › Token size, and “by size” takes it back. The token's tooltip says where its size comes from. Played lists the maps in play from this map; Open in Play goes straight to one.",
+            "Furnish it with assets: Tokens › Add asset puts a crate, a table or a lantern down (the same one may stand many times), and Tokens › Asset sets the one you tap — size, height ÷ width, rotation, Movable in play, and what it Blocks (a crate as an obstacle holds movement, a cupboard as a wall holds sight and light too). Assets are fixed by default: in play only movable ones move, and they move on the map in play, not on this map.",
+            "Floors (E): a tower, a cellar, a ship's decks are floors of one map. + Floor adds one with its own image, grid, scale and walls — set them with Grid and Walls while it is shown. Give each floor a building part (West tower) and a height range in feet: the bar groups by building part and sorts by height, so a storey of one tower can sit level with two of another. GM only keeps a floor from the players for good, Held back until you release it.",
+            "Add passage connects floors: tap where the stairs, ladder, bridge or portal is, choose where it leads, then tap the spot on that floor — or pick another map for a portal. Tap a passage to set View through (stand on it and see the other side, like stairs) or only walk through, and One way (no way back). Draw area (two corners, rounded to squares) makes it cover several squares, at either end — a passage without one covers its own square. A token dropped in the area stands there; tap the passage and Take … through to move it to a free square of the other end, or Send all through to move everyone in the area. A player drops their token on a portal to go through. Under Who, when, cost a passage can differ from the campaign: who sends tokens through (GM, players or both), when in an encounter (any time, own turn, end of round), what it costs (movement and action, counted in Plan turn) and whether the GM confirms; the campaign default is under Rules & options › Map."
+          ]
+        },
+        {
+          "heading": "Setting item shapes by group",
+          "text": [
+            "Turn on the rule system Inventory for the campaign (campaign page › layers): it brings the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight.",
+            "Open Rules & options › Inventory › Item shapes. Create or pick a group on the left, set its shape and stack size, and give it a reference item if one item stands for the whole group. Items are put into groups on the right with Edit › Group.",
+            "For a variant such as +1 Longsword choose the Longsword as reference item: it takes the Longsword’s shape and stack size, and follows when the Longsword changes. A shape painted on an item’s own Shape element still wins; the element says where its shape comes from, and Use the default removes the painted one again."
+          ]
+        },
+        {
+          "heading": "Running a fight",
+          "text": [
+            "Before the session, decide under Campaign › Rules & options › Combat › Initiative which initiative system runs (D&D 5e (standard)) and what players see of the tracker: cover names or names, foes' health as nothing, a word or numbers, which effects, and whether foes' actions show; pick the columns and the quick actions for your rows under Change options.",
+            "At the table, ▶ Start on the encounter (Table panel of the map, the encounter's page or the tracker) rolls initiative and runs it in the session; Play shows the tracker beside the map, under Initiative in the tool bar. Next turn moves on and counts effects down; Skip, ⤒ Back to top and ▸ on a row set whose turn it is without counting anything; Damage and Heal change hit points (a combatant starts at full; Damage asks for its type and counts resistances, immunities and vulnerabilities, and a concentrating combatant rolls the save at once); + Effect ties a condition or note to a number of rounds, counting at the start or end of whichever combatant's turn you pick. A confirmed turn plan changes the same rows: its damage comes off after resistances, and Dodge, Help, Hide and Ready appear as entries that count down like any effect.",
+            "Range counts at the server: a turn that attacks a target out of range is not accepted — move closer first, or pick another target. If the target walked away before you confirm, the attack is not rolled. A ranged attack beyond its normal range rolls with disadvantage, and conditions add advantage or disadvantage through the effects on their condition article: Blinded, Invisible, Restrained, and Prone — advantage from within 5 ft, disadvantage from farther away. Advantage and disadvantage cancel out.",
+            "Effects on features, items and conditions count where they belong: save and save.dex on saving throws, spellSaveDc and spellAttack on the sheet and the spell tiles, spellDamage on spell damage, weapon.attack and weapon.damage on weapon tiles, check on ability checks and passive Perception. Unarmored Defense is an effect ac.base with a formula such as 10 + mod(dex) + mod(con) (ac.base.noShield for a monk); it counts when no armor is worn.",
+            "Players follow on their phones: they see the party, and each foe once its turn has come. A player whose character is up presses End turn. ▾ on a row shows what a combatant can do. End marks the encounter done; the order stays as it was."
+          ]
+        },
+        {
+          "heading": "Choosing the columns of a list",
+          "text": [
+            "In Compendium, World, Story or Rules, pick a type in the sidebar (or stay on the mixed list) and press Columns. Tick the fields to show — also calculated values like a modifier, and edges like the classes that grant a spell — and drag them or use ↑↓ into order; Apply keeps the choice for this page and type on every device of your account and puts it in the address, so a link shows the same table.",
+            "Reset to default drops your choice: the campaign default shows, or else the columns of the type's overview. As GM, Make campaign default shows your choice to everyone in the campaign who has not chosen their own. Players only ever see what they may see of an article: a held-back field stays an empty cell."
+          ]
+        },
+        {
+          "heading": "Laying out a session board",
+          "text": [
+            "Open the board of the session (Boards, or the board link on the session). With Background, put the map of the evening under everything, or a colour or image.",
+            "Article places the scenes, creatures and handouts as cards; set each card’s view — Quick for a short card, Full for the whole page, a designed view where one applies. Mark what players must not see with GM.",
+            "Text adds headings, notes and lists beside them — [[links]] to articles work; Draw adds arrows and circles to tie them together. The canvas grows as you go; Fit all shows the whole board."
+          ]
+        },
+        {
+          "heading": "Rumours to draw",
+          "text": [
+            "Tag the rumours of a town (or make them Information), then put a Query card on the session board: ⚙, choose the type or the tag, and Draw as the display.",
+            "When the party asks around, press Draw — each rumour comes once until you Reset. Tick Reveal when drawn and the party learns it: it shows up for the players and in their knowledge.",
+            "As a slideshow, the same card runs handouts or portraits on a second screen; ⛶ makes it full screen."
+          ]
+        },
+        {
+          "heading": "A faction at a glance",
+          "text": [
+            "Give the members of a faction their memberOf edge with a rank, hang a circle of it under it with part of, and set what it controls and what it thinks of others (Relationships, with tags).",
+            "On the session board, choose Structure (⌥), then ⚙ › Choose… and the faction. Tree shows the chart; Web the net of relationships. Click a name for its quick card, + to look one step further.",
+            "Mark a card GM only to keep it from players; otherwise each player sees the entries and lines they know. The faction’s own page shows the same structure — in the view designer it is the element Structure."
+          ]
+        },
+        {
+          "heading": "Finding what was added recently",
+          "text": [
+            "1. Open the Compendium or an area (World, Story, Rules) and, on a phone, Filters.",
+            "2. Open “When & who”. Under Added choose Today, Last 7 days, Last 30 days or Between dates…; Changed works the same for the last edit.",
+            "3. Tick a name under Added by to see only what that person added; “Unknown” are articles from before this was recorded or loaded from a book.",
+            "4. Sort: Newest added first. To keep the view, save it as a filter group (▾ in the header) — it remembers When & who like any other filter.",
+            "5. Under Columns, Added, Changed and Added by can stand in the table."
+          ]
+        },
+        {
+          "heading": "Deleting articles and images",
+          "text": [
+            "1. Choose the layer you work in: the layers popup in the header shows your write layer. Only articles in it can be deleted.",
+            "2. In Images, tick the images to delete (or use 🗑 on one); on an article page, use Delete.",
+            "3. Confirm. The question says how many will be deleted and how many are deselected because they come from other layers.",
+            "4. The message reads like “3 deleted, 2 from other layers deselected”. Undo brings everything back, with the links that pointed to it; the GM can also undo it later in the Workbench.",
+            "5. For 30 days what you deleted waits in Deleted (Account › Deleted articles, or the link in the message): Restore brings one article back, Restore all the rest of that deletion. Empty trash deletes it for good — only then do images lose their files."
+          ]
+        },
+        {
+          "heading": "Filtering by relations",
+          "text": [
+            "1. Open the Compendium or an area (World, Story, Rules) and, on a phone, Filters.",
+            "2. Pick a type if you want its fields too — for example Item.",
+            "3. Open “Relations”, choose a relation or field (the number says how many in the list have it), then has, has none, at least or at most, and Add. Example: Item, Shape, has — the items with a grid shape.",
+            "4. For a relation set to has, pick an article under it — “member of: Guild” keeps the guild's members.",
+            "5. Add more conditions; all of them apply. × removes one. The choice stays in the address and in a filter group saved with ▾ in the header."
+          ]
+        },
+        {
+          "heading": "More to come",
+          "text": [
+            "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "types",
+      "title": "Article types",
+      "intro": "Every kind of article you can create, in one sentence each. The registry shows their fields."
+    },
+    {
+      "id": "glossary",
+      "title": "Glossary",
+      "intro": "Terms of the app and of the rules, with what they mean at the table. Terms from the rules come from the books the campaign plays with; a campaign can add its own. Fields and rule options that name a term show its entry: a field name with a dotted underline explains itself on hover."
+    }
+  ]
+}

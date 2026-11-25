@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 1240 735" width="1240" height="735" font-family="Helvetica, Arial, sans-serif">
+<!-- Die zwölf Epics und was worauf aufbaut — erzeugt von scripts/excalidraw.mjs; nach einer Änderung in Obsidian schreibt das Plugin diese Datei neu -->
+<defs><marker id="spitze" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>
+<rect x="-20" y="-20" width="1240" height="735" fill="#ffffff"/>
+<rect x="300" y="0" width="220" height="60" rx="8" fill="#d0ebff" stroke="#1971c2"/>
+
+<rect x="620" y="0" width="220" height="60" rx="8" fill="#f1f3f5" stroke="#495057"/>
+
+<rect x="140" y="140" width="220" height="60" rx="8" fill="#d3f9d8" stroke="#2f9e44"/>
+
+<rect x="460" y="140" width="220" height="60" rx="8" fill="#ffffff" stroke="#1e1e1e"/>
+
+<rect x="780" y="140" width="220" height="60" rx="8" fill="#ffffff" stroke="#1e1e1e"/>
+
+<rect x="300" y="280" width="220" height="60" rx="8" fill="#ffffff" stroke="#1e1e1e"/>
+
+<rect x="0" y="280" width="220" height="60" rx="8" fill="#ffffff" stroke="#1e1e1e"/>
+
+<rect x="460" y="420" width="220" height="60" rx="8" fill="#ffffff" stroke="#1e1e1e"/>
+
+<rect x="140" y="420" width="220" height="60" rx="8" fill="#ffe3e3" stroke="#c92a2a"/>
+
+<rect x="300" y="560" width="220" height="60" rx="8" fill="#fff3bf" stroke="#e67700"/>
+
+<rect x="620" y="560" width="220" height="60" rx="8" fill="#ffe3e3" stroke="#c92a2a"/>
+
+<rect x="980" y="280" width="220" height="60" rx="8" fill="#e5dbff" stroke="#6741d9"/>
+
+<line x1="375.7" y1="60" x2="284.3" y2="140" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="444.3" y1="60" x2="535.7" y2="140" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="512.9" y1="60" x2="787.1" y2="140" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="284.3" y1="200" x2="375.7" y2="280" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="535.7" y1="200" x2="444.3" y2="280" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="220" y1="200" x2="140" y2="280" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="444.3" y1="340" x2="535.7" y2="420" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="375.7" y1="340" x2="284.3" y2="420" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="140" y1="340" x2="220" y2="420" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="410" y1="340" x2="410" y2="560" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="284.3" y1="480" x2="375.7" y2="560" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="878.6" y1="200" x2="741.4" y2="560" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="352.9" y1="480" x2="627.1" y2="560" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+<line x1="604.3" y1="480" x2="695.7" y2="560" stroke="#1e1e1e" marker-end="url(#spitze)"/>
+
+
+<text x="410" y="25.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-01</text>
+<text x="410" y="45.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Inhaltsgerüst</text>
+<text x="730" y="25.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-12</text>
+<text x="730" y="45.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Import &amp; Inhalte</text>
+<text x="250" y="165.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-02</text>
+<text x="250" y="185.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Zugang &amp; Betrieb</text>
+<text x="570" y="165.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-07</text>
+<text x="570" y="185.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Regeln &amp; Nachschlagen</text>
+<text x="890" y="165.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-10</text>
+<text x="890" y="185.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Medien &amp; Assets</text>
+<text x="410" y="305.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-03</text>
+<text x="410" y="325.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Kreaturen &amp; Figuren</text>
+<text x="110" y="305.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-05</text>
+<text x="110" y="325.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Kampagne &amp; Sitzungen</text>
+<text x="570" y="445.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-06</text>
+<text x="570" y="465.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Welt &amp; Lore</text>
+<text x="250" y="445.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-08</text>
+<text x="250" y="465.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Live-Spiel</text>
+<text x="410" y="585.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-04</text>
+<text x="410" y="605.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Spielererlebnis</text>
+<text x="730" y="585.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-09</text>
+<text x="730" y="605.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Karten</text>
+<text x="1090" y="305.6" font-size="16" text-anchor="middle" fill="#1e1e1e">EP-11</text>
+<text x="1090" y="325.6" font-size="16" text-anchor="middle" fill="#1e1e1e">Oberfläche &amp; Navigation</text>
+<text x="0" y="674" font-size="14" text-anchor="start" fill="#1e1e1e">Pfeil: trägt — das Ziel baut darauf auf (aus „Depends on“ der Epics). EP-01 trägt jedes Epic, EP-11 und EP-12 gehen quer durch alle;</text>
+<text x="0" y="691.5" font-size="14" text-anchor="start" fill="#1e1e1e">nur die tragenden Kanten sind gezeichnet.</text>
+</svg>

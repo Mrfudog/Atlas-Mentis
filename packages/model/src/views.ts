@@ -11,7 +11,17 @@
  * registry is edited.
  */
 
-import type { LayoutElement, ObjectSchema, PropertySchema, Registry, ViewDef } from './types.js';
+import type {
+  Entity,
+  LayoutAdjust,
+  LayoutElement,
+  LayoutWhen,
+  ObjectSchema,
+  PropertySchema,
+  Registry,
+  TypeLayout,
+  ViewDef,
+} from './types.js';
 import { typeChain } from './entity.js';
 
 export const FALLBACK_VIEW: ViewDef = {
@@ -79,6 +89,153 @@ export function attachedDerived(
 }
 
 /**
+ * **Die Ansichten, die ein Ort wählt** (T-110, E-030 b): die Liste und der
+ * Verweis `overview`, Karte, Popup und das „+" der Suche `quick`, die
+ * Artikelseite `full`, der Druck `print`. Sie lassen sich umbenennen und
+ * umbauen, aber nicht löschen — der Ort fragt nach ihnen. Eigene Ansichten
+ * daneben wählt man dort, wo gewählt wird (die Kachel auf dem Board, der
+ * Druck).
+ */
+export const PLACE_VIEWS = ['overview', 'quick', 'full', 'print', 'create', 'createFull'] as const;
+
+/**
+ * **Die Erfassungsmasken** (T-425, REQ-432, E-169): `create` ist der
+ * schnelle Weg (der Dialog, auch aus einer Auswahl), `createFull` der
+ * ausführliche (die Artikelseite im Bearbeiten nach „New article“). Beide
+ * sind Ansichten wie jede und werden im Designer gestaltet; Untertypen
+ * erben sie die `extends`-Kette hoch.
+ */
+export const CREATE_VIEWS = ['create', 'createFull'] as const;
+export type CreateView = (typeof CREATE_VIEWS)[number];
+
+/**
+ * **Orte, die es nicht mehr gibt, und wohin sie fallen** (T-346): die
+ * Suche hatte bis T-346 eine eigene Ansicht `search`, die zeigte, was
+ * `quick` zeigte. Wer sie noch nennt (eine Kachel, ein Link), bekommt
+ * `quick` — beim Lesen, ohne Fehler. Steht in einer Installation noch eine
+ * abweichende Ansicht `search`, gilt sie weiter als eigene Ansicht.
+ */
+export const RETIRED_PLACES: Readonly<Record<string, string>> = { search: 'quick' };
+
+/** Eine Anpassung statt einer eigenen Anordnung? */
+export function isAdjust(x: TypeLayout | undefined | null): x is { adjust: LayoutAdjust } {
+  return !!x && !Array.isArray(x) && typeof x === 'object' && 'adjust' in x;
+}
+
+/** Sagt diese Art (selbst, nicht geerbt) etwas für diese Ansicht? */
+export function ownLayout(x: TypeLayout | undefined | null): boolean {
+  return Array.isArray(x) ? x.length > 0 : isAdjust(x);
+}
+
+/**
+ * **Nennt das Element dieses Feld?** — `fields` mit `Typ` oder `Typ.feld`,
+ * `all` nimmt alles, `except` nimmt wieder heraus. Fehlt `fields`, nimmt
+ * das Element alles (so stand es bei `prose` immer).
+ */
+export function elementTakes(el: LayoutElement, type: string, field: string): boolean {
+  if ((el.except ?? []).some((x) => x === type || x === `${type}.${field}`)) return false;
+  if (el.fields === undefined || el.fields === 'all') return true;
+  return el.fields.some((x) => x === type || x === `${type}.${field}`);
+}
+
+/**
+ * **Gilt diese Bedingung an diesem Artikel?** (`LayoutWhen`, T-184). Ohne
+ * Bedingung gilt das Element immer; eine Bedingung ohne jede Angabe auch.
+ */
+export function whenHolds(
+  when: LayoutWhen | undefined,
+  entity: Pick<Entity, 'components' | 'relations'> & { interfaces?: readonly string[] },
+  incoming: readonly { type: string }[] = [],
+  /** Die Reihe eines Kantenziels (die Unterart, dann ihre Grundart, T-285) — für `to`. */
+  lineOf?: (id: string) => readonly string[],
+): boolean {
+  if (!when) return true;
+  const { field, has, empty, relation, type } = when;
+  if (type && (entity.interfaces ?? []).includes(type)) return true;
+  if (!field && !relation && !when.incoming) return !type;
+  const ziel = (to: string) => !when.to?.length || when.to.includes(to) || (lineOf?.(to) ?? []).some((x) => when.to!.includes(x));
+  if (relation && (entity.relations ?? []).some((r) => r.type === relation && ziel(r.to))) return true;
+  /* Die Gegenrichtung ist eine Abfrage (T-268): wer sie nicht mitgibt, bekommt „nein". */
+  if (when.incoming && incoming.some((r) => r.type === when.incoming)) return true;
+  if (!field) return false;
+  const punkt = field.indexOf('.');
+  const karte = (entity.components?.[field.slice(0, punkt)] ?? {}) as Record<string, unknown>;
+  const roh = karte[field.slice(punkt + 1)];
+  const werte = (Array.isArray(roh) ? roh : roh === undefined || roh === null || roh === '' ? [] : [roh]).map(String);
+  if (!werte.length) return !!empty;
+  return (has ?? []).some((h) => werte.includes(h));
+}
+
+/**
+ * **Die Anordnung für genau diesen Artikel** (T-184): was `when` an ihm
+ * ausschliesst, fällt weg, auch in Reitern. Die Eingabe bleibt, wie sie
+ * ist — sie gehört dem Typ.
+ */
+export function forArticle(
+  layout: readonly LayoutElement[],
+  entity: Pick<Entity, 'components' | 'relations'> & { interfaces?: readonly string[] },
+  incoming: readonly { type: string }[] = [],
+): LayoutElement[] {
+  return layout
+    .filter((el) => whenHolds(el.when, entity, incoming))
+    .map((el) => {
+      let neu = el;
+      if (el.tabs) neu = { ...neu, tabs: el.tabs.map((t) => ({ ...t, layout: forArticle(t.layout, entity, incoming) })) };
+      /* Behälter gestalteter Ansichten (T-268): ihre Kinder ebenso. */
+      if (el.children) neu = { ...neu, children: forArticle(el.children, entity, incoming) };
+      return neu;
+    });
+}
+
+/**
+ * **Eine Anordnung anpassen** (`LayoutAdjust`). Die Eingabe bleibt, wie
+ * sie ist: die geerbte Anordnung gehört einem anderen Typ oder der Ansicht.
+ */
+export function applyAdjust(layout: readonly LayoutElement[], adjust: LayoutAdjust): LayoutElement[] {
+  const drop = new Set(adjust.drop ?? []);
+  const hide = adjust.hide ?? [];
+  const add = adjust.add ?? {};
+  const passe = (els: readonly LayoutElement[]): LayoutElement[] =>
+    els
+      .filter((el) => !drop.has(el.id))
+      .map((alt) => {
+        const el: LayoutElement = { ...alt };
+        if (el.tabs) el.tabs = el.tabs.map((t) => ({ ...t, layout: passe(t.layout) }));
+        if (el.el !== 'fields' && el.el !== 'prose') return el;
+        const dazu = add[el.id] ?? [];
+        if (dazu.length && el.fields !== 'all') {
+          el.fields = [...new Set([...(el.fields ?? []), ...dazu])];
+        }
+        /* Was dazukommt, ist nicht zugleich ausgenommen — sonst hiesse
+           „dazu" hier nichts, sobald die Ansicht es weglässt. */
+        if (dazu.length && el.except) el.except = el.except.filter((x) => !dazu.includes(x));
+        if (hide.length) {
+          if (Array.isArray(el.fields)) el.fields = el.fields.filter((x) => !hide.includes(x));
+          el.except = [...new Set([...(el.except ?? []), ...hide])];
+        }
+        return el;
+      });
+  /* Ein Element mit einer Id, die es schon gibt, stellt dieses an Ort und Stelle anders ein
+     (T-425): die Szene zeigt das geerbte „Contains" als Liste, ohne es zu verdoppeln. */
+  const extra = (adjust.extra ?? []).filter((x) => !drop.has(x.id));
+  const ersetzt = new Map(extra.map((x) => [x.id, x]));
+  const basis = passe(layout).map((el) => ersetzt.get(el.id) ?? el);
+  const da = new Set(basis.map((el) => el.id));
+  const out = [...basis, ...extra.filter((x) => !da.has(x.id))];
+  const order = adjust.order ?? [];
+  if (!order.length) return out;
+  const rang = (el: LayoutElement) => {
+    const i = order.indexOf(el.id);
+    return i < 0 ? order.length : i;
+  };
+  /* Stabil: Ungenanntes behält seine Reihenfolge, hinter dem Genannten. */
+  return out
+    .map((el, i) => ({ el, i }))
+    .sort((a, b) => rang(a.el) - rang(b.el) || a.i - b.i)
+    .map((x) => x.el);
+}
+
+/**
  * Welche Anordnung diese Ansicht für diese Artikelart zeichnet — **und aus
  * welcher Zeile sie kommt.**
  *
@@ -88,6 +245,10 @@ export function attachedDerived(
  * `Creature` auch NSC, Spielerfigur, Begleiter und Gefolge ab, ohne dass
  * eine davon sie wiederholt.
  *
+ * **Eine Anpassung** (`{ adjust }`, T-110) sucht weiter: ihre Grundlage ist,
+ * was die übrige Kette sagt, und am Ende die Ansicht. Mehrere Anpassungen
+ * die Kette hoch gelten alle, die allgemeinste zuerst.
+ *
  * Die Herkunft steht mit dabei, weil sie beim Bearbeiten der Unterschied
  * ist: wer die geerbte Anordnung ändert, ändert sie für alle — und das ist
  * der Sinn, aber eine Überraschung, wenn es nirgends steht.
@@ -96,12 +257,65 @@ export function layoutFor(
   registry: Pick<Registry, 'interfaces' | 'views'>,
   viewKey: string,
   type: string,
-): { layout: LayoutElement[]; from: string | null } {
+): { layout: LayoutElement[]; from: string | null; mode: 'view' | 'own' | 'adjusted' } {
+  const anpassungen: LayoutAdjust[] = [];
+  let from: string | null = null;
+  let basis: LayoutElement[] | null = null;
   for (const name of typeChain(registry, type)) {
     const eigen = registry.interfaces[name]?.views?.[viewKey];
-    if (Array.isArray(eigen) && eigen.length) return { layout: eigen, from: name };
+    if (Array.isArray(eigen) && eigen.length) {
+      basis = eigen;
+      from ??= name;
+      break;
+    }
+    if (isAdjust(eigen)) {
+      anpassungen.push(eigen.adjust);
+      from ??= name;
+    }
   }
-  return { layout: registry.views[viewKey]?.layout ?? [], from: null };
+  let layout = basis ?? registry.views[viewKey]?.layout ?? [];
+  for (const a of anpassungen.reverse()) layout = applyAdjust(layout, a);
+  const mode = anpassungen.length ? 'adjusted' : basis ? 'own' : 'view';
+  return { layout, from, mode };
+}
+
+/**
+ * **Was eine Art in dieser Ansicht zeigen kann** — je Element die Felder
+ * (`Typ.feld`), die es nimmt, in der Reihenfolge, in der die Art sie
+ * erklärt; was keines nimmt, unter `rest`. Was ein Artikel davon zeigt, ist
+ * die Schnittmenge mit dem, was er hat (T-110). Für die Maske im Register:
+ * „welche Felder stehen wo", ohne einen Artikel aufzumachen.
+ *
+ * Wie die Artikelseite: ein Feld steht im ersten Element, das es nimmt.
+ */
+export function viewFields(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  viewKey: string,
+  type: string,
+): { elements: { id: string; el: string; fields: string[] }[]; rest: string[] } {
+  const { layout } = layoutFor(registry, viewKey, type);
+  const alle: { comp: string; key: string; prose: boolean }[] = [];
+  for (const comp of typeChain(registry, type)) {
+    for (const [key, prop] of Object.entries(registry.interfaces[comp]?.schema?.properties ?? {})) {
+      alle.push({ comp, key, prose: !!(prop.many && prop.format === 'long') });
+    }
+  }
+  /* Reiter und Behälter (`section`, `columns` …, T-268) werden durchlaufen:
+     ein Feld in einem Abschnitt steht genauso auf der Seite (T-462). */
+  const flach = (els: readonly LayoutElement[]): LayoutElement[] =>
+    els.flatMap((el) => [...(el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]), ...flach(el.children ?? [])]);
+  const vergeben = new Set<string>();
+  const elements: { id: string; el: string; fields: string[] }[] = [];
+  for (const el of flach(layout)) {
+    if (el.el !== 'fields' && el.el !== 'prose') continue;
+    const hier = alle
+      .filter((f) => f.prose === (el.el === 'prose'))
+      .map((f) => `${f.comp}.${f.key}`)
+      .filter((ref) => !vergeben.has(ref) && elementTakes(el, ref.split('.')[0]!, ref.split('.')[1]!));
+    hier.forEach((ref) => vergeben.add(ref));
+    elements.push({ id: el.id, el: el.el, fields: hier });
+  }
+  return { elements, rest: alle.map((f) => `${f.comp}.${f.key}`).filter((ref) => !vergeben.has(ref)) };
 }
 
 /**
@@ -138,12 +352,86 @@ export function listColumns(
     for (const name of el.fields) {
       const punkt = name.indexOf('.');
       if (punkt > 0) {
-        dazu(name.slice(0, punkt), name.slice(punkt + 1));
+        const [t, k] = [name.slice(0, punkt), name.slice(punkt + 1)];
+        if (elementTakes(el, t, k)) dazu(t, k);
       } else {
         for (const key of Object.keys(registry.interfaces[name]?.schema?.properties ?? {})) {
-          if (!(el.except ?? []).includes(`${name}.${key}`)) dazu(name, key);
+          if (elementTakes(el, name, key)) dazu(name, key);
         }
       }
+    }
+  }
+  return raus;
+}
+
+/**
+ * **Was eine Erfassungsmaske fragt** (T-425, REQ-432, E-169): die Felder
+ * ihrer Feldelemente für diese Art, und ob sie überhaupt gestaltet ist —
+ * eine Art (oder ein Obertyp) sagt etwas dafür, oder die Ansicht selbst
+ * nennt Felder. **Ohne Gestaltung gilt das Heutige**: der Dialog fragt die
+ * Pflichtfelder und die einfachen Felder der Kurzansicht, „New article“
+ * öffnet die Seite `full` im Bearbeiten. Pflichtfelder fragt der Dialog
+ * immer, auch wenn die Maske sie nicht nennt (der Designer warnt).
+ */
+export function createLayout(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  /** Ein Ort (`create`, `createFull`) oder eine Maske seiner Gruppe (`roleplay`, T-462). */
+  place: CreateView | string,
+  type: string,
+): { fields: string[]; prose: string[]; designed: boolean } {
+  if (!registry.views[place]) return { fields: [], prose: [], designed: false };
+  const { from, layout } = layoutFor(registry, place, type);
+  /* `viewFields` klappt ganze Typen aus, ordnet aber nach dem Typ; gefragt
+     wird in der Reihenfolge, in der die Maske die Felder nennt. */
+  const genannt: string[] = [];
+  const geh = (els: readonly LayoutElement[]): void =>
+    els.forEach((el) => {
+      if ((el.el === 'fields' || el.el === 'prose') && Array.isArray(el.fields)) genannt.push(...el.fields);
+      geh(el.children ?? []);
+      for (const t of el.tabs ?? []) geh(t.layout);
+    });
+  geh(layout);
+  const rang = (ref: string): number => {
+    const i = genannt.indexOf(ref);
+    return i < 0 ? genannt.length : i;
+  };
+  const elemente = viewFields(registry, place, type).elements;
+  const fields = elemente
+    .filter((e) => e.el === 'fields')
+    .flatMap((e) => e.fields)
+    .sort((a, b) => rang(a) - rang(b));
+  /* **Prosafelder fragt die Maske auch** (T-462): ein Element `prose` nennt
+     sie, und beim Bearbeiten steht je Feld ein leerer Abschnitt da — wie
+     Erscheinung und Hintergrund einer Figur, die man beim Anlegen schreibt. */
+  const prose = elemente
+    .filter((e) => e.el === 'prose')
+    .flatMap((e) => e.fields)
+    .sort((a, b) => rang(a) - rang(b));
+  return { fields, prose, designed: from !== null || fields.length > 0 || prose.length > 0 };
+}
+
+/**
+ * **Welche Pflichtfelder eine Erfassungsmaske nicht nennt** (T-425,
+ * REQ-432): `required` der Art die Kette hoch, ohne Name und Nummer (die
+ * setzt das Anlegen), ohne gerechnete und ohne solche mit Vorgabe. Der
+ * Designer warnt damit; der Dialog fragt sie trotzdem.
+ */
+export function createMissingRequired(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  type: string,
+  layout: readonly LayoutElement[],
+): string[] {
+  const flach = (els: readonly LayoutElement[]): LayoutElement[] =>
+    els.flatMap((el) => [el, ...flach(el.children ?? []), ...(el.tabs ?? []).flatMap((t) => flach(t.layout))]);
+  const felder = flach(layout).filter((el) => el.el === 'fields');
+  const raus: string[] = [];
+  for (const t of typeChain(registry, type)) {
+    const schema = registry.interfaces[t]?.schema;
+    for (const k of schema?.required ?? []) {
+      const prop = schema?.properties[k];
+      if (!prop || prop.derived || prop.default !== undefined) continue;
+      if (t === 'Identity' && (k === 'name' || k === 'id')) continue;
+      if (!felder.some((el) => elementTakes(el, t, k))) raus.push(`${t}.${k}`);
     }
   }
   return raus;

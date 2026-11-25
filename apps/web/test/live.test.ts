@@ -1,0 +1,248 @@
+/**
+ * Der Live-Kanal in der Oberfläche (T-116): verbunden, solange jemand
+ * angemeldet ist; Komponenten hören auf Artikel und Sitzungszustand, ohne
+ * den Transport zu kennen; geöffnete Artikel werden neu geholt.
+ */
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { Session } from '../src/app/kern/session';
+import { Bestand } from '../src/app/kern/bestand';
+import { LIVE_TRANSPORT, Live, sseTransport, type LiveEmpfang, type LiveStand, type LiveTransport } from '../src/app/kern/live';
+
+interface Antwort {
+  status: number;
+  body: unknown;
+}
+function stubFetch(antworten: Record<string, Antwort | (() => Antwort)>) {
+  const gesehen: string[] = [];
+  vi.stubGlobal('fetch', async (url: string) => {
+    gesehen.push(url);
+    const roh = antworten[url];
+    const a = (typeof roh === 'function' ? roh() : roh) ?? { status: 404, body: { error: 'nope' } };
+    return {
+      ok: a.status >= 200 && a.status < 300,
+      status: a.status,
+      headers: new Headers(),
+      text: async () => JSON.stringify(a.body),
+      json: async () => a.body,
+    } as Response;
+  });
+  return gesehen;
+}
+
+/** Ein Transport aus Speicher: der Test spielt den Server. */
+function speicherTransport() {
+  const t = { empfang: null as LiveEmpfang | null, offen: 0, zu: 0 };
+  const transport: LiveTransport = (empfang) => {
+    t.empfang = empfang;
+    t.offen++;
+    empfang.stand('offen');
+    return () => {
+      t.zu++;
+      t.empfang = null;
+    };
+  };
+  return { t, transport };
+}
+
+const ME = { user: { id: 'u', name: 'Sela', isAdmin: false, roles: { c: 'player' } }, writable: [], setup: null };
+const markt = (name: string, revision: number) => ({
+  id: 'p_markt',
+  interfaces: ['Place'],
+  name,
+  revision,
+  components: { Identity: { name } },
+  relations: [],
+  refs: { names: {}, links: {} },
+});
+
+describe('Live', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    vi.unstubAllGlobals();
+  });
+
+  it('connects while someone is signed in, and not before', async () => {
+    stubFetch({ '/api/me': { status: 200, body: ME } });
+    const { t, transport } = speicherTransport();
+    TestBed.configureTestingModule({ providers: [{ provide: LIVE_TRANSPORT, useValue: transport }] });
+    const live = TestBed.inject(Live);
+    TestBed.tick();
+    expect(t.offen).toBe(0);
+    expect(live.stand()).toBe('aus');
+
+    await TestBed.inject(Session).load();
+    TestBed.tick();
+    expect(t.offen).toBe(1);
+    expect(live.stand()).toBe('offen');
+
+    stubFetch({ '/api/logout': { status: 200, body: { ok: true } } });
+    await TestBed.inject(Session).logout();
+    TestBed.tick();
+    expect(t.zu).toBe(1);
+    expect(live.stand()).toBe('aus');
+  });
+
+  it('hands article and session events to whoever listens — without the transport', () => {
+    stubFetch({});
+    const { transport } = speicherTransport();
+    TestBed.configureTestingModule({ providers: [{ provide: LIVE_TRANSPORT, useValue: transport }] });
+    const live = TestBed.inject(Live);
+    const artikel: unknown[] = [];
+    const sitzung: unknown[] = [];
+    const ab = live.onArtikel((e) => artikel.push(e));
+    live.onSitzung((z) => sitzung.push(z));
+
+    live.verteile('entity', { id: 'm_gang', type: 'Map', revision: 4 });
+    live.verteile('gone', { id: 'p_alt' });
+    live.verteile('session', { id: 's_eins', activeMap: 'm_gang', activeEncounter: null });
+    expect(artikel).toEqual([
+      { kind: 'changed', id: 'm_gang', type: 'Map', revision: 4 },
+      { kind: 'gone', id: 'p_alt' },
+    ]);
+    expect(sitzung).toEqual([{ id: 's_eins', activeMap: 'm_gang', activeEncounter: null, activeScene: null, nowPlaying: null }]);
+    expect(live.sitzungen().get('s_eins')?.activeMap).toBe('m_gang');
+
+    ab();
+    live.verteile('entity', { id: 'x' });
+    expect(artikel).toHaveLength(2);
+  });
+
+  it('hands turn plans to whoever listens, as the map id (T-198)', () => {
+    stubFetch({});
+    const { transport } = speicherTransport();
+    TestBed.configureTestingModule({ providers: [{ provide: LIVE_TRANSPORT, useValue: transport }] });
+    const live = TestBed.inject(Live);
+    const karten: string[] = [];
+    live.onPlan((k) => karten.push(k));
+    live.verteile('plan', { id: 'm_gang' });
+    live.verteile('plan', {});
+    expect(karten).toEqual(['m_gang']);
+  });
+});
+
+describe('Bestand follows the live channel', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    vi.unstubAllGlobals();
+  });
+
+  it('fetches an open article again when it changed, and forgets it when it is gone', async () => {
+    let stand = markt('Der Markt', 1);
+    const gesehen = stubFetch({ '/api/entities/p_markt': () => ({ status: 200, body: stand }) });
+    const { transport } = speicherTransport();
+    TestBed.configureTestingModule({ providers: [{ provide: LIVE_TRANSPORT, useValue: transport }] });
+    const bestand = TestBed.inject(Bestand);
+    const live = TestBed.inject(Live);
+    await bestand.oeffnen('p_markt', false, false);
+    expect(bestand.voll().get('p_markt')?.name).toBe('Der Markt');
+
+    /* Derselbe Stand (das eigene Speichern) wird nicht noch einmal geholt. */
+    live.verteile('entity', { id: 'p_markt', type: 'Place', revision: 1 });
+    expect(gesehen.filter((u) => u === '/api/entities/p_markt')).toHaveLength(1);
+
+    stand = markt('Der Fischmarkt', 2);
+    live.verteile('entity', { id: 'p_markt', type: 'Place', revision: 2 });
+    await vi.waitFor(() => expect(bestand.voll().get('p_markt')?.name).toBe('Der Fischmarkt'));
+
+    /* Was niemand geöffnet hat, wird nicht geholt. */
+    live.verteile('entity', { id: 'p_anders', type: 'Place', revision: 1 });
+    expect(gesehen).not.toContain('/api/entities/p_anders');
+
+    live.verteile('gone', { id: 'p_markt' });
+    expect(bestand.voll().has('p_markt')).toBe(false);
+    expect(bestand.fehlt().has('p_markt')).toBe(true);
+  });
+});
+
+/** Ein `EventSource` aus Speicher: merkt sich die URL und lässt den Test Ereignisse schicken. */
+class FakeQuelle {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+  static alle: FakeQuelle[] = [];
+  readyState = FakeQuelle.CONNECTING;
+  onopen: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  private readonly hoerer = new Map<string, ((ev: MessageEvent<string>) => void)[]>();
+  constructor(readonly url: string) {
+    FakeQuelle.alle.push(this);
+  }
+  addEventListener(name: string, fn: (ev: MessageEvent<string>) => void): void {
+    this.hoerer.set(name, [...(this.hoerer.get(name) ?? []), fn]);
+  }
+  close(): void {
+    this.readyState = FakeQuelle.CLOSED;
+  }
+  auf(): void {
+    this.readyState = FakeQuelle.OPEN;
+    this.onopen?.();
+  }
+  schick(name: string, data: unknown, id = ''): void {
+    for (const fn of this.hoerer.get(name) ?? []) fn({ data: JSON.stringify(data), lastEventId: id } as MessageEvent<string>);
+  }
+}
+
+describe('SSE transport notices a dead connection (T-399)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.unstubAllGlobals();
+    FakeQuelle.alle = [];
+    vi.stubGlobal('EventSource', FakeQuelle);
+  });
+
+  const starte = () => {
+    const ereignisse: string[] = [];
+    const staende: LiveStand[] = [];
+    const zu = sseTransport('/api/live', { stillMs: 60_000, zurueckMs: 30_000, pruefMs: 5_000 })({
+      ereignis: (name) => ereignisse.push(name),
+      stand: (s) => staende.push(s),
+    });
+    return { ereignisse, staende, zu };
+  };
+
+  it('stays on the connection while the heartbeat comes', () => {
+    const { zu } = starte();
+    const q = FakeQuelle.alle[0]!;
+    q.auf();
+    q.schick('hello', { boot: 'abcd0123', seq: 3 }, 'abcd0123.3');
+    for (let i = 0; i < 6; i++) {
+      vi.advanceTimersByTime(25_000);
+      q.schick('ping', {});
+    }
+    expect(FakeQuelle.alle).toHaveLength(1);
+    zu();
+    vi.useRealTimers();
+  });
+
+  it('reconnects with `since` when the heartbeat stops — and says it reconnects', () => {
+    const { staende, zu } = starte();
+    const q = FakeQuelle.alle[0]!;
+    q.auf();
+    q.schick('entity', { id: 'm_gang' }, 'abcd0123.7');
+    vi.advanceTimersByTime(66_000);
+    expect(q.readyState).toBe(FakeQuelle.CLOSED);
+    expect(FakeQuelle.alle).toHaveLength(2);
+    expect(FakeQuelle.alle[1]!.url).toBe('/api/live?since=abcd0123.7');
+    expect(staende.at(-1)).toBe('verbindet');
+    FakeQuelle.alle[1]!.auf();
+    expect(staende.at(-1)).toBe('offen');
+    zu();
+    vi.useRealTimers();
+  });
+
+  it('reconnects at once when the phone wakes after a long silence', () => {
+    const { zu } = starte();
+    const q = FakeQuelle.alle[0]!;
+    q.auf();
+    q.schick('hello', {}, 'abcd0123.2');
+    /* Das Telefon schlief: die Uhr lief weiter, die Prüfung nicht. */
+    vi.setSystemTime(Date.now() + 40_000);
+    window.dispatchEvent(new Event('online'));
+    expect(FakeQuelle.alle).toHaveLength(2);
+    expect(FakeQuelle.alle[1]!.url).toBe('/api/live?since=abcd0123.2');
+    zu();
+    vi.useRealTimers();
+  });
+});

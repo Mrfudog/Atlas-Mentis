@@ -163,8 +163,13 @@ function marke(tag: string, inhalt: string, ctx: TextKontext): string {
       return t[1] ? inline(t[1], ctx) : erstes;
     case 'unit':
       return erstes;
-    case 'area':
-      return t[1] ? inline(t[1], ctx) : erstes;
+    case 'area': {
+      /* `{@area 2|01e}`: der Text und die Id eines Abschnitts im selben
+         Abenteuer (T-082). Bis dahin stand hier die Id statt des Texts. */
+      const nummer = t[1] ? ctx.finde('area', [t[1].trim()]) : undefined;
+      const anzeige = inline(erstes, ctx).trim();
+      return nummer ? `[[${nummer}|${anzeige.replace(/[[\]|]/g, '')}]]` : anzeige;
+    }
     case 'book': case 'adventure':
       /* `{@book Chapter 8|DMG|8}` — der Text und das Buch, ohne Link. */
       return t[1] ? `${inline(erstes, ctx)} (${t[1]})` : inline(erstes, ctx);

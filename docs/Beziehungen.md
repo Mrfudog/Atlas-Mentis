@@ -1,5 +1,7 @@
 # Beziehungen
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md)
+
 Stand 2026-09-20. REQ-030 und REQ-081 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
@@ -58,6 +60,10 @@ Auf der Seite steht deshalb vorn, was *dieser* Artikel denkt, und darunter
 mit einem `↩`, was zurückgedacht wird. Bearbeiten lässt sich die
 Gegenrichtung dort nicht — wer das könnte, schriebe in einen fremden
 Artikel, ohne ihn zu sehen.
+
+Auf einem Board und an der Seite einer Fraktion zeichnet die
+**Struktur** (T-341) dieselben Kanten als Linien, beschriftet mit ihren
+Marken — je Richtung eine Linie, gesiebt für jeden Betrachter.
 
 ---
 

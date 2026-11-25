@@ -1,0 +1,13 @@
+filters:
+  and:
+    - file.inFolder("VTT/Features")
+    - typ == "feature"
+views:
+  - type: table
+    name: Nach Epic
+    groupBy:
+      property: epic
+      direction: ASC
+    order:
+      - file.name
+      - beschreibung

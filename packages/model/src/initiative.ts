@@ -11,6 +11,7 @@
  */
 import type { Entity, EntityId, Relation } from './types.js';
 import { resolveInstance } from './instance.js';
+import { creatureStats } from './stats.js';
 
 export type TurnPoint = 'start' | 'end';
 
@@ -22,6 +23,12 @@ export interface TimedEntry {
   text?: string;
   /** Alter Bestand: ein Zustandsname statt einer Id. */
   name?: string;
+  /**
+   * Eine allgemeine Aktion, deren Wirkung der Eintrag trägt (`dodge`,
+   * `help`, `hide` — `COMMON_ACTION_CATALOGUE`, T-275); dazu `text` als
+   * Wort für die Reihe („Dodging").
+   */
+  action?: string;
   /** Wie oft der Anker-Zeitpunkt noch vorbeikommt; leer heisst: bis jemand ihn entfernt. */
   rounds?: number;
   /** Wessen Zug: die Id einer `participates`-Kante derselben Begegnung. */
@@ -144,10 +151,24 @@ export function hpWord(hp: number | undefined, max: number | undefined): HpWord 
   return 'unhurt';
 }
 
-type Lookup = Map<EntityId, Entity>;
+type Lookup = ReadonlyMap<EntityId, Entity>;
+
+/**
+ * **Was die Spielenden von der Reihe sehen**, wie die Kampagne es sagt
+ * (T-022, `Campaign.initNames`, `initHealth`, `initEffects`). Die
+ * Gruppe sieht ihre eigenen Zahlen immer.
+ */
+export interface PlayerViewRules {
+  /** Unerkannte Gegner: Deckname (REQ-178) oder Tischname. */
+  names?: 'cover' | 'real';
+  /** Trefferpunkte der übrigen: keine, als Wort (`hpWord`), als Zahl. */
+  health?: 'none' | 'coarse' | 'exact';
+  /** Einträge mit Dauer: von allen, nur der Gruppe und Verbündeten, keine. */
+  effects?: 'all' | 'party' | 'none';
+}
 
 /** Der Statblock einer Kreatur (`belongsTo`), oder sie selbst, wenn sie einer ist. */
-function statblockFor(entities: Lookup, e: Entity): Entity | null {
+export function statblockFor(entities: Lookup, e: Entity): Entity | null {
   if (e.interfaces?.[0] === 'Statblock') return e;
   for (const o of entities.values()) {
     if (o.interfaces?.[0] !== 'Statblock') continue;
@@ -160,6 +181,10 @@ function statblockFor(entities: Lookup, e: Entity): Entity | null {
  * Rüstungsklasse und TP-Maximum vom Statblock — der Instanz, mit der
  * Vorlage darunter (REQ-211). Die Kante hält nur den Stand im Kampf; ein
  * abgeschriebenes Maximum (`props.hpMax`) gilt nur, wo kein Statblock hängt.
+ *
+ * **Gelesen wie am Bogen** (T-275): `creatureStats` — getragene Rüstung,
+ * Wirkungen der Gegenstände und der Zustände, auch derer, die nur hier in
+ * der Initiative stehen (`props.conditions` mit `rule`).
  */
 export function participantStats(
   entities: Lookup,
@@ -167,15 +192,24 @@ export function participantStats(
 ): { ac?: number; hpMax?: number } {
   const props = (relation.props ?? {}) as ParticipantProps;
   const t = entities.get(relation.to);
-  const sb = t ? statblockFor(entities, t) : null;
-  const card = sb ? ((resolveInstance(entities, sb).components ?? {})['Statblock'] ?? {}) : {};
-  const ac = Number((card as { ac?: unknown }).ac);
-  const hp = Number((card as { hp?: unknown }).hp);
   const alt = Number(props.hpMax);
+  const st = t ? creatureStats(t, entities, { conditions: entryConditions(props.conditions), actions: entryActions(props.conditions) }) : null;
+  const ac = st?.ac.value ?? null;
+  const hp = st?.hp.value ?? null;
   return {
-    ac: Number.isFinite(ac) ? ac : undefined,
-    hpMax: Number.isFinite(hp) ? hp : Number.isFinite(alt) ? alt : undefined,
+    ac: ac !== null && Number.isFinite(ac) ? ac : undefined,
+    hpMax: hp !== null && Number.isFinite(hp) ? hp : Number.isFinite(alt) ? alt : undefined,
   };
+}
+
+/** Die Zustände (`rule`) unter den Einträgen eines Teilnehmers. */
+export function entryConditions(entries: readonly TimedEntry[] | undefined): EntityId[] {
+  return (entries ?? []).map((e) => e.rule).filter((r): r is string => typeof r === 'string' && !!r);
+}
+
+/** Die allgemeinen Aktionen (`action`) unter den Einträgen eines Teilnehmers. */
+export function entryActions(entries: readonly TimedEntry[] | undefined): string[] {
+  return (entries ?? []).map((e) => e.action).filter((a): a is string => typeof a === 'string' && !!a);
 }
 
 /** Steht der Teilnehmer auf der Seite der Gruppe? Die Gruppe selbst und wer in einer ist. */
@@ -247,12 +281,22 @@ export function turnHasCome(order: readonly Relation[], edgeId: string, fight: F
  *   statt des Tischnamens, und kein Verweis auf den Artikel;
  * - Trefferpunkte nur von der Gruppe als Zahl, von allen anderen als Wort;
  * - Einträge mit `hidden` und die Notiz der Leitung an der Kante nie.
+ *
+ * **Was die Kampagne sagt** (T-022, `view`, gelesen über
+ * `initiativeRulesOf`): `names: 'real'` zeigt den Tischnamen statt des
+ * Decknamens (den Verweis auf den Artikel weiterhin erst mit
+ * `identified`), `health` die Trefferpunkte der übrigen gar nicht, als Wort
+ * oder als Zahl, `effects` die Einträge aller, nur der eigenen Seite oder
+ * keine. Ohne Angabe gilt, was vor T-022 galt.
  */
 export function redactParticipants(
   entities: Lookup,
   relations: readonly Relation[],
   fight?: FightState,
+  view: PlayerViewRules = {},
 ): Relation[] {
+  const gesundheit = view.health ?? 'coarse';
+  const effekte = view.effects ?? 'all';
   const raus: Relation[] = [];
   const order = fight ? initiativeOrder(entities, relations) : [];
   const runde = Number(fight?.round) || 0;
@@ -285,7 +329,9 @@ export function redactParticipants(
     const p = (r.props ?? {}) as ParticipantProps;
     const gruppe = inParty(entities, r.to);
     if (!zeigt(r)) continue;
-    const conditions = (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => !c.hidden);
+    const seite = gruppe || !!p.ally;
+    const conditions =
+      effekte === 'none' || (effekte === 'party' && !seite) ? [] : (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => !c.hidden);
     const neu: ParticipantProps = {
       init: p.init,
       ally: p.ally,
@@ -297,11 +343,18 @@ export function redactParticipants(
     if (dranId === r.id) neu.current = true;
     let to = r.to;
     if (gruppe) {
-      Object.assign(neu, { label: p.label, hp: p.hp, hpMax: participantStats(entities, r).hpMax, note: p.note });
+      /* Ohne Stand ist er unverletzt (T-334, D8). */
+      const max = participantStats(entities, r).hpMax;
+      Object.assign(neu, { label: p.label, hp: p.hp ?? max, hpMax: max, note: p.note });
     } else {
-      neu.hpState = hpWord(p.hp, participantStats(entities, r).hpMax);
+      const max = participantStats(entities, r).hpMax;
+      if (gesundheit === 'exact') Object.assign(neu, { hp: p.hp ?? max, hpMax: max });
+      else if (gesundheit === 'coarse') neu.hpState = hpWord(p.hp, max);
       if (p.identified) neu.label = p.label;
-      else {
+      else if (view.names === 'real') {
+        neu.label = tableName(entities, r);
+        to = '';
+      } else {
         const basis = deckOf(r);
         const k = (decknamen.get(basis) ?? 0) + 1;
         decknamen.set(basis, k);
@@ -312,4 +365,41 @@ export function redactParticipants(
     raus.push({ id: r.id, type: r.type, to, props: neu as Relation['props'] });
   }
   return raus;
+}
+
+/**
+ * **Eine Begegnung beginnen** (T-203): Runde 1, der erste in der Reihe ist
+ * dran, `phase: running`. Wer noch keine Initiative hat, bekommt einen
+ * W20 plus den Geschicklichkeitsmodifikator seines Statblocks (der Instanz,
+ * mit der Vorlage darunter); wer schon eine hat — die Leitung hat sie
+ * eingetragen, eine Spielerin hat gewürfelt —, behält sie. `d20` gibt
+ * 1 bis 20; gewürfelt wird am Server.
+ */
+export function startEncounter(
+  entities: Lookup,
+  encounter: Entity,
+  d20: () => number,
+): { encounter: Entity; rolled: { edge: string; to: EntityId; roll: number; mod: number; init: number }[] } {
+  const rolled: { edge: string; to: EntityId; roll: number; mod: number; init: number }[] = [];
+  const relations = (encounter.relations ?? []).map((r) => {
+    if (r.type !== PARTICIPATES || !r.to) return r;
+    const props = (r.props ?? {}) as ParticipantProps;
+    if (typeof props.init === 'number' && Number.isFinite(props.init)) return r;
+    const t = entities.get(r.to);
+    const sb = t ? statblockFor(entities, t) : null;
+    const dex = Number(((sb ? resolveInstance(entities, sb).components?.['Abilities'] : undefined) as { dex?: unknown } | undefined)?.dex);
+    const mod = Number.isFinite(dex) ? Math.floor((dex - 10) / 2) : 0;
+    const roll = d20();
+    rolled.push({ edge: r.id, to: r.to, roll, mod, init: roll + mod });
+    return { ...r, props: { ...(r.props ?? {}), init: roll + mod } };
+  });
+  const card = (encounter.components?.['Encounter'] ?? {}) as Record<string, unknown>;
+  return {
+    encounter: {
+      ...encounter,
+      relations,
+      components: { ...encounter.components, Encounter: { ...card, phase: 'running', round: 1, turn: 0 } },
+    },
+    rolled,
+  };
 }

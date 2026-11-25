@@ -24,7 +24,7 @@ interface FieldGroup {
  * Hintergrund.
  */
 const PROFICIENCY_SOURCES = ['Skill', 'Language', 'Item', 'Weapon', 'Weapon.category', 'Armor.armorType'];
-const TOOLS_ONLY = { Item: { itemType: ['tool', 'artisan tools', 'gaming set', 'instrument'] } };
+export const TOOLS_ONLY = { Item: { itemType: ['tool', 'artisan tools', 'gaming set', 'instrument'] } };
 
 /* `satisfies` statt einer Annotation: so kennt der Übersetzer die Namen
    und `g.Vitals` ist nicht „vielleicht undefiniert". */
@@ -45,12 +45,31 @@ export const fieldGroups = {
            still falsch wurde. Eine Nummer sagt nichts und bleibt deshalb
            richtig; wie der Artikel heisst, steht daneben. */
         id: { type: 'string', title: 'ID', readOnly: true },
-        aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
+        aliases: {
+          type: 'array',
+          title: 'Aliases',
+          items: { type: 'string' },
+          description: 'Other names this is known by; search and links find it under each.',
+        },
         /* Der Deckname (REQ-178): was ein Spieler sieht, solange der echte
            Name von einer Information beansprucht wird, die er nicht kennt.
            Ohne ihn stünde dort der echte Name oder gar nichts — beides
            macht partielle Enthüllung unspielbar. */
-        cover: { type: 'string', title: 'Cover name' },
+        cover: {
+          type: 'string',
+          title: 'Cover name',
+          description: 'The name players see while the real name is a secret they have not learned.',
+        },
+        /* **Das eigene Icon** (T-461, REQ-460): ein Name aus dem Katalog,
+           schlägt das Icon der Art. Leer heisst: das der Art. Ein Feld, weil
+           es Daten sind, die mit dem Artikel wandern — nicht ein Bild, das
+           hochgeladen wird (das ist `Image`). */
+        icon: {
+          type: 'string',
+          title: 'Icon',
+          format: 'icon',
+          description: 'A symbol from the icon set, shown before the name in lists, cards and the title. Empty: the icon of its type.',
+        },
       },
     },
   },
@@ -58,7 +77,17 @@ export const fieldGroups = {
   Description: {
     schema: {
       type: 'object',
-      properties: { description: { type: 'string', format: 'long', title: 'Description' } },
+      properties: {
+        /* Steht beim Bearbeiten auch leer da (T-195): das Feld, das man an
+           fast jedem Artikel ausfüllt, soll man nicht erst hinzufügen. */
+        description: {
+          type: 'string',
+          format: 'long',
+          title: 'Description',
+          prominent: true,
+          description: 'What this is, in a few sentences.',
+        },
+      },
     },
   },
 
@@ -76,7 +105,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        tags: { type: 'array', format: 'tags', title: 'Tags', items: { type: 'string' } },
+        tags: {
+          type: 'array',
+          format: 'tags',
+          title: 'Tags',
+          items: { type: 'string' },
+          description: 'Free labels to group and filter articles by.',
+        },
       },
     },
   },
@@ -101,6 +136,10 @@ export const fieldGroups = {
           title: 'Status',
           enumRef: 'State',
           default: 'idea',
+          /* Steht beim Bearbeiten da, auch auf der Vorgabe (T-195): der
+             Stand entscheidet, ob Spielende den Artikel sehen (D72). */
+          prominent: true,
+          description: 'How far the preparation is: idea, prepared or ready. Players see only what is ready.',
         },
       },
     },
@@ -159,7 +198,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        secret: { type: 'string', format: 'long', many: true, title: 'Secrets' },
+        secret: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Secrets',
+          description: 'What is true and not yet known at the table. One entry per secret; each is withheld from players until you reveal it on its own.',
+        },
       },
     },
   },
@@ -189,7 +234,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        tactics: { type: 'string', format: 'long', many: true, title: 'Tactics' },
+        tactics: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Tactics',
+          description: 'How this one fights: what it opens with, whom it targets, when it flees. For the GM only.',
+        },
       },
     },
   },
@@ -245,14 +296,16 @@ export const fieldGroups = {
          * irgendwo. `app_user.is_admin` ist etwas anderes: die Verwaltung
          * der Installation, die alles sieht.
          *
-         * Vier Wörter mit genau einem Nutzer — die bleiben am Feld. Eine
-         * Registerzeile dafür wäre der Umweg ohne den Gewinn.
+         * Die vier Wörter sind die Zeile `Audience`, seit drei Felder sie
+         * brauchen (T-252): dieses, die Vorgabe der Ebene und die Regeln je
+         * Gruppe der Kampagne.
          */
         audience: {
           type: 'string',
           title: 'Audience',
-          enum: ['public', 'campaign', 'players', 'gm'],
+          enumRef: 'Audience',
           default: 'public',
+          description: 'Who may see this at all: everyone, the campaign, its players or the GM.',
         },
         /* Ausdrücklich freigegeben, ausdrücklich verborgen — an **Träger**
            und nicht an Konten: eine Figur, eine Gruppe, eine Fraktion, ein
@@ -262,25 +315,95 @@ export const fieldGroups = {
            welche davon gemeint ist.
 
            Ein Verweisfeld nennt seinen Zieltyp, auch als Liste: ohne das
-           nähme „Revealed to" eine Rüstung. */
+           nähme „Revealed to" eine Rüstung.
+
+           **Spieler bietet die Maske trotzdem an** (T-100, E-007): wer
+           einen wählt, wählt seine Figuren — hier landen Träger, nie ein
+           Konto (REQ-199). */
         revealedTo: {
           type: 'array',
           format: 'link',
           title: 'Revealed to',
+          description: 'Characters, parties or factions that see this even where the audience would not let them.',
           items: { type: 'string' },
           target: { interfaces: ['Creature', 'Party', 'Faction'] },
+          /* Wem etwas gezeigt wird, ist kein Filter für die Liste (T-174). */
+          facet: false,
         },
         hiddenFrom: {
           type: 'array',
           format: 'link',
           title: 'Hidden from',
+          description: 'Characters, parties or factions that never see this, whatever else says so.',
           items: { type: 'string' },
           target: { interfaces: ['Creature', 'Party', 'Faction'] },
+          /* Wem etwas gezeigt wird, ist kein Filter für die Liste (T-174). */
+          facet: false,
         },
       },
     },
   },
 
+
+  /**
+   * **Die Sichtbarkeit je Gruppe** (T-252, E-098): an der Kampagne eine
+   * Regel je Gruppe — „alles aus D&D 5e → public", „mein Homebrew → gm",
+   * „Inventarregeln → table". Die `id` eines Eintrags ist der Schlüssel
+   * der Gruppe aus den Transformationen (`layer:…|type:…`, T-253): eine
+   * Gruppe hat genau eine Regel, und der Schlüssel ist der Halt.
+   *
+   * Gelesen wird beim Lesen (D8), nichts wird in die Artikel geschrieben:
+   * eine Regel gilt auch für den Artikel, den es morgen gibt, und eine
+   * geteilte Ebene bleibt geteilt. Reihenfolge: Feld am Artikel > Regel
+   * der Kampagne (die genaueste zuerst) > Vorgabe der Ebene
+   * (`Layer.defaultAudience`) > public.
+   *
+   * `show` und `hide` nennen **Träger** wie `revealedTo`/`hiddenFrom` —
+   * Figuren, Gruppen, Fraktionen, nie Konten (REQ-199, E-007).
+   *
+   * `editOnly`: gesetzt wird in der Übersicht der Kampagnenseite
+   * (Reiter Visibility); in der Feldtabelle stünde nur eine Liste von
+   * Schlüsseln.
+   */
+  VisibilityRules: {
+    schema: {
+      type: 'object',
+      properties: {
+        visibilityRules: {
+          type: 'array',
+          many: true,
+          editOnly: true,
+          title: 'Visibility by group',
+          description: 'Who sees each group of articles in this campaign — set on the campaign page under Visibility. An article’s own setting wins.',
+          items: { type: 'object' },
+          facet: false,
+          entry: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              /* Der Schlüssel der Gruppe, `layer:dnd|type:Spell`. */
+              id: { type: 'string', title: 'Group' },
+              audience: { type: 'string', title: 'Audience', enumRef: 'Audience' },
+              show: {
+                type: 'array',
+                format: 'link',
+                title: 'Show to',
+                items: { type: 'string' },
+                target: { interfaces: ['Creature', 'Party', 'Faction'] },
+              },
+              hide: {
+                type: 'array',
+                format: 'link',
+                title: 'Hide from',
+                items: { type: 'string' },
+                target: { interfaces: ['Creature', 'Party', 'Faction'] },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 
   Image: {
     schema: {
@@ -294,16 +417,36 @@ export const fieldGroups = {
            gehört ans Asset** — das ist ein Artikel und erbt `Source`. Am
            Artikel, der es zeigt, stünde dieselbe Herkunft noch einmal, und
            zwar bei jedem der fünf Orte, die dasselbe Wappen zeigen. */
-        image: { type: 'string', format: 'asset', title: 'Image' },
-        caption: { type: 'string', title: 'Caption' },
-        alt: { type: 'string', title: 'Alt text' },
+        /* Angeboten werden zuerst allgemeine Bilder (T-119); eine Karte
+           engt auf Kartenbilder ein (`Map.targets`). Ein Vorschlag, keine
+           Regel: die Klasse ist der heutige Stand des Bildes. */
+        image: {
+          type: 'string',
+          format: 'asset',
+          title: 'Image',
+          target: { where: { component: 'Asset', property: 'kind', value: 'image' } },
+          description: 'A picture shown on the article and its card.',
+        },
+        caption: { type: 'string', title: 'Caption', description: 'A line under the picture.' },
+        alt: {
+          type: 'string',
+          title: 'Alt text',
+          description: 'Describes the picture for screen readers and when it does not load.',
+        },
       },
     },
   },
 
   /** Entity-level defaults for {VAR} placeholders (REQ-174). */
   Vars: {
-    schema: { type: 'object', properties: { bindings: { type: 'object', title: 'Bindings' } } },
+    schema: { type: 'object', properties: {
+        bindings: {
+          type: 'object',
+          title: 'Bindings',
+          description: 'Values for the {VAR} placeholders in this article’s texts.',
+        },
+      },
+    },
   },
 
   CreatureInfo: {
@@ -313,9 +456,47 @@ export const fieldGroups = {
         /* Prosa, die nur eine Kreatur hat. Ein eigener Bestandteil dafür
            wäre einer mit genau einem Nutzer — davon gab es hier schon
            achtunddreissig. */
-        appearance: { type: 'string', format: 'long', many: true, title: 'Appearance' },
-        personality: { type: 'string', format: 'long', many: true, title: 'Personality' },
-        species: { type: 'string', suggest: true, title: 'Species' },
+        /* **Die Felder der Maske „Roleplay“** (T-462, REQ-461), nach dem
+           Universal Roleplaying Template von The Alexandrian: Erscheinung,
+           zwei bis drei Rollenspielhinweise, Hintergrund, Schlüsselinfos —
+           je Feld ein Hilfetext in eigenen Worten, der beim Fokus erscheint.
+           `personality` hiess bis T-462 „Personality“ und heisst jetzt
+           „Roleplaying“: der Schlüssel bleibt, die Einträge auch. */
+        appearance: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Appearance',
+          description: 'What the players notice first: one or two things to see, hear or smell that make this one recognisable at once. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        personality: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Roleplaying',
+          description: 'Two or three cues for playing them at the table — a mannerism, how they speak, what they want from a conversation. One cue per entry. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        background: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Background',
+          description: 'Where they come from and what made them who they are — only as much as the table needs. A player character’s D&D background is an edge, not this field. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        keyInfo: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Key info',
+          description: 'What the party can learn from or through them: the clues, favours and facts this one holds. One entry per piece, so you see what has been handed out. (After the Universal Roleplaying Template, The Alexandrian.)',
+        },
+        agenda: {
+          type: 'string',
+          format: 'long',
+          title: 'Agenda',
+          description: 'What they are after right now, in a sentence — it decides what they do when the party turns up.',
+        },
+        species: { type: 'string', suggest: true, title: 'Species', description: 'What they are — human, goblin, owlbear. The list suggests what other creatures use.' },
         /**
          * **Was für eine Kreatur das ist** — npc, companion, retainer,
          * pet, summon, follower.
@@ -331,12 +512,18 @@ export const fieldGroups = {
          * Eintrag und keine Registeränderung. `role` bleibt daneben und
          * meint etwas anderes — der Wirt, die Wache, die Händlerin.
          */
-        kind: { type: 'string', suggest: true, title: 'Kind' },
-        role: { type: 'string', suggest: true, title: 'Role' },
+        kind: {
+          type: 'string',
+          suggest: true,
+          title: 'Kind',
+          description: 'What sort of creature this is at the table — npc, companion, retainer, pet, summon. Free text; the list suggests what other creatures use.',
+        },
+        role: { type: 'string', suggest: true, title: 'Role', description: 'What they are in the world: the innkeeper, the guard captain, the fence.' },
         attitude: {
           type: 'string',
           title: 'Attitude',
           enum: ['freundlich', 'neutral', 'feindlich', 'unbekannt'],
+          description: 'How they meet the party right now. How they regard particular people is a “regards” relation.',
         },
         /* **Die Figur im Reiter „Worn"** (REQ-214, D54): nach Basils
            Blatt männlich, weiblich oder neutral, an der Kreatur und nicht
@@ -378,8 +565,10 @@ export const fieldGroups = {
         wisMod: { type: 'number', title: 'WIS mod', derived: 'mod(wis)', of: 'wis', format: 'signed' },
         cha: { type: 'number', title: 'CHA' },
         chaMod: { type: 'number', title: 'CHA mod', derived: 'mod(cha)', of: 'cha', format: 'signed' },
-        initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed' },
-        passivePerception: { type: 'number', title: 'Passive perception', derived: '10+mod(wis)' },
+        initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed', glossary: 'Initiative' },
+        /* Mit Übung und Expertise in Perception (T-275, Punkt 5): dieselbe
+           Rechnung wie der Bogen (`checkBonus`). */
+        passivePerception: { type: 'number', title: 'Passive perception', derived: '10+check(wis.Perception)' },
       },
     },
   },
@@ -409,15 +598,15 @@ export const fieldGroups = {
            7.10.). Wanderung: `prototype/migration/statblock-creaturetype.mjs`. */
         creatureType: { type: 'string', suggest: true, title: 'Creature type' },
         alignment: { type: 'string', suggest: true, title: 'Alignment' },
-        ac: { type: 'number', title: 'Armour class' },
+        ac: { type: 'number', title: 'Armour class', glossary: 'Armor Class' },
         acNote: { type: 'string', title: 'AC note' },
-        hp: { type: 'number', title: 'Hit points' },
+        hp: { type: 'number', title: 'Hit points', glossary: 'Hit points' },
         hpFormula: { type: 'string', title: 'Hit dice' },
         /* `unit` ist das Ausgangsmass: die Einheit der Zahlen, die keine
            nennen. „40 ft, climb 20 ft" sagt es selbst, „40" nicht. */
-        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed', glossary: 'Speed' },
         cr: { type: 'string', title: 'Challenge rating' },
-        prof: { type: 'number', title: 'Proficiency bonus' },
+        prof: { type: 'number', title: 'Proficiency bonus', glossary: 'Proficiency bonus' },
         /* **Das Zusatzquadrat im Tragraster** (REQ-215, D54): gerechnet
            am Statblock, der es liest, wie ein Angriff seinen Treffer aus
            Attribut und Übung rechnet — darum ein Feld mit Rechnung und
@@ -425,7 +614,7 @@ export const fieldGroups = {
            der Bogen zeigt die Zahl. Die Spanne sagt, wie weit das Quadrat
            auf dem Blatt reicht; das Inventar klemmt darauf. */
         carryExtra: { type: 'number', title: 'Extra carry square', derived: 'mod(str)', min: 0, max: 5 },
-        combatRole: { type: 'string', suggest: true, title: 'Combat role' },
+        combatRole: { type: 'string', suggest: true, title: 'Combat role', description: 'Its job in a fight — brute, skirmisher, controller, leader. Free text; the list suggests what other statblocks use.' },
         senses: { type: 'string', title: 'Senses' },
         /* `languages`, `saves` und `skills` standen hier als freier Text
            und zugleich als Listen an `Proficiencies` — dieselbe Sache
@@ -438,22 +627,26 @@ export const fieldGroups = {
         languageNote: { type: 'string', title: 'Languages, besides' },
         /* Die drei Schadensfelder bleiben Sätze: „bludgeoning, piercing,
            and slashing from nonmagical attacks" ist keine Liste von Arten. */
-        resistances: { type: 'string', title: 'Resistances' },
-        vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
-        immunities: { type: 'string', title: 'Immunities' },
-        /* **Zustandsimmunitäten nennen Zustände** (M5): die Namen der
-           `Condition`-Artikel. Ein Vorschlag aus dem Bestand, keine Regel
-           (D50). */
+        resistances: { type: 'string', title: 'Resistances', glossary: 'Damage resistance' },
+        vulnerabilities: { type: 'string', title: 'Vulnerabilities', glossary: 'Damage vulnerability' },
+        immunities: { type: 'string', title: 'Immunities', glossary: 'Damage immunity' },
+        /* **Zustandsimmunitäten zeigen auf Zustände** (M5, T-078): die Ids
+           der `Condition`-Artikel, wie `Vitals.conditions`. Als Namen
+           (D50) hielten sie den Stand vom Tag des Eintrags — ein
+           umbenannter Zustand liess die Immunität auf nichts zeigen. Was
+           kein Zustandsartikel ist („Disease"), steht als Notiz. */
         conditionImmunities: {
-          type: 'array',
-          title: 'Condition immunities',
+          type: 'array', format: 'link', title: 'Condition immunities',
           items: { type: 'string' },
-          enumRef: 'Condition',
+          target: { interfaces: ['Condition'] },
         },
         /* Wie viele Legendäre Aktionen je Runde; die Aktionen selbst sind
            `Action`-Artikel mit der Aktionsart „Legendary Action" über
            `composedOf`. */
         legendaryActions: { type: 'number', min: 1, title: 'Legendary actions per round' },
+        /* Neuere Statblöcke haben im Lair mehr („3 (4 in Lair)", T-437).
+           Leer heisst: im Lair gleich viele. */
+        legendaryActionsLair: { type: 'number', min: 1, title: 'Legendary actions in lair' },
         /* **Boni, die nicht aus Übung und Übungsbonus folgen** — bei Monstern
            häufig: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben.
            `{ "Stealth": 6, "dex": 4 }`: Fertigkeit oder Attribut (für den
@@ -462,7 +655,7 @@ export const fieldGroups = {
         bonuses: { type: 'object', title: 'Fixed bonuses' },
         /* Das Bild auf der Karte. Ein Asset und keine URL: die Bilder von
            5e.tools kommen nicht herein (E5). */
-        token: { type: 'string', format: 'asset', title: 'Token' },
+        token: { type: 'string', format: 'asset', title: 'Token', target: { where: { component: 'Asset', property: 'kind', value: 'token' } } },
       },
     },
   },
@@ -479,7 +672,28 @@ export const fieldGroups = {
         /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
            (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
            richtige einbringen — deshalb lässt er sich hier abschalten. */
-        autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
+        autolink: { type: 'boolean', title: 'Spot it in prose', default: true, facet: false },
+        /* **Regeln als Artikel** (T-270, E-102 a): ein Artikel steht für ein
+           System (`kind: system`, z. B. inventory), eine Regel darin
+           (`kind: rule`, z. B. craftFailure) oder eine Option dieser Regel
+           (`kind: option`, z. B. materialsLost); `partOf` hängt die Option
+           an die Regel und die Regel an das System. `key` sagt der Laufzeit,
+           welche es ist — der Name darf sich ändern, der Schlüssel nicht. */
+        key: {
+          type: 'string',
+          title: 'Runtime key',
+          facet: false,
+          description:
+            'Which system, rule or option of the app this article stands for, such as inventory, craftFailure or materialsLost. Rules & options and the rule builder find the article by it; the name may change.',
+        },
+        /* Der Graph des Regel-Builders (Auslöser → Bedingung → Folge) am
+           Artikel der Regel — wie die Formen eines Boards an ihm selbst. */
+        graph: {
+          type: 'object',
+          title: 'Rule graph',
+          facet: false,
+          description: 'The nodes and connections of this rule in the rule builder: triggers, conditions and outcomes.',
+        },
       },
     },
   },
@@ -636,6 +850,87 @@ export const fieldGroups = {
     },
   },
 
+  /**
+   * **Gegenstandsmerkmal** (T-324, E-163): was an einen Gegenstand kommt,
+   * ohne selbst einer zu sein — eine Waffeneigenschaft (Finesse,
+   * Versatile) wie eine Variante (+1 Weapon, Silvered). Gemeinsam ist
+   * ihnen, **woran** sie passen, **wie** sie den Namen ändern, **was** sie
+   * am Preis tun und was sie am Bogen bewirken; die Werte des Einzelfalls
+   * (Versatile 1d10, Thrown 20/60) stehen an der Kante, nicht hier.
+   */
+  ItemFeatureInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* **Woran es passt** („+1 Weapon" an jede Waffe): Wörter wie
+           `weapon`, `armor`, `sword` oder Paare wie `weaponCategory:martial`
+           (`enhancementFits`). Leer: an jeden Gegenstand. */
+        appliesTo: {
+          type: 'array',
+          title: 'Applies to',
+          items: { type: 'string' },
+          description: 'Words (weapon, armor, sword) or pairs (weaponCategory:martial) an item must match; one is enough. Empty: any item.',
+        },
+        /* Wie das Stück dann heisst und was es kostet, wird beim Lesen
+           gerechnet (`enhanceItem`, D8) — hier steht nur die Regel. */
+        namePrefix: {
+          type: 'string',
+          title: 'Name prefix',
+          description: 'Put in front of the base item\'s name on a piece with this feature, such as "+1 " or "Silvered ".',
+        },
+        nameSuffix: {
+          type: 'string',
+          title: 'Name suffix',
+          description: 'Put after the base item\'s name on a piece with this feature, such as " of Warning".',
+        },
+        priceAdd: {
+          type: 'number',
+          min: 0,
+          title: 'Surcharge in copper',
+          description: 'What this feature adds to the base item\'s price, in copper.',
+        },
+        priceMult: {
+          type: 'number',
+          min: 0,
+          title: 'Price factor',
+          description: 'Multiplies the base item\'s price, before surcharges are added (2 doubles it).',
+        },
+        /* **Was es am Bogen bewirkt** (E-163): der Bogen fragte „heisst die
+           Eigenschaft two-handed?" (T-244, PR #359). Jetzt sagt es das
+           Merkmal selbst, und eine Hausregel-Eigenschaft „Long Grip" darf
+           zweihändig sein, ohne so zu heissen. */
+        mechanics: {
+          type: 'array',
+          title: 'On the sheet',
+          items: { type: 'string' },
+          enum: ['two-handed', 'versatile', 'light', 'finesse'],
+          description: 'What the sheet does with it: two-handed takes both hands, versatile uses the two-handed damage when gripped in both, light allows a second weapon in the off hand, finesse lets Dexterity attack (and Sneak Attack).',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Ein Enhancement** (T-300, T-324): +1 Weapon, Silvered, Adamantine —
+   * ein Merkmal, das am Stück Seltenheit und Boni dazugibt. Die Felder
+   * heissen wie am Gegenstand, stehen aber in der eigenen Karte: am Dolch
+   * ist `bonusWeapon` seiner, am Enhancement das, was es jedem Stück gibt.
+   */
+  EnhancementInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        rarity: { type: 'string', title: 'Rarity', enumRef: 'Item.rarity' },
+        attunement: { type: 'boolean', title: 'Requires attunement', glossary: 'Attunement' },
+        attunementNote: { type: 'string', title: 'Attunement by' },
+        bonusWeapon: { type: 'number', title: 'Attack and damage bonus', format: 'signed' },
+        bonusAc: { type: 'number', title: 'AC bonus', format: 'signed' },
+        bonusSpellAttack: { type: 'number', title: 'Spell attack bonus', format: 'signed' },
+        bonusSave: { type: 'number', title: 'Saving throw bonus', format: 'signed' },
+      },
+    },
+  },
+
   /** Finesse, Versatile, Heavy — `hasProperty` verlangt eine Art. */
   ItemPropertyInfo: {
     schema: {
@@ -721,8 +1016,8 @@ export const fieldGroups = {
           title: 'Duration unit',
           enum: ['round', 'minute', 'hour', 'day'],
         },
-        concentration: { type: 'boolean', title: 'Concentration' },
-        ritual: { type: 'boolean', title: 'Ritual' },
+        concentration: { type: 'boolean', title: 'Concentration', glossary: 'Concentration' },
+        ritual: { type: 'boolean', title: 'Ritual', glossary: 'Ritual' },
         /* „At Higher Levels" — ein langer Text, denn er trägt Würfel
            (`{{1d6}}`) wie der Haupttext. */
         higherLevels: { type: 'string', format: 'long', title: 'At higher levels' },
@@ -773,7 +1068,9 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        prerequisite: { type: 'string', title: 'Prerequisite' },
+        /* Ein Satz („level 4, STR 13"), als Facette zerlegt (T-180,
+           `parseRequirement`) — Grundlage für „usable by". */
+        prerequisite: { type: 'string', title: 'Prerequisite', facet: { as: 'requirement' } },
         repeatable: { type: 'boolean', title: 'May be taken again', default: false },
       },
     },
@@ -800,27 +1097,189 @@ export const fieldGroups = {
   },
 
   /**
-   * **Eine Wahl unter Übungen** (M3): „zwei aus Acrobatics, Athletics, …",
-   * „eines der Handwerkszeuge", „zwei Sprachen nach Wahl". Was fest
-   * gewährt wird, steht in `Proficiencies.proficient`; was gewählt wird,
-   * hier — `chooseFrom` aus denselben Listen, `chooseCount` wie viele, und
-   * `chooseNote` für die Wahl, die keine Liste hat („any two standard
-   * languages"). Klasse, Unterklasse, Abstammung und Hintergrund nehmen
-   * sie dazu; eine zweite Wahl an derselben Art ist ein Satz in der Notiz.
+   * **Ein Verfahren für die sechs Attributswerte** (REQ-238, E-016 a):
+   * Daten und kein Code — die Leitung legt je Verfahren einen Artikel an,
+   * die Kampagne nennt die erlaubten (`allowsMethod`).
+   *
+   * `method` sagt die Art: `array` verteilt eine feste Reihe (`scores`,
+   * 15/14/13/12/10/8), `pointBuy` kauft mit einem Budget (`budget`) nach
+   * einer Kostentabelle (`costs`, `{"8": 0, "15": 9}` — welche Werte es
+   * gibt, sagen ihre Schlüssel), `roll` würfelt `count` Mal den Ausdruck
+   * `dice` (`4d6kh3`). `scope` sagt, für wen gewürfelt wird: je Figur oder
+   * **einmal für die Gruppe** — dann verteilt jede Figur der Gruppe
+   * dieselben Werte selbst (der Gruppenpool, `abilityPool`).
    */
-  ProficiencyChoice: {
+  AbilityMethodInfo: {
+    schema: {
+      type: 'object',
+      required: ['method'],
+      properties: {
+        method: { type: 'string', title: 'Method', enum: ['array', 'pointBuy', 'roll'], default: 'array' },
+        scores: { type: 'array', items: { type: 'number' }, title: 'Scores to assign' },
+        budget: { type: 'number', min: 0, title: 'Point budget' },
+        costs: { type: 'object', title: 'Cost per score' },
+        dice: { type: 'string', title: 'Dice per score' },
+        count: { type: 'number', min: 1, max: 12, title: 'Scores rolled', default: 6 },
+        scope: { type: 'string', title: 'Rolled for', enum: ['character', 'party'], default: 'character' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Verfahren für die Startausrüstung** (REQ-250, T-096): Daten wie
+   * die Attributsverfahren (E-016 a) — die Leitung legt je Verfahren einen
+   * Artikel an, die Kampagne nennt die erlaubten (`allowsEquipment`).
+   *
+   * `method` sagt die Art: `rules` gibt, was Klasse und Hintergrund geben
+   * (das Feste und die gewählten Varianten), `gold` einen Betrag zum
+   * Einkaufen — `gold` fest (`100`) oder gewürfelt (`5d4×10`), leer das
+   * Startgold der Klasse —, `free` ein Budget (`budget`, gp; leer: ohne
+   * Grenze). Für `gold` und `free` gelten die Grenzen: `magic` sagt je
+   * Seltenheit, wie viele magische Gegenstände es höchstens sein dürfen
+   * (`{"uncommon": 1}`; was fehlt, heisst keiner, und ohne Angabe nur, was
+   * einen Preis hat), `itemTypes` nennt die erlaubten Gegenstandsarten.
+   */
+  EquipmentMethodInfo: {
+    schema: {
+      type: 'object',
+      required: ['method'],
+      properties: {
+        method: { type: 'string', title: 'Method', enum: ['rules', 'gold', 'free'], default: 'rules' },
+        gold: { type: 'string', title: 'Gold (gp, fixed or rolled)' },
+        budget: { type: 'number', min: 0, title: 'Budget (gp)' },
+        magic: { type: 'object', title: 'Magic items per rarity' },
+        itemTypes: { type: 'array', items: { type: 'string' }, enumRef: 'Item.itemType', title: 'Allowed item types' },
+      },
+    },
+  },
+
+  /**
+   * **Was zu wählen ist** (REQ-238, E-015 a): je Eintrag eine Wahl — was
+   * (`kind`), wie viele (`count`), woraus (`from`), ab welcher Stufe
+   * (`level`). Klasse, Unterklasse, Abstammung, Hintergrund und Talent
+   * nehmen es dazu. Was fest gewährt wird, steht nicht hier: Übungen in
+   * `Proficiencies`, Merkmale an `grants`, Attributsboni der Abstammung in
+   * `abilityBonus`.
+   *
+   * Es hiess `ProficiencyChoice` und trug genau **eine** Wahl
+   * (`chooseFrom`, `chooseCount`, `chooseNote`); jede weitere — „+1 auf
+   * zwei Attribute", Ausrüstung (a) oder (b), ein Talent — war ein Satz im
+   * Text, aus dem kein Assistent einen Schritt bauen kann. Die Antworten
+   * stehen an der Figur, an der Kante `chose`, je `id` (`choices.ts`).
+   *
+   * `from` ist eine von drei Formen: `values` (Namen aus Listen wie bei
+   * den Übungen, `enumRef` nennt die Listen), Artikel (`interfaces` mit
+   * den Filtern von `LinkTarget`, dazu `edge`: nur Unterklassen dieser
+   * Klasse) oder `options` (`[{key, label}]`, die Ausrüstung a/b). Ohne
+   * `from` ist die Wahl frei, und `note` sagt, was gemeint ist.
+   */
+  Choices: {
     schema: {
       type: 'object',
       properties: {
-        chooseFrom: {
+        choices: {
           type: 'array',
-          title: 'Choose from',
-          items: { type: 'string' },
-          enumRef: PROFICIENCY_SOURCES,
-          enumWhere: TOOLS_ONLY,
+          many: true,
+          title: 'Choices',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'kind'],
+            properties: {
+              id: { type: 'string', title: 'Id' },
+              kind: {
+                type: 'string',
+                title: 'Kind',
+                /* `option`: benannte Möglichkeiten, die nur steuern, welche
+                   Wahlen dahinter gelten (Steigerung oder Talent, T-107). */
+                enum: ['proficiency', 'ability', 'feat', 'spell', 'equipment', 'feature', 'subclass', 'option'],
+              },
+              level: { type: 'number', min: 1, max: 20, title: 'From level' },
+              /* Nur für die erste Klasse einer Figur (`start`: Fertigkeiten,
+                 Ausrüstung) oder nur beim Einstieg als weitere
+                 (`multiclass`). Ohne Angabe: immer. */
+              when: { type: 'string', title: 'Only when', enum: ['start', 'multiclass'] },
+              from: { type: 'object', title: 'Choose from' },
+              count: { type: 'number', min: 1, title: 'How many' },
+              /* Bei `ability`: der Bonus je Wahl, +2 und +1 heisst [2, 1]. */
+              bonus: { type: 'array', items: { type: 'number' }, title: 'Bonus per pick' },
+              /* Derselbe Wert darf mehrmals gewählt werden: +1 auf zwei
+                 Attribute, dasselbe zweimal heisst +2 (T-107). */
+              repeat: { type: 'boolean', title: 'Same pick more than once' },
+              /* Gilt nur, wenn eine Wahl davor an derselben Quelle diesen
+                 Wert trägt: `{choice: 'improvement', pick: 'feat'}`. */
+              onlyIf: { type: 'object', title: 'Only if' },
+              /* Gilt, bis jemand anders antwortet. */
+              default: { type: 'array', items: { type: 'string' }, title: 'Default' },
+              /* Bei `spell` (T-309): mit welchem Attribut der gewählte Zauber
+                 wirkt (sonst das der Quelle) und wie er gilt. */
+              ability: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
+              mode: { type: 'string', title: 'How it is cast', enum: ['prepared', 'known', 'innate'] },
+              /* Bei Expertise (T-303): `false` hebt auf, dass nur Geübtes
+                 gewählt werden darf. Ohne Angabe verlangt sie die Übung. */
+              needsProficiency: { type: 'boolean', title: 'Needs proficiency' },
+              note: { type: 'string', title: 'Note' },
+            },
+          },
         },
-        chooseCount: { type: 'number', min: 1, title: 'How many to choose' },
-        chooseNote: { type: 'string', title: 'Choice' },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Artikel an der Figur verändert** (REQ-238, REQ-063, E-025 a):
+   * je Eintrag eine Wirkung — welches Ziel (`target`), welche Art (`op`),
+   * welcher Wert (`value`), unter welcher Bedingung (`when`). Handschuhe
+   * der Ogerstärke sind `{target: 'ability.str', op: 'set', value: 19}`,
+   * ein Feuerring `{target: 'resist', op: 'grant', value: 'fire'}`.
+   *
+   * Dieselbe Form wie `Choices`, damit Gegenstand, Klasse, Abstammung und
+   * Talent eine Rechnung teilen (`effectsAt`, beim Lesen, D8): abgelegte
+   * Handschuhe nehmen die 19 sofort wieder weg. Eine neue Wirkungsart ist
+   * ein neuer `target`-Wert und kein neues Feld — darum ist `target` frei.
+   *
+   * `op`: `add` zählt dazu, `set` setzt (bei Attributen nur, wenn es höher
+   * ist; beim kritischen Treffer gilt die kleinste Schwelle), `grant`
+   * gewährt ein Wort (Resistenz, Immunität; `advantage`/`disadvantage` an
+   * `attack` und `attacked`, nach Abstand an `attacked.near` und
+   * `attacked.far` — Prone, T-351), `limit` deckelt (ein gepacktes Ziel hat
+   * Tempo höchstens 0, T-275). `when`: `worn` (getragen oder
+   * in der Hand), `attuned` (eingestimmt **und** getragen), `carried`
+   * (irgendwo dabei, nicht zu Hause und nicht am Boden), `self` (eine
+   * Eigenschaft des Gegenstands selbst, die keiner Figur zugerechnet
+   * wird: der Waffenbonus, das Fassungsvermögen). Ohne Angabe: eingestimmt,
+   * wenn der Gegenstand Einstimmung verlangt, sonst getragen.
+   */
+  Effects: {
+    schema: {
+      type: 'object',
+      properties: {
+        effects: {
+          type: 'array',
+          many: true,
+          title: 'Effects',
+          /* Als Facette: Ziel und Art je Eintrag (T-180, `effectKeys`). */
+          facet: { as: 'effect' },
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'target', 'op'],
+            properties: {
+              id: { type: 'string', title: 'Id' },
+              /* `ability.str`, `ac`, `ac.base` (Formel, T-355), `speed.walk`, `speed.*`, `spellSaveDc`,
+                 `spellAttack`, `save`, `save.dex`, `resist`, `immune`,
+                 `vulnerable`, `conditionImmune`, `critThreshold`, `carry`,
+                 `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage`,
+                 `check`, `prof`, `save.concentration` — frei, siehe `EFFECT_TARGETS`. */
+              target: { type: 'string', title: 'Target' },
+              op: { type: 'string', title: 'Operation', enum: ['add', 'set', 'grant', 'limit'] },
+              /* Eine Zahl (19, +1, 10) oder ein Wort (`fire`, `walk`). */
+              value: { type: 'string', title: 'Value' },
+              when: { type: 'string', title: 'Applies when', enum: ['worn', 'attuned', 'carried', 'self'] },
+              note: { type: 'string', title: 'Note' },
+            },
+          },
+        },
       },
     },
   },
@@ -829,8 +1288,8 @@ export const fieldGroups = {
    * **Eine Klasse (M3).** Was sie festlegt: Trefferwürfel, Hauptattribut,
    * Startausrüstung, die Voraussetzung für den Mehrklassen-Einstieg, wie
    * sie zaubert und wie ihre Unterklassen heissen. Rettungswürfe und
-   * Startübungen nimmt sie über `Proficiencies` dazu, die Wahl über
-   * `ProficiencyChoice`.
+   * Startübungen nimmt sie über `Proficiencies` dazu, was zu wählen ist
+   * über `Choices`.
    *
    * **Ihre Merkmale sind Kanten** (`grants` mit Stufe), ihre Stufentabelle
    * (Wutanfälle, Hinterhältiger Angriff, Plätze je Grad) ist ein
@@ -849,8 +1308,12 @@ export const fieldGroups = {
           enumRef: 'Ability',
         },
         startingEquipment: { type: 'string', format: 'long', title: 'Starting equipment' },
+        /* **Das Startgold** (T-096, REQ-250): ein Würfelausdruck mit
+           Faktor (`5d4×10`) oder ein fester Betrag in gp. Das Verfahren
+           „Startgold" würfelt ihn, wenn es selbst keinen Betrag nennt. */
+        startingGold: { type: 'string', title: 'Starting gold (gp)' },
         /* „STR 13 or DEX 13" — ein Satz; die Regel wertet niemand aus. */
-        multiclassRequirement: { type: 'string', title: 'Multiclass requirement' },
+        multiclassRequirement: { type: 'string', title: 'Multiclass requirement', facet: { as: 'requirement' } },
         /* Was beim Einstieg als zweite Klasse dazukommt — weniger als beim
            Start (der Kämpfer bringt dann keine schwere Rüstung). */
         multiclassProficient: {
@@ -914,9 +1377,10 @@ export const fieldGroups = {
       properties: {
         /* Eine, selten zwei (Small oder Medium nach Wahl). */
         size: { type: 'array', title: 'Size', items: { type: 'string' }, enumRef: 'Size' },
-        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
-        /* `{ "con": 2 }` — Attribut auf Bonus. Eine Wahl („two different
-           +1") steht in `abilityNote`. */
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed', glossary: 'Speed' },
+        /* `{ "con": 2 }` — Attribut auf Bonus, fest. Eine Wahl („two
+           different +1") ist ein Eintrag in `Choices.choices` (REQ-238);
+           `abilityNote` hält, was sich nicht als Wahl schreiben lässt. */
         abilityBonus: { type: 'object', title: 'Ability score increase' },
         abilityNote: { type: 'string', title: 'Ability choice' },
         /* Ein Satz: „mature at 20, live about 350 years". */
@@ -930,7 +1394,7 @@ export const fieldGroups = {
 
   /**
    * **Ein Hintergrund (M3).** Übungen und Sprachen über `Proficiencies`
-   * und `ProficiencyChoice`, das Merkmal (Shelter of the Faithful) über
+   * und `Choices`, das Merkmal (Shelter of the Faithful) über
    * `grants`, die vier Charakterzug-Tabellen über `tableFor`. Eigen ist ihm
    * nur die Startausrüstung.
    */
@@ -968,10 +1432,16 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        /* **Eine Liste, die die Leitung pflegt** (T-423): die Sorten von
+           Orten sind Kampagneninhalt — sie stehen als Zeile `PlaceKind` im
+           Register (Registry › Lists) und nicht mehr am Feld, und mit
+           `suggest` darf auch ein Wort stehen, das die Liste noch nicht
+           kennt. */
         kind: {
           type: 'string',
           title: 'Place type',
-          enum: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
+          enumRef: 'PlaceKind',
+          suggest: true,
         },
         environment: { type: 'string', suggest: true, title: 'Environment' },
         /* `settlementType` fiel weg: `kind` sagt es schon, mit
@@ -979,6 +1449,34 @@ export const fieldGroups = {
            heissen, dass eines gefüllt wird und das andere gelesen. Wird
            eine Siedlung einmal genauer, ist sie ein Untertyp von `Place`
            und keine zweite Spalte. */
+      },
+    },
+  },
+
+  /**
+   * **Ein Laden** (T-129): was er für alle ab- oder aufschlägt. Die Waren
+   * stehen nicht hier, sondern an der Kante `sells` — mit Menge, eigenem
+   * Preis und eigenem Abschlag je Ware. Der Preis wird beim Lesen
+   * gerechnet (D8, `shopWares`) und sagt, woher jeder Abschlag kommt.
+   */
+  ShopInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Ein Wort und keine zwei Zahlenfelder: `−10 gp` oder `−10 %` sagt
+           der Leitung beim Lesen, was gemeint ist; ein Feld „Prozent" neben
+           einem Feld „Gold" hiesse, dass eines davon leer steht und keiner
+           weiss, welches gilt. Gelesen von `parsePriceMod`. */
+        priceMod: { type: 'string', title: 'Price modifier (−10 gp, −10 %)' },
+        /* Was der Laden beim Ankauf zahlt, in Prozent des Listenpreises
+           (E-045 b, E-175 a); leer die Hälfte, wie 5e. Eine `buys`-Kante
+           darf für ihr Ziel einen eigenen Satz nennen. */
+        buyRate: {
+          type: 'number',
+          min: 0,
+          title: 'Buy rate (% of list price)',
+          description: 'What the shop pays when it buys, in per cent of the list price. Empty: 50 %. A buys edge may name its own rate; with buys edges the shop buys only what they name.',
+        },
       },
     },
   },
@@ -1084,7 +1582,15 @@ export const fieldGroups = {
         pantheon: { type: 'string', suggest: true, title: 'Pantheon' },
         title: { type: 'string', title: 'Title' },
         alignment: { type: 'string', suggest: true, title: 'Alignment' },
-        domains: { type: 'array', items: { type: 'string' }, title: 'Domains' },
+        /* **Die Domänen zeigen auf die Unterklassen** (E-020, T-099): auf
+           „Knowledge Domain“, nicht auf das Wort „Knowledge“. 777 von 778
+           Werten auf dev trafen genau eine Unterklasse, über ihren
+           Kurznamen; was keine trifft, steht als Notiz (`domains`). */
+        domains: {
+          type: 'array', format: 'link', title: 'Domains',
+          items: { type: 'string' },
+          target: { interfaces: ['Subclass'] },
+        },
         symbol: { type: 'string', title: 'Symbol' },
         province: { type: 'string', title: 'Province' },
         plane: { type: 'string', suggest: true, title: 'Plane' },
@@ -1125,9 +1631,10 @@ export const fieldGroups = {
           enum: ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact', 'varies', 'unknown'] },
         /* DMG 2014: kleiner oder grosser Gegenstand, für die Schatztabellen. */
         tier: { type: 'string', title: 'Tier', enum: ['minor', 'major'] },
-        attunement: { type: 'boolean', title: 'Requires attunement' },
+        attunement: { type: 'boolean', title: 'Requires attunement', glossary: 'Attunement' },
         /* „by a wizard", „by a cleric or paladin" — ein Satz, keine Liste. */
-        attunementNote: { type: 'string', title: 'Attunement by' },
+        /* „by a cleric or paladin" — eine Voraussetzung wie am Talent (T-180). */
+        attunementNote: { type: 'string', title: 'Attunement by', facet: { as: 'requirement' } },
         /* **Ladungen sind die Festlegung**: wie viele der Stab hat, nicht
            wie viele noch übrig sind. Der Stand gehört dem Stück am Tisch
            und kommt mit dem Inventar dort (offen). */
@@ -1144,10 +1651,10 @@ export const fieldGroups = {
         bonusAc: { type: 'number', title: 'AC bonus', format: 'signed' },
         bonusSpellAttack: { type: 'number', title: 'Spell attack bonus', format: 'signed' },
         bonusSave: { type: 'number', title: 'Saving throw bonus', format: 'signed' },
-        /* **Woran eine Variante passt** („+1 Weapon" an jede Waffe): Marken
-           wie `weapon`, `armor`, `ammunition`, `sword`. Das konkrete
-           +1-Langschwert entsteht am Tisch als Instanz des Grundgegenstands. */
-        appliesTo: { type: 'array', title: 'Variant applies to', items: { type: 'string' } },
+        /* Woran eine Variante passt, ihre Namensteile und ihr Aufpreis
+           stehen seit T-324 (E-163) am Gegenstandsmerkmal
+           (`ItemFeatureInfo`), nicht mehr hier: „+1 Weapon" ist eine Regel,
+           die an einen Gegenstand kommt, und kein Gegenstand. */
         /* **Nicht dasselbe wie `rarity`.** Die ist die Seltenheit des
            magischen Gegenstands („selten", „legendär"); das hier ist, wie
            schwer er zu *kaufen* ist — im Vault die Hausregel-Leiter
@@ -1155,6 +1662,13 @@ export const fieldGroups = {
            Unterscheidung, die dort jemand sorgfältig gemacht hat. */
         availability: { type: 'string', suggest: true, title: 'Purchase rarity' },
         copperPrice: { type: 'number', title: 'Price in copper' },
+        /* **Woher der Preis kommt** (T-139, E-046): leer heisst Listenpreis
+           der Quelle; sonst ein Satz wie „estimated: DMG 2024 rare" oder
+           „derived: base price + 100 gp (silvered)". Ein geschätzter Preis
+           sieht sonst aus wie einer aus dem Buch, und wer ihn später
+           ersetzen will, findet ihn nicht. Ein Satz und keine Aufzählung:
+           die Regel, nach der geschätzt wird, entscheidet die Leitung. */
+        priceNote: { type: 'string', title: 'Price basis' },
         /* Leer, solange das Hausregel-Inventar nicht läuft: dort sagt
            die Stapelgrösse, wie viele auf ein Feld gehen. Kein totes Feld,
            sondern ein Feld eines Moduls. */
@@ -1167,6 +1681,25 @@ export const fieldGroups = {
            Kachelinventar mit `rows`. Beide dürfen dastehen, weil nur eines
            von beiden zur Zeit gilt. */
         weight: { type: 'number', unit: 'lb', title: 'Weight' },
+        /* **Wie weit er leuchtet** (T-305, REQ-140), wie die Regel es
+           schreibt: hell in einem Radius, dämmrig darüber hinaus. Als
+           Marker auf der Karte leuchtet der Gegenstand selbst, in der Hand
+           einer Figur ihr Token (`carriedLights`). In Fuss, weil das Buch
+           in Fuss schreibt; umgerechnet wird beim Lesen (D8). */
+        lightBright: {
+          type: 'string',
+          format: 'measure',
+          unit: 'ft',
+          title: 'Bright light',
+          description: 'Radius of bright light it sheds — on the map as a marker, or in a figure\'s hand.',
+        },
+        lightDim: {
+          type: 'string',
+          format: 'measure',
+          unit: 'ft',
+          title: 'Dim light beyond',
+          description: 'Dim light for this much further beyond the bright radius (a torch: 20 ft bright, 20 ft more dim).',
+        },
       },
     },
   },
@@ -1185,10 +1718,32 @@ export const fieldGroups = {
            Maske malt es als Raster. Als Textfeld war es eine Zeile wie
            `##.,##.` — man sah der Eingabe nicht an, was dabei herauskommt,
            und beim Abzählen verrutscht eine Spalte. */
-        rows: { type: 'array', format: 'grid', title: 'Grid', items: { type: 'string' } },
+        rows: {
+          type: 'array', format: 'grid', title: 'Shape', items: { type: 'string' },
+          description: 'The cells it takes in a grid inventory, one row per line: # taken, . free. Painted in the element Shape.',
+        },
         width: { type: 'number', title: 'Width', derived: 'colCount(rows)' },
         height: { type: 'number', title: 'Height', derived: 'rowCount(rows)' },
         cells: { type: 'number', title: 'Cells', derived: 'cellCount(rows)' },
+        /* **Das Bild im Inventar** (T-142): ohne eigenes das Bild des
+           Gegenstands (`Image.image`). Ein eigenes, wenn das Buchbild ein
+           Gemälde ist und im Raster ein freigestelltes Stück liegen soll. */
+        inventoryImage: {
+          type: 'string',
+          format: 'asset',
+          title: 'Inventory image',
+          target: { where: { component: 'Asset', property: 'kind', value: 'image' } },
+          description: 'The picture in the grid inventory; without one, the item’s image.',
+        },
+        /* **Wie es in der Form liegt** (T-142, `inventoryFrame()`):
+           `{zoom, x, y, rot, fit}`. Gesetzt in „Adjust inventory image" am
+           Element Shape, nicht getippt — darum nur in der Maske. */
+        inventoryFrame: {
+          type: 'object',
+          title: 'Inventory image frame',
+          editOnly: true,
+          description: 'How the picture lies in the shape: zoom, offset, quarter turns and fit or fill. Set with Adjust inventory image.',
+        },
       },
     },
   },
@@ -1203,9 +1758,14 @@ export const fieldGroups = {
         damage2: { type: 'string', title: 'Two-handed damage' },
         damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
         range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
-        /* Was sie verschiesst: arrow, bolt, sling bullet — ein Wort, kein
-           Verweis; welcher Pfeil, entscheidet das Inventar. */
-        ammoType: { type: 'string', suggest: true, title: 'Ammunition' },
+        /* Was sie verschiesst: ein Verweis auf den Munitionsartikel (Arrow,
+           Crossbow Bolt, T-078) — das Wort davor nannte genau diesen
+           Artikel, nur ohne dass man hinkam. Welcher Köcher, entscheidet
+           weiter das Inventar. */
+        ammoType: {
+          type: 'string', format: 'link', title: 'Ammunition',
+          target: { interfaces: ['Item'] },
+        },
         /* **Die Eigenschaften sind Kanten**, keine Aufzählung im Text:
            `hasProperty` zeigt auf gepoolte Regelartikel. Genau darum ging
            es beim Import — „Versatil" als Text zu übernehmen kopiert, was
@@ -1220,7 +1780,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        ac: { type: 'number', title: 'Armour class' },
+        ac: { type: 'number', title: 'Armour class', glossary: 'Armor Class' },
         armorType: { type: 'string', title: 'Armour type', enum: ['light', 'medium', 'heavy', 'shield'] },
         /* Die Stärke, unter der das Tempo sinkt. */
         strength: { type: 'number', min: 1, max: 30, title: 'Strength required' },
@@ -1245,13 +1805,14 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        /* Welche Sprosse: arc, chapter — ein freies Wort mit Vorschlägen,
-           wie `Creature.kind`. Es war eine Aufzählung mit fünf Werten, von
-           denen drei (`campaign`, `session`, `scene`) zugleich Arten waren:
-           dieselbe Einordnung zweimal (Abgleich A5). An einer dieser Arten
-           bleibt das Feld leer, denn die Art sagt es schon; `Arc` und
-           `Chapter` sind seit dem 7.10. Werte hier und keine Zeilen mehr
-           (Regel T2). */
+        /* Welche Sprosse: adventure, prologue … — ein freies Wort mit
+           Vorschlägen, wie `Creature.kind`. Es war eine Aufzählung mit fünf
+           Werten, von denen drei (`campaign`, `session`, `scene`) zugleich
+           Arten waren: dieselbe Einordnung zweimal (Abgleich A5). An einer
+           dieser Arten bleibt das Feld leer, denn die Art sagt es schon.
+           `arc` und `chapter` waren vom 7.10. bis 14.10. Wörter hier; seit
+           E-026 ist der Arc eine Art mit eigenen Feldern (`ArcInfo`), und
+           ein Kapitel eines Abenteuers ist ein Arc. */
         kind: { type: 'string', suggest: true, title: 'Kind' },
         played: { type: 'string', title: 'Played on' },
         /* Hier stand ein zweiter Zustand — geplant, läuft, gespielt,
@@ -1260,6 +1821,84 @@ export const fieldGroups = {
            `Status`; dass es gespielt wurde, sagt `played` mit einem Datum,
            und das ist die Angabe, die man später wirklich sucht. */
         summary: { type: 'string', format: 'long', title: 'Recap' },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Arc trägt und eine Story nicht** (E-026, REQ-252): für welche
+   * Stufen er gedacht ist, womit er die Runde hereinholt und wie er
+   * ausgehen kann. Ein Kapitel eines Abenteuers ist ein Arc — damit lässt
+   * es sich als Ganzes in die eigene Kampagne hängen (Kampagne › Arc ›
+   * Sitzung, Szene). Die Spanne ist eine Spanne (`min`/`max`) wie die
+   * Schwierigkeit, keine Aufzählung.
+   */
+  ArcInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        levelFrom: { type: 'number', title: 'From level', min: 1, max: 20 },
+        levelTo: { type: 'number', title: 'To level', min: 1, max: 20 },
+        hook: { type: 'string', format: 'long', title: 'Hook' },
+        outcome: { type: 'string', format: 'long', title: 'Outcome' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Kapitel eines Buchs** (T-108, E-029): die Lesestruktur, nicht die
+   * Geschichte. Was es sagt, sind seine Teile (`partOf` mit `rank`); hier
+   * steht nur, wie das Buch es zählt — „Chapter 9", „Appendix A". Die
+   * Nummer der Reihenfolge ist das nicht: die ist die Nummer des Artikels.
+   */
+  ChapterInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        ordinal: { type: 'string', title: 'Ordinal' },
+      },
+    },
+  },
+
+  /** Eine Überschrift im Buchtext (T-108): ihr Text ist der Name, hier steht nur die Stufe. */
+  HeadingInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', title: 'Level', min: 1, max: 6, default: 2 },
+      },
+    },
+  },
+
+  /**
+   * Ein Absatz im Buchtext (T-108): sein Text ist `Prose.paragraph`. Die
+   * Sorte sagt, wie er gesetzt wird — ein Kasten am Rand ist kein
+   * Vorlesetext, und eine Tabelle im Fliesstext keine `Table`, solange
+   * 5e.tools sie nicht als eine führt.
+   */
+  ParagraphInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', title: 'Kind', enum: ['text', 'list', 'table', 'sidebar', 'quote'], default: 'text' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Verweis-Teil** (T-108, E-028): ein Artikel, der für sich steht —
+   * ein Monster aus dem Monster Manual, ein Zauber, eine Regel —, an einer
+   * Stelle im Buchtext. Er wird nicht kopiert und bekommt keine Kante zum
+   * Kapitel (die stünde in einem Artikel einer fremden Ebene); der Teil
+   * hält nur den Verweis.
+   */
+  EmbedInfo: {
+    schema: {
+      type: 'object',
+      required: ['target'],
+      properties: {
+        /* Jede Art erbt `Identity`: das Ziel darf jeder Artikel sein. */
+        target: { type: 'string', format: 'link', title: 'Article', target: { interfaces: ['Identity'] } },
       },
     },
   },
@@ -1282,6 +1921,25 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         difficulty: { type: 'number', title: 'Difficulty', min: 1, max: 20 },
+      },
+    },
+  },
+
+  /**
+   * **Gespielt** (T-289, E-039): wann und in welcher Sitzung eine Karte
+   * oder Begegnung als Instanz auf den Tisch kam. Steht nur an der
+   * Instanz; die Vorlage listet ihre gespielten Stände daraus („Played").
+   */
+  Played: {
+    schema: {
+      type: 'object',
+      properties: {
+        playedAt: { type: 'string', title: 'Played on', readOnly: true, description: 'When this map or encounter was taken into play — set on the instance, empty on the template.' },
+        playedIn: {
+          type: 'string', format: 'link', title: 'Played in', readOnly: true,
+          description: 'The session that took this instance into play.',
+          target: { interfaces: ['Session'] },
+        },
       },
     },
   },
@@ -1359,7 +2017,7 @@ export const fieldGroups = {
         proficiency: {
           type: 'number',
           title: 'Proficiency',
-          derived: '2+(sum(hasClass.level)-1)/4',
+          derived: 'profBonus(hasClass.level)',
           format: 'signed',
         },
       },
@@ -1436,6 +2094,15 @@ export const fieldGroups = {
            einmal der Blockanker: ein Geheimnis von dreien freizugeben
            heisst, genau dieses freizugeben. */
         fields: { type: 'array', title: 'Fields', items: { type: 'string' } },
+        /* **Für welche Artikel sie gilt** (T-285, REQ-350): in der Form der
+           Ansichten (`ViewApplies`: Typen, Bedingungen auf Felder und
+           Kanten, auch eine Kante auf einen Artikel samt Unterarten). Ohne
+           Angabe gilt sie, wo ein Artikel sie über `knowledge` nennt. */
+        applies: {
+          type: 'object',
+          title: 'Applies to',
+          description: 'A group of articles this information holds for — types and conditions, like a view. Empty: only the article that lists it.',
+        },
         /* Nur Anzeige und Sortierung. Was jemand sehen darf, entscheiden die
            Kanten — ein Rang hier wäre eine zweite, widersprechende Quelle. */
         tier: {
@@ -1466,10 +2133,47 @@ export const fieldGroups = {
           default: 'app',
         },
         ref: { type: 'string', title: 'Reference' },
+        /* **Die Klasse eines Bildes** (T-119): was es ist und darum, wo es
+           angeboten wird — `map` beim Kartenbild, `token` beim Token,
+           `prop` beim Platzieren auf einer Karte (Möbel, Requisiten,
+           Stempel), `image` überall sonst (Porträt, Handout,
+           Veranschaulichung). Ein Wort und keine Unterart: keine der vier
+           trägt heute ein eigenes Feld — die Grösse eines Tokens ist die
+           seiner Kreatur, das Raster gehört der Karte. Braucht eine Klasse
+           eigene Felder, wird sie eine Zeile, die von `Asset` erbt. Welches
+           Feld welche Klasse anbietet, sagt sein `target.where` (am Feld
+           oder als `targets` am Typ) — eine Liste im Code gibt es nicht. */
+        kind: {
+          type: 'string',
+          title: 'Class',
+          enum: ['image', 'map', 'token', 'prop'],
+          default: 'image',
+        },
         mime: { type: 'string', title: 'Media type' },
         width: { type: 'number', title: 'Width in px' },
         height: { type: 'number', title: 'Height in px' },
         bytes: { type: 'number', title: 'Bytes' },
+        /* **Ein fertiges Token** (T-297): ein rundes Bild mit eigenem Ring
+           und Schatten, die Ecken durchsichtig — wie die Tokens aus
+           5e.tools. Es wird gezeigt, wie es ist; ein eigener Kreis darüber
+           schnitte den Ring an und schöbe den Schatten in die Mitte.
+           Erkannt beim Hochladen (`aufbereiten`), änderbar in „Adjust
+           token". */
+        round: {
+          type: 'boolean',
+          title: 'Ready-made token',
+          description: 'Already a round token with its own frame: shown as it is, not cut into a circle.',
+        },
+        /* **Der Ausschnitt eines Tokens** (T-297): wo der Kreis auf dem
+           Bild sitzt — Mitte in Prozent der Breite und Höhe, Zoom ab 1.
+           Am Bild und nicht am Statblock: dasselbe Token zeigen viele
+           Statblöcke (jede Instanz einer Vorlage), und der Ausschnitt ist
+           eine Eigenschaft des Bildes. */
+        frame: {
+          type: 'object',
+          title: 'Token frame',
+          description: 'Where the circle of a token sits on this image: centre x and y in percent, and zoom. Set with “Adjust token”.',
+        },
       },
     },
   },
@@ -1479,14 +2183,23 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        publication: { type: 'string', suggest: true, title: 'Publication' },
-        page: { type: 'string', title: 'Page' },
-        anchor: { type: 'string', title: 'Anchor' },
-        url: { type: 'string', title: 'URL' },
+        publication: {
+          type: 'string',
+          suggest: true,
+          title: 'Publication',
+          description: 'The book or source this comes from.',
+        },
+        page: { type: 'string', title: 'Page', description: 'The page in that publication.' },
+        anchor: { type: 'string', title: 'Anchor', description: 'A section of the source, to link to.' },
+        url: { type: 'string', title: 'URL', description: 'A web address for the source.' },
         /* Die Lizenzflagge (E1, M9): steht der Inhalt im frei lizenzierten
            SRD? Eine spätere Demo zeigt nur das, und die Seite selbst ist
            nicht öffentlich. */
-        srd: { type: 'boolean', title: 'In the SRD' },
+        srd: {
+          type: 'boolean',
+          title: 'In the SRD',
+          description: 'Part of the freely licensed System Reference Document.',
+        },
       },
     },
   },
@@ -1508,9 +2221,10 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        sort: { type: 'number', title: 'Sortable value' },
+        /* Zum Ordnen, nicht zum Lesen (`editOnly`, T-126). */
+        sort: { type: 'number', title: 'Sortable value', editOnly: true },
         display: { type: 'string', format: 'date', title: 'Date' },
-        untilSort: { type: 'number', title: 'Sortable value of the end' },
+        untilSort: { type: 'number', title: 'Sortable value of the end', editOnly: true },
         until: { type: 'string', format: 'date', title: 'Until' },
         /* `calendar` stand hier je Artikel — zwei Stellen für dieselbe
            Angabe neben der Einstellung, im Bestand nie anders als dort.
@@ -1564,6 +2278,21 @@ export const fieldGroups = {
         sheets: { type: 'array', title: 'Drawing layers', items: { type: 'object' } },
         /* Was am untersten Blatt einstellbar ist, steht an der Karte — es
            hat keinen eigenen Eintrag in `sheets`, weil es die Karte *ist*. */
+        /* **Ebenen einer Karte** (T-307, E-108): Stockwerke, Keller,
+           Turmgeschosse — eine flache Liste, keine Stapelnummer. Je Ebene
+           `id`, `name`, `structure` (Gebäudeteil), `elevation`
+           ({from, to} in Fuss), `gmOnly`, eigenes Bild (`image`) und die
+           Felder, die die erste Ebene hier an der Karte trägt (Gitter,
+           Massstab, Blätter, Sperren, Licht). Die erste Ebene ist die
+           Karte selbst; was eine Ebene mit einer anderen verbindet, sind
+           Übergänge (Marker `passage`), nie die Reihenfolge. */
+        floors: { type: 'array', title: 'Floors', items: { type: 'object' }, description: 'Further floors of this map — each with its own image, grid, scale, walls and layers. The map itself is the first floor.' },
+        /* Der Stand am Tisch je Ebene, neben den Ebenen: aufgedeckt
+           (`{ebene: [Formen]}`) und zurückgehalten (`{ebene: false}`). An
+           einer Instanz (T-289) kopiert ein Aufdecken so nicht alle Ebenen
+           der Vorlage mit. */
+        floorReveal: { type: 'object', title: 'Uncovered areas per floor' },
+        floorReleased: { type: 'object', title: 'Floors held back', description: 'Floors set to false here are not shown to players until released.' },
         baseHidden: { type: 'boolean', title: 'Hide the base image' },
         baseGmOnly: { type: 'boolean', title: 'Base image is GM only' },
         kind: {
@@ -1571,6 +2300,14 @@ export const fieldGroups = {
           title: 'Map kind',
           enum: ['world', 'region', 'settlement', 'district', 'building', 'battle'],
           default: 'region',
+        },
+        /* **Wie die Marker dieser Karte stehen** (T-214): vor der Vorgabe
+           der Kartenart und der Art, hinter dem einzelnen Marker. */
+        markerView: {
+          type: 'string',
+          title: 'Markers show as',
+          enum: ['symbol', 'name', 'image', 'card'],
+          description: 'How markers stand on this map: symbol, symbol with name, image, or a quick card. A marker can say otherwise. Empty: the map kind’s setting in the campaign, else the article type’s.',
         },
         gridShape: {
           type: 'string',
@@ -1581,6 +2318,15 @@ export const fieldGroups = {
         gridSize: { type: 'number', title: 'Grid size in px', default: 70 },
         gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
         gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
+        /* **Wie das Gitter aussieht** (T-314): Farbe (Farbton und Sättigung
+           über die Farbwahl), Deckkraft, und ob es gezeichnet wird.
+           Ausgeblendet misst und rastet es weiter — es fehlt nur das Bild. */
+        gridColor: { type: 'string', format: 'color', title: 'Grid colour', description: 'Colour of the grid lines; empty is the default brown.' },
+        gridOpacity: { type: 'number', title: 'Grid opacity', min: 0, max: 1, default: 0.5, description: 'How strongly the grid lines show, from 0 (invisible) to 1.' },
+        gridHidden: { type: 'boolean', title: 'Grid hidden', default: false, description: 'Draw no grid lines. Measuring and snapping still use the grid.' },
+        /* **Tokens rasten am Gitter** (T-317): ihr Platz liegt auf ganzen
+           oder halben Feldern. Aus, und sie stehen, wo man sie loslässt. */
+        snapTokens: { type: 'boolean', title: 'Tokens snap to the grid', default: true, description: 'A dropped token lands so that its space covers whole (or half) squares.' },
         /* Eine Karte ist metrisch gemessen, auch wenn die Regeln in Fuss
            rechnen: das Raster steht in Metern da, und wer „1,5" schreibt,
            meint Meter. */
@@ -1594,7 +2340,26 @@ export const fieldGroups = {
           default: 'bright',
         },
         fog: { type: 'boolean', title: 'Fog of war', default: false },
+        /* **Freigegeben** (T-289, E-041): eine Karte im Spiel (Instanz) ist
+           für Spielende nicht vorhanden, bis die Leitung sie freigibt —
+           gesiebt am Server (`heldBackMap`). An der Vorlage zählt es nicht. */
+        released: {
+          type: 'boolean',
+          title: 'Released to players',
+          description: 'On a map in play: players see it only once released, with the fog already on. A template map is not affected.',
+        },
+        /* Eine Form darf `for` tragen (T-204): die Figur, die es gesehen
+           hat — zählt, wenn die Kampagne den Nebel je Figur führt. Ein
+           `poly` darf `within` tragen (T-216): es gilt nur, soweit es auch
+           in diesem Polygon liegt — Licht, soweit die Figur hineinsieht. */
         reveal: { type: 'array', title: 'Uncovered areas', items: { type: 'object' } },
+        /* **Aufdecken beim Zug, an dieser Karte** (T-204): leer heisst, es
+           gilt die Kampagne (`Campaign.revealOnMove`). */
+        revealOnMove: {
+          type: 'boolean',
+          title: 'Moves reveal the way',
+          description: 'Overrides the campaign for this map: whether a move uncovers the way the token went. Empty follows the campaign.',
+        },
         /* Sperren, nicht nur Sichtblocker: eine Wand hält Blick und Schritt,
            ein Fenster nur den Schritt, ein Abgrund auch nur den Schritt, und
            eine Tür hält beides, solange sie zu ist. Was welche Sorte ist,
@@ -1627,12 +2392,12 @@ export const fieldGroups = {
            Zustandsliste und die Trefferwürfel stehen nicht dabei: die eine
            ist ein Satz Häkchen, die anderen Punkte, und beides zeichnet der
            Bogen ohnehin anklickbar. */
-        hp: { type: 'number', title: 'Hit points now', alwaysEdit: true },
-        hpTemp: { type: 'number', title: 'Temporary HP', alwaysEdit: true },
-        hitDiceLeft: { type: 'number', title: 'Hit dice left' },
-        deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
-        deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
-        inspiration: { type: 'boolean', title: 'Inspiration' },
+        hp: { type: 'number', title: 'Hit points now', alwaysEdit: true, glossary: 'Hit points' },
+        hpTemp: { type: 'number', title: 'Temporary HP', alwaysEdit: true, glossary: 'Temporary hit points' },
+        hitDiceLeft: { type: 'number', title: 'Hit dice left', glossary: 'Hit Dice' },
+        deathSuccess: { type: 'number', title: 'Death saves passed', default: 0, glossary: 'Death saving throw' },
+        deathFail: { type: 'number', title: 'Death saves failed', default: 0, glossary: 'Death saving throw' },
+        inspiration: { type: 'boolean', title: 'Inspiration', glossary: 'Inspiration' },
         /* **Ein Zustand ist ein Artikel der Art `Condition`**, kein Wort aus
            einer Einstellung (Abgleich A3, 7.10.; D48): „prone" hat eine
            Beschreibung, die am Tisch jemand lesen will. Hier stehen die Ids;
@@ -1648,7 +2413,25 @@ export const fieldGroups = {
         /* **Verbrauchte Zauberplätze je Grad** (M2), der erste ist der 1.
            Grad. Wie viele es gibt, steht am Statblock (`spellSlots`): das
            ist die Festlegung, das hier der Stand — wie `hp` an beiden. */
-        slotsUsed: { type: 'array', title: 'Spell slots used', items: { type: 'number' } },
+        slotsUsed: { type: 'array', title: 'Spell slots used', items: { type: 'number' }, glossary: 'Spell slot' },
+        /* **Woran sie sich konzentriert** (T-247, REQ-067): ein Zauber, nicht
+           ein Häkchen — die Statuszeile nennt ihn, und „Failed" bei der
+           Probe nach Schaden leert das Feld. Höchstens einer (PHB). */
+        concentration: {
+          type: 'string', format: 'link', title: 'Concentrating on', glossary: 'Concentration',
+          target: { interfaces: ['Spell'] },
+        },
+        /* Wie lange noch: „9 min", „1 h", „until you attack". Ein Wort
+           je Zustand oder `concentration`, freier Text — eine Dauer am
+           Tisch wird gesagt, nicht gerechnet; die Initiative zählt Runden
+           an ihrer eigenen Kante (`participates`, REQ-115). */
+        durations: { type: 'object', title: 'Durations' },
+        /* Versteckt ist kein Zustand des Regelwerks, sondern ein Stand. */
+        hidden: { type: 'boolean', title: 'Hidden' },
+        /* **Was in diesem Zug verbraucht ist** (`action`, `bonus`,
+           `reaction`; T-247): an der Figur und nicht in der Maske, damit
+           Telefon und Laptop dasselbe sehen. „New turn" leert es. */
+        turnUsed: { type: 'array', title: 'Used this turn', items: { type: 'string' }, enum: ['action', 'bonus', 'reaction'] },
       },
     },
   },
@@ -1719,6 +2502,7 @@ export const fieldGroups = {
           title: 'Saving throws',
           items: { type: 'string' },
           enumRef: 'Ability',
+          glossary: 'Saving throw',
         },
       },
     },
@@ -1735,8 +2519,19 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        trade: { type: 'string', suggest: true, title: 'Trade' },
-        tool: { type: 'string', suggest: true, title: 'Tool needed' },
+        /* **Der Beruf ist einer der `Trade`-Artikel**, gespeichert beim
+           Namen (T-196) — wie das Werkzeug. Die Art schlägt vor, sie hält
+           nicht (`enumHolds`): ein Rezept aus einem Regelwerk darf einen
+           Beruf nennen, den hier noch niemand angelegt hat. Ein Beruf
+           findet seine Rezepte auch über seine Aliasse. */
+        trade: { type: 'string', suggest: true, title: 'Trade', enumRef: 'Trade' },
+        /* **Das Werkzeug ist eines der Werkzeug-Artikel**, gespeichert
+           beim Namen (E-020, T-099) — wie die Werkzeugübung, mit der es
+           verglichen wird: wer am Rezept arbeitet, braucht Übung in genau
+           diesem Werkzeug, und `Proficiencies.proficient` hält Namen
+           (F12). Eine Id hier und ein Name dort wären zwei Formen einer
+           Frage. */
+        tool: { type: 'string', title: 'Tool needed', enumRef: 'Item', enumWhere: TOOLS_ONLY },
         /* Dieselbe Aufzählungszeile wie an der Fertigkeit. `titles` gibt
            ihr hier den Namen „Check", ohne dass es die Liste zweimal
            gäbe — eine Beschriftung ist kein zweites Feld. */
@@ -1751,15 +2546,241 @@ export const fieldGroups = {
         // Eine Zahl neben dem Text: „2 Stunden“ liest sich schön und rechnet
         // nicht. Ein Gang unter einem Tag ist eine Sitzung (REQ-184).
         days: { type: 'number', title: 'Days of work', default: 1 },
+        /* **Wie viele gelungene Proben die Arbeit braucht** (T-122): manche
+           Regelwerke (Kibbles’ Compendium) zählen Fortschritt in Proben je
+           Zeitabschnitt statt in Tagen — zwei Stunden, eine Probe. Ohne
+           Angabe gilt eine Probe am Ende, wie bisher. */
+        checks: { type: 'number', title: 'Crafting checks', min: 1 },
         yieldCount: { type: 'number', title: 'Yield', default: 1 },
-        /* Was beim Misslingen passiert, gehört ins Rezept: sonst entscheidet
-           es jedes Mal die Laune am Tisch, und das merkt sich niemand. */
-        onFailure: {
-          type: 'string',
-          title: 'On a failure',
-          enum: ['materialsLost', 'halfLost', 'nothingLost'],
-          default: 'halfLost',
+        /* **Was die Quelle beim Misslingen vorgibt** — als Text, und es
+           gilt nicht (T-165): was ein Misserfolg kostet, ist eine Regel
+           des Tisches und steht an der Kampagne (`Campaign.craftFailure`).
+           Bis T-165 war es eine Auswahl, die über die Kampagnenregel
+           `recipe` galt; zwei Stellen für eine Regel hiessen, dass am Tisch
+           niemand wusste, welche zählt. */
+        onFailure: { type: 'string', title: 'Source: on a failure' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Beruf** (T-196): Schmieden, Alchemie, Verzauberung. Er ist eine
+   * Regel mit eigenem Text (die Beschreibung aus dem Regelwerk), und er
+   * sagt, **mit welchen Werkzeugen** man ihn ausübt — gespeichert beim
+   * Namen wie `Recipe.tool` und die Werkzeugübung, mit der beides
+   * verglichen wird. Seine Rezepte nennen ihn (`Recipe.trade`); eine Liste
+   * der Rezepte am Beruf wäre die zweite Stelle, die beim nächsten Rezept
+   * veraltet. Ein Werkzeug zeigt so, was man damit fertigt: die Rezepte,
+   * die es selbst nennen, und die seiner Berufe.
+   */
+  TradeInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        tools: {
+          type: 'array',
+          title: 'Tools',
+          items: { type: 'string' },
+          enumRef: 'Item',
+          enumWhere: TOOLS_ONLY,
+          description: 'The tools this trade is practised with. A tool lists the recipes of its trades.',
         },
+      },
+    },
+  },
+
+  /**
+   * **Ein Material nach Eigenschaft** (T-197): „ein Reagenz, mindestens
+   * ungewöhnlich" statt eines festen Gegenstands. Ein Rezept nennt die
+   * Gruppe über dieselbe `needs`-Kante wie einen Gegenstand; welche Stücke
+   * passen, rechnet `materialFit` aus den Feldern des Stücks
+   * (`Material.materialType`, `Item.rarity`, Marken, Name). Eine Liste der
+   * Mitglieder gäbe es nur, wenn jemand sie nachführt — die Eigenschaften
+   * stehen am Stück ohnehin. Was leer ist, schränkt nicht ein.
+   */
+  CollectionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        types: {
+          type: 'array',
+          title: 'Of the types',
+          items: { type: 'string' },
+          description: 'Every visible article of these types and their subtypes belongs to the collection, if the other conditions hold too. Empty with no other condition: only what is added by hand.',
+        },
+        tags: {
+          type: 'array',
+          title: 'Tagged',
+          items: { type: 'string' },
+          description: 'Only articles with all of these tags.',
+        },
+        fields: {
+          type: 'array',
+          title: 'Field conditions',
+          items: { type: 'string' },
+          description: 'Type.field:value|value or Type.field:1..3, as in the compendium filter — e.g. Weapon.category:simple melee.',
+        },
+      },
+    },
+  },
+  MaterialGroupInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        materialTypes: {
+          type: 'array',
+          title: 'Material types',
+          items: { type: 'string' },
+          description: 'Any of these material types fits (Material › Material type), e.g. reagent. Empty: any.',
+        },
+        rarityMin: { type: 'string', title: 'Rarity at least', enumRef: 'Item.rarity', description: 'The least rarity a piece must have.' },
+        rarityMax: { type: 'string', title: 'Rarity at most', enumRef: 'Item.rarity', description: 'The highest rarity a piece may have.' },
+        tags: {
+          type: 'array',
+          title: 'Tagged',
+          items: { type: 'string' },
+          description: 'A piece must carry one of these tags. Empty: no tag needed.',
+        },
+        items: {
+          type: 'array',
+          title: 'Or one of these items',
+          items: { type: 'string' },
+          enumRef: 'Item',
+          description: 'Items that always fit, by name — next to whatever the properties above admit.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Eine Ersatzregel** (T-197): welche Materialien für welche einspringen
+   * dürfen — eine Zusatzregel eines Regelwerks („Pflanzen statt
+   * Reagenzien") oder des Tisches. Sie gilt, wo die Kampagne sie nennt
+   * (`allowsSubstitution`, Seite „Rules & options"); sonst zählt nur, was
+   * das Rezept nennt. Der Text der Regel steht in der Beschreibung, die
+   * Felder sagen, was die Rechnung prüft (`materialFit`).
+   */
+  SubstitutionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        replaces: {
+          type: 'array',
+          title: 'Stands in for',
+          items: { type: 'string' },
+          description: 'The material types this rule replaces (Material › Material type), e.g. reagent.',
+        },
+        with: {
+          type: 'array',
+          title: 'Material types that may stand in',
+          items: { type: 'string' },
+          description: 'Pieces of these material types may be used instead, e.g. plant.',
+        },
+        withTags: {
+          type: 'array',
+          title: 'Or items tagged',
+          items: { type: 'string' },
+          description: 'Pieces with one of these tags may be used instead, too.',
+        },
+        rarity: {
+          type: 'string',
+          title: 'Rarity',
+          enum: ['same', 'atLeast', 'any'],
+          default: 'same',
+          description: 'same: the substitute has the rarity the recipe asks for; atLeast: that or rarer; any: rarity does not matter.',
+        },
+        ratio: { type: 'number', title: 'Pieces per material', min: 1, default: 1, description: 'How many substitutes replace one of the original.' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Glossareintrag** (T-242): was ein Begriff heisst, wie er am Tisch
+   * wirkt, ein Beispiel und wie er in anderen Sprachen heisst. Die
+   * Definition ist `Description.description` (an der Art „Definition"
+   * genannt), Aliasse stehen in `Identity` — beides gibt es schon, und eine
+   * zweite Stelle dafür wäre die, die beim Umbenennen nicht mitkommt.
+   *
+   * Die Sorte ist eine Liste am Feld: nur dieses Feld braucht sie. Sie ist
+   * der Filter im Handbuch und sagt nichts über die Regel — was ein
+   * Zustand bewirkt, steht am Zustand (`explains` zeigt hin).
+   */
+  GlossaryTermInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        sort: {
+          type: 'string',
+          title: 'Sort',
+          enum: ['app', 'rule', 'condition', 'property', 'action', 'other'],
+          default: 'rule',
+          description:
+            'What kind of term this is: app (a word of Atlas Mentis itself), rule, condition, property (of a weapon or item), action (a kind of action), other. The handbook filters by it.',
+        },
+        effect: {
+          type: 'string',
+          format: 'long',
+          title: 'How it affects play',
+          description: 'What changes at the table when this applies — in a sentence or two.',
+        },
+        example: {
+          type: 'string',
+          format: 'long',
+          many: true,
+          title: 'Examples',
+          description: 'A short situation that shows the term at work.',
+        },
+        translations: {
+          type: 'array',
+          many: true,
+          title: 'Translations',
+          description: 'The term in other languages: the word, and a definition if it differs.',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'lang', 'term'],
+            properties: {
+              id: { type: 'string', title: 'Id' },
+              lang: { type: 'string', title: 'Language', description: 'A language code such as de or fr.' },
+              term: { type: 'string', title: 'Term' },
+              definition: { type: 'string', format: 'long', title: 'Definition' },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  /**
+   * **Ein Fertigungsauftrag** (T-128): was am Auftrag selbst steht und nicht
+   * am Rezept, dessen Instanz er ist. Fortschritt in der Einheit des Rezepts
+   * (gelungene Proben oder Arbeitstage, `orderNeed`), der Ausgang und die
+   * Proben mit ihrem Ergebnis. Geschrieben wird nur über die Routen des
+   * Handwerks — ein Ausgang, den jemand in der Maske tippt, hätte kein
+   * Material abgerechnet.
+   */
+  CraftingOrderInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Gearbeitete Tage (Rezepte in Tagen). Der Fortschritt in Proben
+           wird aus `checks` gerechnet und nicht gespeichert (T-165, D8). */
+        progress: { type: 'number', title: 'Days worked', min: 0, default: 0, readOnly: true },
+        outcome: {
+          type: 'string',
+          title: 'Outcome',
+          enum: ['open', 'succeeded', 'failed', 'aborted'],
+          default: 'open',
+          readOnly: true,
+        },
+        started: { type: 'string', title: 'Started', readOnly: true },
+        /* **Die Proben als Kreise** (T-165): je Kreis `{ mark, by, at,
+           total?, nat?, dc?, pending? }` oder `null` (leer); `mark` ist
+           `success`, `failure`, `critSuccess` oder `critFailure`. Was sie
+           bewirken, rechnet `tallyChecks` beim Lesen; `pending` wartet auf
+           die Leitung (`Campaign.craftConfirm`). Löste `rolls` ab
+           (Migration 072). */
+        checks: { type: 'array', title: 'Checks', items: { type: 'object' }, readOnly: true },
       },
     },
   },
@@ -1777,6 +2798,16 @@ export const fieldGroups = {
    * und das ist kein Rückfall: ein Rechteck zeigt auf nichts. Ein Token zeigt
    * auf einen Artikel, deshalb ist es eine Kante; eine Linie, die zwei
    * Kästen umfasst, ist Zeichnung und gehört dem Board.
+   *
+   * Ein Anker ist `{ id, name, x, y, zoom? }`; mit `w` und `h` ist er ein
+   * **Bereich** (T-073), den die Seite als Reiter zeigt und einklappt.
+   *
+   * Seit T-339 liegen in `shapes` auch Text (Markdown, mit `[[Verweisen]]`
+   * und `{VAR}`, nie eingesetzt gespeichert) und Bilder neben den
+   * Zeichnungen (`shapesOf`). `width`/`height` sind keine Grenze mehr,
+   * sondern die Mindestgrösse: die Leinwand wächst beim Lesen mit dem
+   * Inhalt (`boardExtent`, D8). Der Hintergrund ist ein Bild, eine Farbe
+   * oder eine Karte (`backgroundMap`), über der die Kacheln liegen.
    */
   BoardInfo: {
     schema: {
@@ -1786,6 +2817,21 @@ export const fieldGroups = {
         height: { type: 'number', title: 'Height in px', default: 1500 },
         snap: { type: 'number', title: 'Snap to px', default: 10 },
         background: { type: 'string', format: 'asset', title: 'Background' },
+        backgroundColor: { type: 'string', title: 'Background colour', description: 'A colour under everything on the board, e.g. #2b2b2b. Empty: the page paper.' },
+        backgroundFit: {
+          type: 'string',
+          title: 'Background image',
+          enum: ['stretch', 'tile', 'fixed'],
+          default: 'stretch',
+          description: 'How the background image lies: stretched over the canvas, tiled, or once at the top left at its own size.',
+        },
+        backgroundMap: {
+          type: 'string',
+          format: 'link',
+          title: 'Background map',
+          target: { interfaces: ['Map'] },
+          description: 'A map that fills the canvas under the cards — players see it as in play, only what is uncovered.',
+        },
         rules: { type: 'object', title: 'View per interface' },
         shapes: { type: 'array', title: 'Shapes', items: { type: 'object' } },
         anchors: { type: 'array', title: 'Anchors', items: { type: 'object' } },
@@ -1807,6 +2853,13 @@ export const fieldGroups = {
         /* Die Schwierigkeit stand hier als Aufzählung von fünf Wörtern und
            an der Szene als freier Text. Sie ist jetzt eine Stufe von 1 bis
            20 und steht einmal, im Typ `Difficulty`. */
+        /* Was für eine Begegnung (T-178): mehrere Werte, denn ein
+           Gespräch kippt in einen Kampf. Leer heisst „nicht gesagt“, nicht
+           „Kampf“ — die Migration 077 setzt `combat` nur, wo schon jemand
+           mitkämpft. */
+        /* Frei mit Vorschlag (T-423): die Liste `EncounterKind` schlägt vor,
+           ein eigenes Wort (Hindernis, Rast …) darf stehen. */
+        kind: { type: 'array', title: 'Kind', items: { type: 'string' }, enumRef: 'EncounterKind', suggest: true },
         xpBudget: { type: 'number', title: 'XP budget' },
         /* Wo der Kampf steht, während er läuft — die Initiative schreibt
            es. Es hiess `state`, wie drei weitere Felder in drei weiteren
@@ -1821,6 +2874,24 @@ export const fieldGroups = {
         round: { type: 'number', title: 'Round', default: 0 },
         turn: { type: 'number', title: 'Turn', default: 0 },
         surprise: { type: 'string', title: 'Surprise' },
+        /* Felder je Art (T-184): sie stehen an der Begegnung selbst und
+           nicht an einer Art je Sorte — ein Gespräch kippt in einen Kampf,
+           und ein Rätsel kann eine Falle sein. Die Anordnung zeigt sie nur
+           bei ihrer Art (`when`); befüllt stehen sie sonst unten in der
+           Tabelle. Wer beteiligt ist (Kreaturen, eine Falle als `Hazard`),
+           sagt die Kante `features`, die Haltung `regards` an der Kreatur;
+           was zu holen ist, `loot` und `tableFor`. */
+        /* Rätsel: die Lösung gehört der Leitung (`gmFields`), die
+           Hinweise ebenso — je Eintrag freigebbar über eine Information
+           (`Encounter.hint#id`), einer nach dem anderen. */
+        solution: { type: 'string', format: 'long', title: 'Solution', description: 'How the puzzle is solved. Only the GM sees it.' },
+        hint: { type: 'string', format: 'long', many: true, title: 'Hints', description: 'One clue per entry; each can be revealed on its own through an information.' },
+        /* Gespräch: worauf es hinausläuft — was die Gegenseite will oder
+           was die Gruppe erreichen kann. */
+        goal: { type: 'string', format: 'long', title: 'Goal', description: 'What the other side wants, or what the party can achieve.' },
+        /* Ressource (und wer will, jede andere Art): die Probe, die über
+           den Ertrag entscheidet — „DC 13 Survival, 1d4 rations". */
+        check: { type: 'string', title: 'Check', description: 'The check that decides the yield, e.g. DC 13 Survival.' },
       },
     },
   },
@@ -1900,6 +2971,18 @@ export const fieldGroups = {
           type: 'string', format: 'link', title: 'Map on the table',
           target: { interfaces: ['Map'] },
         },
+        /* **Zwischen Karten wechseln** (T-308): ob Spielende in Play in eine
+           Unterkarte hinein- und zur Karte darüber hinauszoomen dürfen —
+           und dann nur in Karten, die die Leitung in dieser Sitzung
+           freigegeben hat. Vorgabe aus: Spielende bleiben auf der Karte
+           auf dem Tisch, Rahmen sind für sie Bild. Es steht an der
+           Sitzung, weil es läuft, und nicht an der Karte. */
+        mapNavigation: {
+          type: 'boolean',
+          title: 'Players may change maps',
+          default: false,
+          description: 'In play, players may zoom into a sub-map or out to the map above — only into maps released in this session. Off: players stay on the map on the table.',
+        },
         nowPlaying: { type: 'string', title: 'Now playing' },
         /* **Der Zug auf der Karte** (REQ-206, D56): je Token das Tempo
            dieses Zuges, was davon verbraucht ist und die Parität der
@@ -1945,7 +3028,9 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic'],
+          /* `deck` (T-087): ein Kartendeck — eine Karte ziehen heisst auf
+             ihm würfeln, je Karte ein `entry` mit ihrer Anzahl als Gewicht. */
+          enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic', 'deck'],
           default: 'generic',
         },
         die: { type: 'string', suggest: true, title: 'Die', default: '1d100' },
@@ -2055,7 +3140,470 @@ export const fieldGroups = {
    *
    * `order` ist die Spezifität: höher schlägt niedriger, wenn zwei Ebenen
    * dasselbe anfassen. Das Grundregelwerk steht unten, die Kampagne oben.
+   *
+   * `book` ist ein Buch aus 5e.tools (T-081, E-017): je Buch eine Ebene,
+   * damit eine Kampagne die Bücher aufschaltet, die sie nutzt. Wie jedes
+   * `kind` beschreibt es nur — die Kampagnenseite gruppiert danach, die
+   * Ausfuhr lässt es als Regelwerk weg; wer was sieht, sagt es nicht.
+   *
+   * `adventure` ist ein Abenteuer aus 5e.tools (T-082, REQ-240): seine
+   * Kapitel, Abschnitte, Begegnungen und Karten, dazu die NSC, die es
+   * mitbringt. Die Kampagne schaltet es auf wie ein Buch und passt es über
+   * `overrides` in ihrer eigenen Ebene an (E-018) — das Original bleibt.
    */
+  /**
+   * **Wer die Vergleichsebenen einer Kampagne sieht** (T-092, E-021 d).
+   * Vergleichsebenen sind nicht im Spiel; ihre Fassungen stehen auf Wunsch
+   * an den Feldern. Vorgabe: nur die Leitung — ein Spieler, der die
+   * 2024-Fassung eines Zaubers sieht, den die Runde nach 2014 spielt, sieht
+   * etwas, das am Tisch nicht gilt. Die Leitung kann es freigeben.
+   */
+  CampaignInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        compareFor: {
+          type: 'string',
+          title: 'Compare layers visible to',
+          enum: ['gm', 'players'],
+          default: 'gm',
+        },
+        /* **Wo Spielende landen** (T-342): auf dem Kampagnenboard (Vorgabe)
+           oder im Kompendium. Die Leitung behält ihren Start; gelesen über
+           `playerStartOf`. */
+        playerStart: {
+          type: 'string',
+          title: 'Players start on',
+          description: 'Where players of this campaign land after signing in: the campaign board or the compendium.',
+          enum: ['board', 'compendium'],
+          default: 'board',
+        },
+        /* **Die Sprachen dieser Kampagne** (REQ-251, T-095): welche
+           Sprachen am Tisch sinnvoll oder möglich sind. Sprachwahlen im
+           Assistenten bieten nur diese an; leer heisst jede. Namen von
+           `Language`-Artikeln, wie eine Übung sie hält — die Art schlägt
+           vor, die Liste hält nicht (M6). */
+        languages: { type: 'array', items: { type: 'string' }, enumRef: ['Language'], title: 'Languages in play' },
+        /* **Talente am Tisch** (T-107): nein nimmt das Talent als Ausweg
+           einer Wahl weg („Steigerung oder Talent" wird „Steigerung").
+           Ohne Angabe ja. */
+        feats: { type: 'boolean', title: 'Feats allowed', default: true },
+        /* **Trefferpunkte je Stufe** (T-194): würfeln, den Durchschnitt
+           nehmen, oder je Stufe selbst wählen (5e). Ohne Angabe wählen.
+           Gelesen über `hitPointRuleOf`; wandert mit T-132 in ein Modul. */
+        hitPoints: {
+          type: 'string',
+          title: 'Hit points per level',
+          description: 'How a level beyond the first adds hit points in the character builder: roll the hit die, take its average, or either.',
+          enum: ['either', 'average', 'roll'],
+          default: 'either',
+        },
+        /* **Wie diese Kampagne Inventar zählt** (T-127): im Raster nach
+           Basils Blatt, nach Gewicht mit Tragestufen, oder nach Slots.
+           Gelesen über `inventoryRulesOf`; wandert mit T-132 in ein Modul. */
+        inventory: {
+          type: 'string',
+          title: 'Inventory rules',
+          enum: ['grid', 'weight', 'slots'],
+          default: 'grid',
+        },
+        /* **Wie Gegenstände mit Enhancements kosten** (T-300, E-107):
+           Grundpreis und Aufpreise zusammen, nur der Grundpreis, oder gar
+           nicht gerechnet (dann setzt die Leitung ihn von Hand). Gelesen
+           über `itemPricingOf`. */
+        itemPricing: {
+          type: 'string',
+          title: 'Item prices',
+          description: 'How the price of a piece with enhancements (+1, silvered …) is worked out: base price plus surcharges, base price only, or not calculated.',
+          enum: ['combined', 'base', 'none'],
+          default: 'combined',
+        },
+        /* **Wer Enhancements anhängt** (T-300 Punkt 4): vorbereitet für
+           das Handwerk; heute hängt nur die Leitung an. Gelesen über
+           `enhancementsByOf`. */
+        enhancementsBy: {
+          type: 'string',
+          title: 'Enhancements added by',
+          description: 'Who may put an enhancement on a piece. Players only once crafting offers it; until then, the GM.',
+          enum: ['gm', 'players'],
+          default: 'gm',
+        },
+        /* **Wie lange Unverstautes liegen darf** (T-140): beliebig lange,
+           bis die Sitzung endet, oder bis der Tisch weiterzieht (Szene,
+           Kampf oder Karte der Sitzung wechseln). Danach bleibt es als
+           `leftBehind` an der Sitzung. Gelesen über `stowingRuleOf`;
+           wandert mit T-132 in ein Modul. */
+        stowing: {
+          type: 'string',
+          title: 'Unstowed items',
+          enum: ['anytime', 'bySessionEnd', 'immediately'],
+          default: 'anytime',
+        },
+        /* **Die Regeln des Handwerks** (T-128, T-165): was eine misslungene
+           Probe tut, was eine natürliche 20 und 1, und ob eine Probe der
+           Spielenden erst mit der Leitung gilt. Gelesen über
+           `craftRulesOf`; wandert mit T-132 in ein Modul. **Nur hier** —
+           das Rezept nennt die Vorgabe seiner Quelle als Text, und sie
+           gilt nicht; die Auswahl `recipe` gibt es seit T-165 nicht mehr. */
+        craftFailure: {
+          type: 'string',
+          title: 'Crafting: on a failed check',
+          enum: ['noProgress', 'progressLost', 'materialsLost', 'halfLost', 'nothingLost', 'custom'],
+          default: 'halfLost',
+        },
+        craftCritSuccess: {
+          type: 'string',
+          title: 'Crafting: on a natural 20',
+          enum: ['asSuccess', 'double'],
+          default: 'asSuccess',
+        },
+        craftCritFailure: {
+          type: 'string',
+          title: 'Crafting: on a natural 1',
+          enum: ['asFailure', 'progressLost', 'materialsLost'],
+          default: 'asFailure',
+        },
+        craftConfirm: {
+          type: 'string',
+          title: 'Crafting: player checks count',
+          enum: ['gm', 'player'],
+          default: 'gm',
+        },
+        /* **Wie Blaupausen gelernt werden** (T-280, REQ-349): alle (Kibbles),
+           nur Beigebrachtes, oder bis zu einer Seltenheit je Werkzeugübung.
+           Gelesen über `craftRulesOf`, gerechnet in `blueprintKnown`. */
+        craftLearning: {
+          type: 'string',
+          title: 'Crafting: known blueprints',
+          enum: ['all', 'taught', 'rarity'],
+          default: 'taught',
+        },
+        craftLearnRarity: {
+          type: 'string',
+          title: 'Crafting: blueprints up to',
+          enum: ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary'],
+          default: 'common',
+        },
+        /* **Wer die Würfe der Spielenden sieht** (T-172): der Tisch oder
+           nur die Leitung (dann ist jeder Wurf einer Spielerin verdeckt,
+           wie ein verdeckter der Leitung). Gilt ab dem Wurf — ein späteres
+           Umstellen deckt nichts auf. */
+        playerRolls: {
+          type: 'string',
+          title: 'Player rolls visible to',
+          enum: ['table', 'gm'],
+          default: 'table',
+        },
+        /* **Regeln am Tisch** (REQ-357): laufen die Regelgraphen im
+           Zugplan? An führt der Graph — auch die Gelegenheitsattacke kommt
+           dann aus ihrer Regel. Gelesen über `ruleGraphsOn`. */
+        ruleGraphs: {
+          type: 'string',
+          title: 'Rules from graphs',
+          enum: ['off', 'on'],
+          default: 'off',
+        },
+        /* **Der Initiative-Tracker** (T-022): ein eigenes System des
+           Kampfes. `combat` schaltet ihn ab; die übrigen sagen, was
+           Spielende von der Reihe sehen (gesiebt am Server,
+           `redactParticipants`), welche Spalten stehen und welche Knöpfe
+           die Leitung je Zeile hat. Gelesen über `initiativeRulesOf`.
+           Seit T-334 ist `combat` das Initiative-System (E-100): `on` heisst
+           „D&D 5e (standard)", weitere Systeme kommen als Werte dazu (T-336). */
+        combat: { type: 'string', title: 'Initiative', enum: ['on', 'off'], default: 'on' },
+        initNames: { type: 'string', title: 'Unidentified foes shown as', enum: ['cover', 'real'], default: 'cover' },
+        initHealth: { type: 'string', title: 'Foes’ health shown to players', enum: ['none', 'coarse', 'exact'], default: 'coarse' },
+        initEffects: { type: 'string', title: 'Effects shown to players', enum: ['all', 'party', 'none'], default: 'all' },
+        initActions: { type: 'string', title: 'Foes’ actions shown to players', enum: ['hidden', 'shown'], default: 'hidden' },
+        initColumns: {
+          type: 'array',
+          title: 'Tracker columns',
+          description: 'Which columns the initiative tracker shows, for the GM and the players alike.',
+          items: { type: 'string' },
+          enum: ['init', 'ac', 'hp', 'effects', 'actions'],
+        },
+        initQuickActions: {
+          type: 'array',
+          title: 'Tracker quick actions',
+          description: 'Which buttons the GM has on each row of the initiative tracker.',
+          items: { type: 'string' },
+          enum: ['damage', 'heal', 'effect', 'delay', 'reroll', 'remove'],
+        },
+        /* **Der Zugplan** (T-325): was Spielende im Kampf über „Plan turn"
+           zurechtlegen — aus, nur Bewegung, Bewegung und Aktionen, oder voll
+           mit Reaktionen. Gelesen über `turnPlannerOf`. */
+        turnPlanner: {
+          type: 'string',
+          title: 'Turn planner',
+          description: 'What players plan on the map during an encounter: off, movement only, movement and actions, or full with reactions.',
+          enum: ['off', 'move', 'actions', 'full'],
+          default: 'full',
+        },
+        /* **Die Karte am Tisch** (T-204). `fog`: ein Nebel für die ganze
+           Gruppe, oder je Figur — dann sieht jede, was sie selbst (oder
+           ihre Gruppe) aufgedeckt hat, und die Leitung die Vereinigung.
+           `moves`: ziehen Spielende ausserhalb eines Kampfes frei, oder
+           ist ihr Zug ein Vorschlag, den die Leitung bestätigt (im Kampf
+           gilt der Zugplan, T-198). `revealOnMove`: deckt ein Zug den Weg
+           auf; die Karte darf es überschreiben (`Map.revealOnMove`).
+           Gelesen über `mapRulesOf`; wandert mit T-132 in ein Modul. */
+        fog: {
+          type: 'string',
+          title: 'Fog of war',
+          description: 'Whether the whole party shares what is revealed, or each character sees only what it revealed itself.',
+          enum: ['party', 'player'],
+          default: 'party',
+        },
+        moves: {
+          type: 'string',
+          title: 'Player moves',
+          description: 'Outside an encounter: players move their tokens freely, or a move waits for the GM to confirm it.',
+          enum: ['free', 'confirm'],
+          default: 'free',
+        },
+        /* **Wer Tokens zieht** (T-290, E-040): ausser der Leitung niemand,
+           die eigenen Figuren, die der Gruppe, dazu die Verbündeten
+           (`participates.props.ally`) oder jedes Token. Ob ein Zug sofort
+           gilt, sagt weiter `moves`. Gelesen über `mapRulesOf`/`mayMoveToken`. */
+        tokenMove: {
+          type: 'string',
+          title: 'Who moves tokens',
+          description: 'Which tokens players may move on a map: none, their own characters, the party, the party and its allies, or every token. The GM always moves everything.',
+          enum: ['none', 'own', 'party', 'allies', 'all'],
+          default: 'own',
+        },
+        revealOnMove: {
+          type: 'boolean',
+          title: 'Moves reveal the way',
+          description: 'On a fogged map, a move uncovers the way the token went. A map may say otherwise.',
+          default: false,
+        },
+        /* **Türen** (T-118): öffnen Spielende eine Tür in Reichweite ihrer
+           Figur selbst, oder nur die Leitung. Verschlossene bleiben zu. */
+        doors: {
+          type: 'string',
+          title: 'Doors',
+          description: 'Who opens and closes doors on the map: players at a door next to their character, or only the GM. Locked doors stay shut either way.',
+          enum: ['players', 'gm'],
+          default: 'players',
+        },
+        /* **Platz eines Tokens nach Grösse** (T-317): wie viele Felder ein
+           Token einnimmt, wenn es selbst nichts sagt. */
+        tokenSizes: {
+          type: 'string',
+          title: 'Token sizes',
+          description: 'How many squares a token covers by the size of its statblock, unless the token says otherwise.',
+          enum: ['rules', 'tinyHalf'],
+          default: 'rules',
+        },
+        /* **Übergänge** (T-326): wer Tokens durch Treppen und Portale
+           schickt, wann im Kampf, was es kostet und ob die Leitung
+           bestätigt. Vorgabe für jeden Übergang, der es nicht selbst sagt
+           (`props.rules` am Marker); gelesen über `passageRulesOf`. */
+        passageTrigger: {
+          type: 'string',
+          title: 'Passages: who sends tokens through',
+          description: 'Who moves tokens through stairs, ladders and portals: only the GM, players with their own token in the passage, or both.',
+          enum: ['gm', 'players', 'both'],
+          default: 'both',
+        },
+        passageWhen: {
+          type: 'string',
+          title: 'Passages: when in an encounter',
+          description: 'During an encounter, when a player may take a passage: any time, only on their own turn, or only in the last turn of the round.',
+          enum: ['any', 'turn', 'roundEnd'],
+          default: 'any',
+        },
+        passageMove: {
+          type: 'string',
+          title: 'Passages: movement it costs',
+          description: 'How much movement going through costs during an encounter: nothing, one square, half the speed, or all of it.',
+          enum: ['none', 'square', 'half', 'all'],
+          default: 'none',
+        },
+        passageAction: {
+          type: 'string',
+          title: 'Passages: action it costs',
+          description: 'Whether going through costs an action or a bonus action during an encounter.',
+          enum: ['none', 'action', 'bonus'],
+          default: 'none',
+        },
+        passageConfirm: {
+          type: 'string',
+          title: 'Passages: GM confirms',
+          description: 'Whether the GM confirms a player going through: like any move (Player moves), always, or never.',
+          enum: ['moves', 'always', 'never'],
+          default: 'moves',
+        },
+        /* **Kartenverknüpfungen** (T-327, `mapLinkDefaultsOf`): wie eine
+           verlinkte Unterkarte auf der Karte darüber steht — für die
+           Leitung und die Spielenden getrennt —, und ob die Unterkarte die
+           Karte darüber blass als Rand zeigt. Eine Verknüpfung darf es
+           selbst sagen (Kante `insideMap`). */
+        mapLinkShow: {
+          type: 'string',
+          title: 'Sub-map links: shown to the GM',
+          description: 'How a linked sub-map appears on the map above for the GM: a frame you click to jump in, only the frame, an icon, or nothing (zoom in to enter).',
+          enum: ['jump', 'frame', 'icon', 'hidden'],
+          default: 'jump',
+        },
+        mapLinkShowPlayers: {
+          type: 'string',
+          title: 'Sub-map links: shown to players',
+          description: 'How a linked sub-map appears on the map above for players: a frame you click to jump in, only the frame, an icon, or nothing (zoom in to enter).',
+          enum: ['jump', 'frame', 'icon', 'hidden'],
+          default: 'jump',
+        },
+        mapLinkOuter: {
+          type: 'string',
+          title: 'Sub-map links: map above as border',
+          description: 'Whether a sub-map shows the map above, faded, around its own image — as far as the map above is released and revealed.',
+          enum: ['faded', 'none'],
+          default: 'none',
+        },
+        /* **Werkzeuge je Kartentyp** (T-320): je `Map.kind` die Gruppen
+           der Werkzeugleiste. Fehlt eine Art, gilt die Vorgabe
+           (`defaultMapTools`); gelesen über `mapToolsOf`. */
+        mapTools: {
+          type: 'object',
+          title: 'Map tools',
+          description: 'Which tool groups the map shows for each map kind. A kind left out keeps the default: walls, fog, light, grid, tokens, assets and markers on battle maps; sub-map links, markers and assets on the others.',
+        },
+        /* **Markeransicht je Kartentyp** (T-214): `{ world: 'symbol' }`;
+           gelesen über `kindMarkerViewOf`. Fehlt eine Art, gilt die
+           Vorgabe der Artikelart. */
+        markerViews: {
+          type: 'object',
+          title: 'Marker view by map kind',
+          description: 'How markers stand on maps of each kind: symbol, name, image or quick card. A kind left out follows the article type; a map or a single marker can say otherwise.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Eine Ebene beschreibt sich selbst** (T-088, REQ-245): voller Titel
+   * ist ihr Name, dazu das Kürzel, unter dem ihre Artikel ihre Quelle
+   * nennen („XGE"), Erscheinen, Autor und Regelstand (`version`); bei
+   * einem Abenteuer die Stufen und der Handlungsstrang. Der Importer
+   * füllt sie, die Leitung darf sie ändern. Was sie enthält, wird
+   * gerechnet und nicht gespeichert (D8).
+   *
+   * `kind: 'group'` (E-022 b): die Ebene enthält andere Ebenen, die mit
+   * `partOf` an ihr hängen; schaltet eine Kampagne sie auf, sind alle
+   * Mitglieder im Spiel.
+   *
+   * `groupBy` an einer Gruppe (T-094): `publisher` heisst, sie ordnet nach
+   * Herausgeber (Official, Partnered …), sonst nach Kategorie. Der
+   * Herausgeber einer Ebene ist die Herausgeber-Gruppe, an der sie hängt,
+   * und wird gerechnet (`publisherOf`), nicht gespeichert.
+   */
+  /**
+   * **Ein Regelsystem ist eine Ebene** (E-166, E-078, E-100): Inventory,
+   * später Crafting, Travel … — der Bereich, in dem Regelmechaniken
+   * stecken. `sort` sagt, welcher Bereich der Regeloptionen (`RULE_SORTS`)
+   * es ist. Als Gruppe (`Layer.kind: 'group'`) bringt es aufgeschaltet
+   * seine Mechaniken mit; jede lässt sich einzeln ausnehmen und umsortieren
+   * (E-091).
+   */
+  RuleSystemInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        sort: {
+          type: 'string',
+          title: 'Rule area',
+          enum: ['inventory', 'partyInventory', 'items', 'crafting', 'abilities', 'equipment', 'character', 'magic', 'creatures', 'travel', 'units', 'map', 'combat', 'table'],
+          description: 'Which area of Rules & options this rule system covers, such as inventory. A rule system is a module; its rule mechanics are the systems a campaign picks from.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Eine Regelmechanik ist eine Ebene** (E-166): Grid, Weight, Slots,
+   * Default shapes — eine Option eines Regelsystems (`partOf`), die sagt,
+   * mit welchen anderen sie zusammen gilt (Kante `compatibleWith`), welche
+   * sie erweitert (`extendsMechanic`) und welche sie ausschliesst
+   * (`excludesMechanic`, E-100). Was gilt, rechnet `mechanicSelection`.
+   * `method` ist das Wort, das die Laufzeit ausführt; was am Tisch zählt,
+   * wählt vorerst `Campaign.inventory`.
+   */
+  RuleMechanicInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        method: {
+          type: 'string',
+          title: 'Mechanic',
+          enum: ['weight', 'slots', 'grid', 'shapes'],
+          description: 'What the app runs for this mechanic: weight, slots, the grid, or default shapes for items.',
+        },
+      },
+    },
+  },
+
+  /**
+   * **Vorgabeformen** (T-394, E-165): Gruppen und Werte je Gegenstand,
+   * beim Lesen aufgelöst (`defaultShapeOf`, D8). Gesetzt in der Übersicht
+   * Rules & options › Inventory › Shapes und am Element Shape — in der
+   * Feldtabelle stünden nur Listen von Schlüsseln (`editOnly`).
+   */
+  ShapeDefaults: {
+    schema: {
+      type: 'object',
+      properties: {
+        shapeGroups: {
+          type: 'array',
+          many: true,
+          editOnly: true,
+          facet: false,
+          title: 'Shape groups',
+          description: 'Groups of items that share a shape and stack size, unless an item says otherwise.',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'name'],
+            properties: {
+              id: { type: 'string', title: 'Key' },
+              name: { type: 'string', title: 'Name' },
+              section: { type: 'string', title: 'Section' },
+              rows: { type: 'array', format: 'grid', title: 'Shape', items: { type: 'string' } },
+              stackSize: { type: 'number', min: 1, title: 'Stack size' },
+              carryable: { type: 'boolean', title: 'Carried in the inventory', default: true },
+              ref: { type: 'string', format: 'link', title: 'Reference item', target: { interfaces: ['Item'] } },
+              rule: { type: 'string', title: 'Which items' },
+              note: { type: 'string', title: 'Note' },
+              rank: { type: 'number', title: 'Order' },
+              shapes: { type: 'array', title: 'Shapes by price', items: { type: 'object' } },
+              tiers: { type: 'array', title: 'Price tiers (gp)', items: { type: 'number' } },
+            },
+          },
+        },
+        shapeItems: {
+          type: 'array',
+          many: true,
+          editOnly: true,
+          facet: false,
+          title: 'Item shapes',
+          description: 'Per item: its group, its reference item, its own shape or stack size.',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              id: { type: 'string', format: 'link', title: 'Item', target: { interfaces: ['Item'] } },
+              group: { type: 'string', title: 'Group' },
+              ref: { type: 'string', format: 'link', title: 'Reference item', target: { interfaces: ['Item'] } },
+              rows: { type: 'array', format: 'grid', title: 'Shape', items: { type: 'string' } },
+              stackSize: { type: 'number', min: 1, title: 'Stack size' },
+            },
+          },
+        },
+      },
+    },
+  },
+
   LayerInfo: {
     schema: {
       type: 'object',
@@ -2063,11 +3611,31 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['system', 'expansion', 'world', 'pack', 'campaign', 'overrides'],
+          /* `player`: die Spielerebene eines Kontos in einer Kampagne (T-164) —
+             Beschreibung wie jedes Wort hier; wessen sie ist, steht am Server.
+             `test`: eine Ebene zum Ausprobieren, die man wieder leert (T-176). */
+          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'player', 'test', 'overrides', 'group'],
           default: 'pack',
         },
         order: { type: 'number', title: 'Specificity', default: 10 },
-        version: { type: 'string', title: 'Version' },
+        abbreviation: { type: 'string', title: 'Abbreviation' },
+        published: { type: 'string', title: 'Published' },
+        author: { type: 'string', title: 'Author' },
+        version: { type: 'string', title: 'Rules version' },
+        levels: { type: 'string', title: 'Levels' },
+        storyline: { type: 'string', title: 'Storyline', suggest: true },
+        groupBy: { type: 'string', title: 'Groups by', enum: ['category', 'publisher'] },
+        /* **Die Vorgabe der Ebene für ihre Artikel** (T-252, E-098) — nicht
+           zu verwechseln mit `Visibility.audience` der Ebene selbst (wer die
+           Ebene sieht). Gilt überall, wo die Kampagne nichts sagt; liegt
+           ein Artikel in mehreren Ebenen, gilt die engste Vorgabe. */
+        defaultAudience: {
+          type: 'string',
+          title: 'Articles visible to',
+          enumRef: 'Audience',
+          description: 'Who sees the articles of this layer, unless the campaign or the article says otherwise. Empty: everyone.',
+          facet: false,
+        },
       },
     },
   },

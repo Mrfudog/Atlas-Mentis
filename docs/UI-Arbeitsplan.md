@@ -1,5 +1,7 @@
 # UI-Runde: Arbeitsplan
 
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md) · Plan: welche Pakete stehen, sagt das Projektbrett.
+
 Was auf dem Design-Canvas (Runden 1–5, 12.10.2026) entschieden wurde und in
 welchen Paketen es in den Prototyp kommt. Die Anforderungen sind
 **REQ-204 bis REQ-223** in `VTT/Requirements.md`, die Entscheidungen der

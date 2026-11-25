@@ -1,24 +1,32 @@
 @if (klasse(); as k) {
-  <div class="buch">
-    <nav aria-label="Breadcrumb" class="brot">
-      <a routerLink="/rules">Rules</a>
-      <span aria-hidden="true">›</span>
-      <a routerLink="/classes">Classes</a>
-      <span aria-hidden="true">›</span>
-      <span>{{ name() }}</span>
-    </nav>
+  <div class="buch" [class.eingebettet]="eingebettet()">
+    <!-- Auf der Artikelseite (T-191) steht der Pfad schon darüber. -->
+    @if (!eingebettet()) {
+      <nav aria-label="Breadcrumb" class="brot">
+        <a routerLink="/rules">Rules</a>
+        <span aria-hidden="true">›</span>
+        <a routerLink="/classes">Classes</a>
+        <span aria-hidden="true">›</span>
+        <span>{{ name() }}</span>
+      </nav>
+    }
 
     <article class="blatt">
-      <div class="titelzeile">
-        <div>
-          <h1>{{ name() }}</h1>
-          @if (untertitel()) {
-            <p class="untertitel">{{ untertitel() }}</p>
-          }
+      <!-- Eingebettet steht der Name als Überschrift des Artikels darüber. -->
+      @if (!eingebettet()) {
+        <div class="titelzeile">
+          <div>
+            <h1>{{ name() }}</h1>
+            @if (untertitel()) {
+              <p class="untertitel">{{ untertitel() }}</p>
+            }
+          </div>
+          <a class="knopf" [routerLink]="['/artikel', k.id]">Article</a>
         </div>
-        <a class="knopf" [routerLink]="['/artikel', k.id]">Article</a>
-      </div>
-      <div class="linie" aria-hidden="true"></div>
+        <div class="linie" aria-hidden="true"></div>
+      } @else if (untertitel()) {
+        <p class="untertitel">{{ untertitel() }}</p>
+      }
 
       @if (eckdaten().length) {
         <dl class="eckdaten">
@@ -68,6 +76,7 @@
                 class="chip"
                 [class.an]="quellFilter().has(q.q)"
                 [attr.aria-pressed]="quellFilter().has(q.q)"
+                [title]="quellTitel(q.q)"
                 (click)="quelleUmschalten(q.q)"
               >
                 {{ q.q }} <span class="dim">{{ q.n }}</span>
@@ -89,7 +98,7 @@
                   nummer().get(u.e.id)! + 1
                 }}</span>
               }
-              {{ u.name }} <span class="quelle">{{ u.quelle }}</span>
+              {{ u.name }} <span class="quelle" [title]="quellTitel(u.quelle)">{{ u.quelle }}</span>
             </button>
           } @empty {
             <span class="dim">No subclass matches.</span>
@@ -147,7 +156,7 @@
                   <div class="spaltenkopf">
                     <span class="nr" aria-hidden="true">{{ i + 1 }}</span>
                     <a [routerLink]="['/artikel', x.u.e.id]">{{ x.u.name }}</a>
-                    <span class="quelle">{{ x.u.quelle }}</span>
+                    <span class="quelle"><nw-quelle [text]="x.u.quelle" /></span>
                   </div>
                   @for (f of x.merkmale; track f.feature.id) {
                     @for (n of f.names; track n.id) {

@@ -1,15 +1,20 @@
 import { Component, ViewEncapsulation, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { typeList } from '@nw/model';
+import { typeList, viewKeys } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { RegisterArbeit } from './arbeit';
 import { RegKante } from './kante';
+import { RegKantentabelle } from './kantentabelle';
 import { RegListe } from './liste';
 import { techName } from './regeln';
 import { RegTyp } from './typ';
+import { Ansichtsliste } from '../ansichten/liste';
+import { RegTokens } from './tokens';
+import { Ansichtsdesigner } from '../ansichten/designer';
+import { wahlAnsichten } from '../ansichten/uebersicht';
 
-type Reiter = 'types' | 'edges' | 'lists';
+type Reiter = 'types' | 'edges' | 'lists' | 'views' | 'tokens';
 
 /**
  * **Das Register** (W5): die Zeilen, aus denen alles besteht — Typen,
@@ -29,7 +34,7 @@ type Reiter = 'types' | 'edges' | 'lists';
  */
 @Component({
   selector: 'nw-register',
-  imports: [RouterLink, RegTyp, RegKante, RegListe],
+  imports: [RouterLink, RegTyp, RegKante, RegKantentabelle, RegListe, Ansichtsliste, Ansichtsdesigner, RegTokens],
   template: `
     <div class="seite">
       <nav class="leiste" [class.zu]="!!gewaehlt() && !listeOffen()" aria-label="Registry rows">
@@ -56,7 +61,7 @@ type Reiter = 'types' | 'edges' | 'lists';
           <h1>Registry</h1>
           <div class="reiter" role="tablist">
             @for (r of reiterListe; track r.k) {
-              <a role="tab" [routerLink]="[]" [queryParams]="{ tab: r.k === 'types' ? null : r.k, type: null, edge: null, list: null, create: null }"
+              <a role="tab" [routerLink]="[]" [queryParams]="{ tab: r.k === 'types' ? null : r.k, type: null, edge: null, list: null, view: null, create: null, design: null }"
                 [class.an]="reiter() === r.k" [attr.aria-selected]="reiter() === r.k">{{ r.label }}</a>
             }
           </div>
@@ -84,8 +89,19 @@ type Reiter = 'types' | 'edges' | 'lists';
             <form class="neuform" (submit)="$event.preventDefault(); anlegen(neuLabel.value, $any($event.target).elements.namedItem('nimmt')?.value ?? '', $any($event.target).elements.namedItem('wie')?.value ?? 'like')">
               <label class="f">
                 <span>Label</span>
-                <input #neuLabel type="text" [placeholder]="reiter() === 'types' ? 'e.g. Vehicle' : reiter() === 'edges' ? 'e.g. owes a favour to' : 'e.g. Weather'" required />
+                <input #neuLabel type="text" [placeholder]="platzhalter()" required />
               </label>
+              @if (reiter() === 'views') {
+                <label class="f">
+                  <span>Start from</span>
+                  <select name="nimmt">
+                    @for (v of ansichtsListe(); track v) {
+                      <option [value]="v" [selected]="v === 'quick'">{{ bestand.registry()?.views?.[v]?.label ?? v }}</option>
+                    }
+                  </select>
+                </label>
+                <p class="hint">A new view starts as a copy of the one you pick. It is chosen on a board tile and when printing.</p>
+              }
               @if (reiter() === 'types') {
                 <label class="f">
                   <span>Start from</span>
@@ -125,8 +141,29 @@ type Reiter = 'types' | 'edges' | 'lists';
           <nw-reg-kante [name]="edge()!" [darf]="darf()" />
         } @else if (reiter() === 'lists' && list()) {
           <nw-reg-liste [name]="list()!" [darf]="darf()" />
+        } @else if (reiter() === 'views' && ((design() === 'new' && darf()) || view())) {
+          <!-- Die Ansichten oben zur Wahl (T-318): die Liste links ist im Register meist die lange Typenliste. -->
+          <nav class="ansichtswahl" aria-label="Views">
+            @for (v of wahl(); track v.key) {
+              <a [routerLink]="[]" [queryParams]="{ tab: 'views', view: v.key, type: type() ?? null, design: null }"
+                 [class.an]="v.key === view()" [attr.aria-current]="v.key === view() ? 'true' : null">{{ v.label }}</a>
+            }
+            <a [routerLink]="[]" [queryParams]="{ tab: 'views', view: null, type: null, design: null }">All views</a>
+          </nav>
+          <!-- Der Ansichtseditor (T-268, T-276): der einzige — für jede Ansicht, auch die der Orte. -->
+          <nw-ansichtsdesigner [schluessel]="design() === 'new' ? null : (view() ?? null)" [typ]="type() ?? null" [darf]="darf()"
+                               (fertig)="designFertig($event)" />
+        } @else if (reiter() === 'views') {
+          <nw-ansichtsliste />
+        } @else if (reiter() === 'tokens') {
+          <!-- Design-Tokens (T-425, REQ-437, E-170). -->
+          <nw-reg-tokens [darf]="darf()" />
+        } @else if (reiter() === 'edges') {
+          <!-- Wie Kanten wirken (T-111): je Kantenart Bedeutung und
+               Wirkung, gerechnet aus den Auswertern (edgeEffects). -->
+          <nw-reg-kantentabelle [suche]="suche()" />
         } @else {
-          <p class="leer">Pick a {{ reiter() === 'types' ? 'type' : reiter() === 'edges' ? 'kind of edge' : 'list' }} on the left.</p>
+          <p class="leer">Pick a {{ reiter() === 'types' ? 'type' : reiter() === 'edges' ? 'kind of edge' : reiter() === 'views' ? 'view' : 'list' }} on the left.</p>
         }
       </main>
     </div>
@@ -150,7 +187,8 @@ type Reiter = 'types' | 'edges' | 'lists';
       </div>
     }
   `,
-  styleUrl: './register.scss',
+  /* Die Ansichtswahl (T-318) in einer eigenen Datei: das Budget je Datei. */
+  styleUrls: ['./register.scss', './ansichtswahl.scss'],
   /* Die Bausteine darin (Typ, Feld, Kante, Liste) teilen einen Stil. Ohne
      Kapselung steht er einmal in der Seite statt viermal; er gilt nur
      unter `nw-register`. */
@@ -161,6 +199,10 @@ export class Register {
   readonly tab = input<string | undefined>(undefined);
   readonly edge = input<string | undefined>(undefined);
   readonly list = input<string | undefined>(undefined);
+  /** `?tab=views&view=` — eine Ansicht (T-110). */
+  readonly view = input<string | undefined>(undefined);
+  /** `?design=1` (eine Ansicht im Designer) oder `?design=new` (T-268). */
+  readonly design = input<string | undefined>(undefined);
   /** `?create=1` — aus dem Kompendium, „New type". */
   readonly create = input<string | undefined>(undefined);
   /** `?from=Typ` — der Typ, den ein neuer nehmen soll. */
@@ -178,15 +220,23 @@ export class Register {
     { k: 'types', label: 'Types' },
     { k: 'edges', label: 'Edges' },
     { k: 'lists', label: 'Lists' },
+    { k: 'views', label: 'Views' },
+    { k: 'tokens', label: 'Tokens' },
   ];
 
   protected readonly darf = this.session.darfRegister;
   protected readonly reiter = computed<Reiter>(() =>
-    this.tab() === 'edges' ? 'edges' : this.tab() === 'lists' ? 'lists' : 'types',
+    this.tab() === 'edges' ? 'edges' : this.tab() === 'lists' ? 'lists' : this.tab() === 'views' ? 'views' : this.tab() === 'tokens' ? 'tokens' : 'types',
   );
   protected readonly reiterLabel = computed(() => this.reiterListe.find((r) => r.k === this.reiter())!.label.toLowerCase());
   protected readonly gewaehlt = computed(() =>
-    this.reiter() === 'types' ? this.type() : this.reiter() === 'edges' ? this.edge() : this.list(),
+    this.reiter() === 'types'
+      ? this.type()
+      : this.reiter() === 'edges'
+        ? this.edge()
+        : this.reiter() === 'views'
+          ? this.view()
+          : this.list(),
   );
   /** Woraus ein neuer Typ entsteht — vorbelegt mit `?from=`. */
   protected readonly start = signal('');
@@ -197,8 +247,32 @@ export class Register {
   });
   protected readonly suchText = computed(() => `Filter ${this.reiterLabel()}`);
   protected readonly neuText = computed(() =>
-    this.reiter() === 'types' ? 'New type' : this.reiter() === 'edges' ? 'New edge kind' : 'New list',
+    this.reiter() === 'types'
+      ? 'New type'
+      : this.reiter() === 'edges'
+        ? 'New edge kind'
+        : this.reiter() === 'views'
+          ? 'New view'
+          : 'New list',
   );
+  protected readonly platzhalter = computed(() =>
+    this.reiter() === 'types'
+      ? 'e.g. Vehicle'
+      : this.reiter() === 'edges'
+        ? 'e.g. owes a favour to'
+        : this.reiter() === 'views'
+          ? 'e.g. Handout'
+          : 'e.g. Weather',
+  );
+  /** Die Ansichten oben über dem Designer (T-318). */
+  protected readonly wahl = computed(() => {
+    const r = this.bestand.registry();
+    return r ? wahlAnsichten(r) : [];
+  });
+  protected readonly ansichtsListe = computed(() => {
+    const r = this.bestand.registry();
+    return r ? viewKeys(r) : [];
+  });
 
   constructor() {
     void this.bestand.load();
@@ -246,6 +320,17 @@ export class Register {
         .filter((z) => passt(z.name, z.label))
         .sort((a, b) => a.label.localeCompare(b.label, 'en'));
     }
+    if (this.reiter() === 'views') {
+      return viewKeys(r)
+        .map((name) => ({ name, label: r.views[name]?.label ?? name, zusatz: name, query: { tab: 'views', view: name } }))
+        .filter((z) => passt(z.name, z.label));
+    }
+    if (this.reiter() === 'tokens') {
+      return Object.entries(r.tokens ?? {})
+        .map(([name, d]) => ({ name, label: d.label, zusatz: d.role, query: { tab: 'tokens' } }))
+        .filter((z) => passt(z.name, z.label))
+        .sort((a, b) => a.label.localeCompare(b.label, 'en'));
+    }
     if (this.reiter() === 'lists') {
       return Object.entries(r.enums ?? {})
         .map(([name, d]) => ({ name, label: d.label ?? name, zusatz: String(d.values.length), query: { tab: 'lists', list: name } }))
@@ -253,11 +338,15 @@ export class Register {
         .sort((a, b) => a.label.localeCompare(b.label, 'en'));
     }
     const zahl = this.jeArt();
+    /* Im Stapel / gespeichert (T-069) — eine Zahl, wenn beide gleich sind. */
+    const da = this.arbeit.usage()?.inPlay;
     return typeList(r)
       .map((name) => {
         const d = r.interfaces[name]!;
         const n = zahl?.[name] ?? 0;
-        return { name, label: d.label ?? name, zusatz: d.abstract ? 'shared' : n ? n.toLocaleString('en') : '', query: { type: name } };
+        const sichtbar = da ? (da[name] ?? 0) : n;
+        const text = !n ? '' : sichtbar === n ? n.toLocaleString('en') : `${sichtbar.toLocaleString('en')} / ${n.toLocaleString('en')}`;
+        return { name, label: d.label ?? name, zusatz: d.abstract ? 'shared' : text, query: { type: name } };
       })
       .filter((z) => passt(z.name, z.label));
   });
@@ -295,6 +384,18 @@ export class Register {
         rels[name] = { type: name, label, inverseLabel: `← ${label}`, from: ['*'], to: ['*'] };
       });
       if (ok) await this.zu({ tab: 'edges', edge: name });
+    } else if (this.reiter() === 'views') {
+      /* Der Schlüssel klein wie `quick`; die neue Ansicht ist eine Kopie der gewählten. */
+      const name = techName(label, r.views, true);
+      const von = r.views[nimmt] ?? r.views['quick'];
+      const ok = await this.arbeit.aendern('views', (views) => {
+        views[name] = {
+          ...structuredClone(von ?? { fields: 'none' as const, layout: [] }),
+          label,
+          order: Math.max(0, ...Object.values(views).map((v) => v.order ?? 0)) + 1,
+        };
+      });
+      if (ok) await this.zu({ tab: 'views', view: name });
     } else {
       const name = techName(label, r.enums ?? {});
       const ok = await this.arbeit.aendern('enums', (enums) => {
@@ -302,6 +403,10 @@ export class Register {
       });
       if (ok) await this.zu({ tab: 'lists', list: name });
     }
+  }
+
+  protected designFertig(key: string | null): void {
+    void this.router.navigate(['/registry'], { queryParams: key ? { tab: 'views', view: key } : { tab: 'views' } });
   }
 
   private async zu(query: Record<string, string>): Promise<void> {

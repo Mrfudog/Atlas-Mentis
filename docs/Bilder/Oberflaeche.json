@@ -1,0 +1,241 @@
+{
+ "titel": "Die Oberfläche (Architektur §6)",
+ "kaesten": [
+  {
+   "id": "router",
+   "x": 20,
+   "y": 50,
+   "w": 260,
+   "h": 70,
+   "text": "app.routes.ts\n/compendium · /world · /story\n/rules · /play · /artikel/:id …",
+   "farbe": "gelb"
+  },
+  {
+   "id": "wache",
+   "x": 320,
+   "y": 53,
+   "w": 200,
+   "h": 64,
+   "text": "kern/wache.ts\nangemeldet?",
+   "farbe": "gelb"
+  },
+  {
+   "id": "artikel",
+   "x": 20,
+   "y": 190,
+   "w": 220,
+   "h": 74,
+   "text": "artikel/\nKompendium, Artikel, Anlegen,\nInventar, Werkstatt, Druck",
+   "farbe": "blau"
+  },
+  {
+   "id": "boards",
+   "x": 260,
+   "y": 190,
+   "w": 220,
+   "h": 74,
+   "text": "boards/\nBoards je Geschichtsartikel",
+   "farbe": "blau"
+  },
+  {
+   "id": "karten",
+   "x": 500,
+   "y": 190,
+   "w": 220,
+   "h": 74,
+   "text": "karten/\nKarte, Play › Map",
+   "farbe": "blau"
+  },
+  {
+   "id": "klassen",
+   "x": 740,
+   "y": 190,
+   "w": 220,
+   "h": 74,
+   "text": "klassen/\nKlassen, Merkmale",
+   "farbe": "blau"
+  },
+  {
+   "id": "lesen",
+   "x": 20,
+   "y": 290,
+   "w": 220,
+   "h": 74,
+   "text": "lesen/\nLeseansicht /read/:layer",
+   "farbe": "blau"
+  },
+  {
+   "id": "suche",
+   "x": 260,
+   "y": 290,
+   "w": 220,
+   "h": 74,
+   "text": "suche/\nStrg+K, Treffer beim Tippen",
+   "farbe": "blau"
+  },
+  {
+   "id": "register",
+   "x": 500,
+   "y": 290,
+   "w": 220,
+   "h": 74,
+   "text": "register/\nTypen, Kanten, Listen,\nAnsichten",
+   "farbe": "blau"
+  },
+  {
+   "id": "werkbank",
+   "x": 740,
+   "y": 290,
+   "w": 220,
+   "h": 74,
+   "text": "werkbank/\nPrüfungen, Massenänderungen,\nÜbernahme",
+   "farbe": "blau"
+  },
+  {
+   "id": "verwaltung",
+   "x": 20,
+   "y": 390,
+   "w": 220,
+   "h": 74,
+   "text": "verwaltung/\nKampagne, Mitglieder,\nEbenen",
+   "farbe": "blau"
+  },
+  {
+   "id": "konto",
+   "x": 260,
+   "y": 390,
+   "w": 220,
+   "h": 74,
+   "text": "konto/\nKonto, Ebenen, API-Tokens",
+   "farbe": "blau"
+  },
+  {
+   "id": "figur",
+   "x": 500,
+   "y": 390,
+   "w": 220,
+   "h": 74,
+   "text": "figur/\nCharakterassistent",
+   "farbe": "blau"
+  },
+  {
+   "id": "weitere",
+   "x": 740,
+   "y": 390,
+   "w": 220,
+   "h": 74,
+   "text": "login/ · neues/ · bilder/",
+   "farbe": "blau"
+  },
+  {
+   "id": "api",
+   "x": 804,
+   "y": 540,
+   "w": 176,
+   "h": 70,
+   "text": "api.ts\nHttpClient → /api",
+   "farbe": "gruen"
+  },
+  {
+   "id": "bestand",
+   "x": 608,
+   "y": 540,
+   "w": 176,
+   "h": 70,
+   "text": "bestand.ts\nRegister + geöffnete\nArtikel (W7)",
+   "farbe": "gruen"
+  },
+  {
+   "id": "session",
+   "x": 20,
+   "y": 540,
+   "w": 176,
+   "h": 70,
+   "text": "session.ts\nwer ist angemeldet",
+   "farbe": "gruen"
+  },
+  {
+   "id": "live",
+   "x": 412,
+   "y": 540,
+   "w": 176,
+   "h": 70,
+   "text": "live.ts\nGET /api/live (T-116)",
+   "farbe": "gruen"
+  },
+  {
+   "id": "stapel",
+   "x": 216,
+   "y": 540,
+   "w": 176,
+   "h": 70,
+   "text": "stapel.ts\nlaufende Kampagne",
+   "farbe": "gruen"
+  },
+  {
+   "id": "model",
+   "x": 1020,
+   "y": 50,
+   "w": 230,
+   "h": 96,
+   "text": "@nw/model\nviews · calc · book ·\nmarkdown · inline · map\njede Seite zeichnet damit",
+   "farbe": "violett"
+  },
+  {
+   "id": "server",
+   "x": 1060,
+   "y": 540,
+   "w": 200,
+   "h": 70,
+   "text": "apps/server\nFastify",
+   "farbe": "grau"
+  }
+ ],
+ "pfeile": [
+  {
+   "von": "router",
+   "nach": "wache"
+  },
+  {
+   "von": "bestand",
+   "nach": "api"
+  },
+  {
+   "von": "api",
+   "nach": "server",
+   "text": "/api"
+  }
+ ],
+ "rahmen": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 980,
+   "h": 640,
+   "text": "apps/web · Angular, Standalone, Signals"
+  },
+  {
+   "x": 10,
+   "y": 150,
+   "w": 960,
+   "h": 340,
+   "text": "Seiten, lazy geladen (apps/web/src/app/…)"
+  },
+  {
+   "x": 10,
+   "y": 505,
+   "w": 960,
+   "h": 125,
+   "text": "kern/ · Dienste"
+  }
+ ],
+ "texte": [
+  {
+   "x": 0,
+   "y": 660,
+   "w": 1200,
+   "groesse": 14,
+   "text": "Gezeichnet wird aus dem Register über @nw/model, nicht aus einer Vorlage je Art; die Oberfläche hält keinen Bestand (W7)\nund zeigt, was der Server gesiebt geschickt hat."
+  }
+ ]
+}

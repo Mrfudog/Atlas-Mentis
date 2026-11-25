@@ -37,7 +37,11 @@ describe('the registry survives a round trip through Postgres', () => {
 
   it('writes every field the seed rows actually carry', () => {
     const insert = /insert into interface_def\(([^)]*)\)/.exec(pgQuelle)?.[1] ?? '';
-    const fehlt = [...benutzt].filter((k) => !insert.split(',').includes(spalte(k)));
+    /* Eine spätere Spalte darf nachgeschrieben werden (`marker_view`,
+       T-214): so geht dieselbe Zeile auch in eine Datenbank vor ihrer
+       Migration — der Register-Abgleich spielt genau das nach. */
+    const nachher = (k: string) => new RegExp(`update interface_def set ${spalte(k)} =`).test(pgQuelle);
+    const fehlt = [...benutzt].filter((k) => !insert.split(',').includes(spalte(k)) && !nachher(k));
     expect(fehlt).toEqual([]);
   });
 
@@ -116,7 +120,10 @@ describe('an edge kind survives a round trip through Postgres', () => {
   it('writes, keeps and reads every field the seed edges carry', () => {
     expect(benutzt.has('asField')).toBe(true);
     const insert = /insert into relation_def\(([^)]*)\)/.exec(pgQuelle)?.[1] ?? '';
-    expect([...benutzt].filter((k) => !insert.split(',').includes(sp(k)))).toEqual([]);
+    /* `facet` schreibt eine eigene Anweisung nach dem Einfügen (T-174) —
+       seit T-212 trägt eine Startkante (`spellList`) die Angabe. */
+    const nachher = [...pgQuelle.matchAll(/update relation_def set (\w+) = /g)].map((m) => m[1]!);
+    expect([...benutzt].filter((k) => !insert.split(',').includes(sp(k)) && !nachher.includes(sp(k)))).toEqual([]);
     expect([...benutzt].filter((k) => !new RegExp(`\\b${sp(k)}\\b`).test(ddl))).toEqual([]);
     expect([...benutzt].filter((k) => !new RegExp(`r\\['${sp(k)}'\\]`).test(pgQuelle))).toEqual([]);
   });
@@ -155,5 +162,12 @@ describe('entity cache', () => {
       expect(ab).toBeGreaterThan(-1);
       expect(pgQuelle.slice(ab, ab + 200)).toContain('this.bestand = null');
     }
+  });
+  it('carries its own write forward only under a lock, stamp read before and after (T-143)', () => {
+    const ab = pgQuelle.indexOf('async putEntity');
+    const rumpf = pgQuelle.slice(ab, pgQuelle.indexOf('async deleteEntity'));
+    expect(rumpf).toContain('lock table entity in share row exclusive mode');
+    expect(rumpf.split('PgRepository.STEMPEL').length - 1).toBe(2);
+    expect(rumpf).toContain('this.bestand = { stempel: nachher, liste }');
   });
 });

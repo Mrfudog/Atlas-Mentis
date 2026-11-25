@@ -14,6 +14,8 @@
  * mehrere Arten teilten, ist ein Obertyp geworden.
  */
 
+import type { EnhancedItem } from './enhancement.js';
+
 /** Opaque entity id. No pack, type or version encoded in it (D15 / REQ-163). */
 export type EntityId = string;
 
@@ -56,6 +58,19 @@ export interface PropertySchema {
    */
   many?: boolean;
   items?: { type: PropertyType };
+  /**
+   * **Die Form eines Eintrags**, wenn ein Feld mit `many` nicht Text
+   * trägt, sondern Einträge mit eigenen Feldern (REQ-238, E-015): eine
+   * Wahl an einer Klasse ist `{id, level, kind, from, count, note}`. Die
+   * `id` bleibt, was sie bei jedem `many`-Feld ist — der Halt, an dem
+   * etwas anderes hängt (hier die Antwort einer Figur) —, und kommt wie
+   * dort aus dem Text, nicht aus einer Zählung.
+   *
+   * Geprüft wird jeder Eintrag wie eine kleine Karte: Pflichtfelder,
+   * Aufzählung, Spanne, und dass keine `id` zweimal vorkommt. Ein
+   * Eintrag ohne diese Form wäre JSON, das niemand erklärt.
+   */
+  entry?: ObjectSchema;
   /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
    * Names resolve against sibling fields of the same component first, then
@@ -158,6 +173,44 @@ export interface PropertySchema {
    */
   alwaysEdit?: boolean;
   /**
+   * **Steht beim Bearbeiten auch leer da** (T-195). Die Maske zeigt
+   * Pflichtfelder und Felder mit Wert; alles andere holt man über
+   * „+ Add field“. Ein Feld, das man fast immer ausfüllt (die
+   * Beschreibung), soll dafür nicht erst gesucht werden müssen.
+   *
+   * Es ist keine Pflicht: leer gespeichert bleibt es leer.
+   */
+  prominent?: boolean;
+  /**
+   * **Pflicht erst für einen Stand** (T-425, REQ-441, E-177): `prepared`
+   * oder `ready`. Ein Artikel lässt sich erst auf diesen Stand setzen,
+   * wenn das Feld gefüllt ist; eine Idee bleibt schnell. `required` gilt
+   * daneben immer. Ein Typ darf es für sich überschreiben
+   * (`InterfaceDef.requiredFor`).
+   */
+  requiredFor?: RequiredState;
+  /**
+   * **Was das Feld meint**, in einem Satz, auf Englisch — gezeigt in der
+   * Auswahl „+ Add field“ (T-195). Die Beschriftung sagt, wie es heisst;
+   * wer ein Feld zum ersten Mal hinzufügt, will wissen, wofür.
+   */
+  description?: string;
+  /**
+   * **Das Icon dieses Feldes** (T-461): ein Name aus dem Katalog, gezeigt vor
+   * der Beschriftung, wo das Feld steht. Am Feld und nur dort — ein Icon
+   * je Art für dasselbe Feld wäre eine zweite Feldliste.
+   */
+  icon?: string;
+  /**
+   * **Der Glossarbegriff, der dieses Feld erklärt** (T-347, T-225): sein
+   * Name, wie er am Glossarartikel steht („Hit points"). Dann zeigen
+   * Feldtitel und Handbuch den Eintrag statt eines eigenen Satzes — eine
+   * Erklärung, an einer Stelle. Der Eintrag ist ein Artikel der
+   * Installation; welche Namen genannt werden dürfen, sagt `GAME_TERMS`
+   * (`@nw/registry`), ob es sie gibt, die Werkbank (`missingGlossaryTerms`).
+   */
+  glossary?: string;
+  /**
    * **Schlägt vor, was schon dasteht.** Für ein freies Wort, das eine
    * Sorte benennt (`Creature.kind`, `Deity.pantheon`): die Eingabe bietet
    * die Werte an, die andere Artikel in diesem Feld tragen, damit dieselbe
@@ -180,7 +233,37 @@ export interface PropertySchema {
    * derselbe Artikel morgen anders.
    */
   readOnly?: boolean;
+  /**
+   * **Nur in der Maske, nie beim Lesen.** Ein Schlüssel, den jemand setzt,
+   * aber niemand liest: `Time.sort` ordnet die Weltgeschichte, „Mirtul 12"
+   * liest man. In der Feldtabelle stand „Sortable value 14920512" an
+   * jedem Ereignis (T-126) — eine Zahl, die nur dem Ordnen dient.
+   *
+   * Das ist nicht `readOnly` (das hat keine Eingabe) und keine
+   * Ansichtssache: ein `hide` an der Ansicht nähme das Feld aus einem
+   * Element, und der Rest der Artikelseite (`rest`) zeigte es wieder. Wer
+   * den Wert sehen will, sieht ihn beim Bearbeiten.
+   */
+  editOnly?: boolean;
+  /**
+   * **Als Filter in der Liste** (T-174). Die Facetten einer Art werden aus
+   * dem Register abgeleitet (`facetsFor`): eine Aufzählung wird zu Häkchen,
+   * ein Schalter zu ja/nein, eine Zahl zu einer Spanne, ein Verweis mit
+   * Zielart zu einer Artikelwahl. Wo die Ableitung daneben liegt, sagt es
+   * diese Angabe — `false` nimmt das Feld heraus, `{label, order}` benennt
+   * oder ordnet es. Eine Zeile am Feld und keine Liste je Art im Code.
+   */
+  facet?: FacetHint;
 }
+
+/**
+ * Was ein Feld oder eine Kante zur Facette sagt (T-174). `as` (T-180)
+ * liest ein Feld, das sonst keine Facette wäre, auf eine bestimmte Weise:
+ * `effect` die Einträge von `Effects.effects` (Ziel und Art), `requirement`
+ * einen Satz wie „level 4, STR 13" als prüfbare Voraussetzung
+ * (`parseRequirement`).
+ */
+export type FacetHint = false | { label?: string; order?: number; as?: 'effect' | 'requirement' };
 
 /**
  * Wohin ein Verweisfeld zeigen darf. Drei Filter, alle freiwillig, mit UND
@@ -202,6 +285,9 @@ export interface LinkTarget {
   /** Ein Feldwert, der stimmen soll. Auch das ein Vorschlag. */
   where?: { component: string; property: string; value?: unknown };
 }
+
+/** Ein Stand, für den etwas Pflicht sein kann (E-177): `idea` braucht nie mehr als `required`. */
+export type RequiredState = 'prepared' | 'ready';
 
 export interface ObjectSchema {
   type: 'object';
@@ -253,8 +339,14 @@ export interface InterfaceDef {
    * Sie stand einmal an der Ansicht (`ViewDef.byInterface`). Wer wissen
    * wollte, wie eine Art gezeichnet wird, musste dafür drei Ansichten
    * aufmachen und in jeder nach ihr suchen.
+   *
+   * **Zwei Formen** (T-110, REQ-256): eine eigene Liste ersetzt, was die
+   * Ansicht sonst zeichnet; `{ adjust }` nimmt die geerbte Anordnung — die
+   * des nächsten Obertyps, der etwas sagt, sonst die der Ansicht — und
+   * passt sie an (dazu, weg, umsortiert). Eine Anpassung bleibt richtig,
+   * wenn die Ansicht sich ändert; eine Abschrift nicht.
    */
-  views?: Record<string, LayoutElement[]>;
+  views?: Record<string, TypeLayout>;
   /**
    * In welchem System die Masse dieser Artikelart dastehen. Wird wie `area`
    * die `extends`-Kette hoch geerbt; ohne Angabe gilt die Einstellung der
@@ -276,6 +368,39 @@ export interface InterfaceDef {
    * Weg zum selben Satz.
    */
   titles?: Record<string, string>;
+  /**
+   * **Pflicht je Stand für diese Art** (T-425, E-177): `Typ.feld` oder
+   * `edge:<Kantenart>` → `prepared`, `ready` oder `none` (hebt eine
+   * geerbte Pflicht auf). Die `extends`-Kette hoch geerbt wie `titles`;
+   * die genaueste Art gewinnt. Die Beschreibung muss an der Szene für
+   * `ready` dastehen, an einer Regel nicht — ohne zweites Feld.
+   */
+  requiredFor?: Record<string, RequiredState | 'none'>;
+  /**
+   * **Wohin ein geerbtes Feld hier zeigen soll** (T-119): `Typ.feld` →
+   * Ziel, aufgelöst die `extends`-Kette hoch wie `titles`. Eine Karte nennt
+   * `Image.image` und bietet dort Kartenbilder an, jeder andere Artikel
+   * allgemeine Bilder — derselbe Bestandteil, ein anderer Vorschlag.
+   * Ersetzt das `target` des Feldes ganz; wie dort gilt nur `interfaces`
+   * als Regel, `tags` und `where` schlagen vor.
+   */
+  targets?: Record<string, LinkTarget>;
+  /**
+   * **Wie ein Artikel dieser Art als Marker auf der Karte steht** (T-214):
+   * Symbol, Symbol mit Namen, Bild oder Kurzansicht-Karte (`quick`).
+   * Aufgelöst die `extends`-Kette hoch wie `units`; die Kartenart (an der
+   * Kampagne), die Karte und der Marker selbst dürfen es überschreiben
+   * (`markerViewOf`). Ohne Angabe: das Bild, sonst das Symbol.
+   */
+  markerView?: 'symbol' | 'name' | 'image' | 'card';
+  /**
+   * **Das Icon dieser Art** (T-461, REQ-460): ein Name aus dem Katalog
+   * (`icons.ts`), die `extends`-Kette hoch geerbt wie `area` — eine Stadt
+   * ist ein Ort und zeigt den Ort, bis sie etwas Eigenes sagt. Ein Artikel
+   * darf es überschreiben (`Identity.icon`). Gelesen über `typeIcon` und
+   * `iconOf`; ohne Angabe gibt es keines.
+   */
+  icon?: string;
 }
 
 /**
@@ -305,6 +430,22 @@ export interface RelationDef {
   label: string;
   /** How the edge reads from its target. One edge, two labels (REQ-182). */
   inverseLabel: string;
+  /**
+   * **Was die Kante bedeutet**, ein Satz in beide Richtungen (T-111,
+   * REQ-257): „A statblock belongs to one creature; the creature reads its
+   * numbers from it." Was sie **bewirkt**, steht nicht hier, sondern wird
+   * aus den Auswertern gerechnet (`edgeEffects`, `edges.ts`) — eine
+   * behauptete Wirkung wäre am Tag des nächsten Umbaus falsch.
+   */
+  means?: string;
+  /**
+   * **Was die Kante bewirken soll und heute noch nicht bewirkt** (T-111).
+   * Nur an Kanten, die eine Wirkung versprechen — `affects` mit `effect`,
+   * `casts` mit `uses` —, aber von keinem Auswerter gelesen werden. Die
+   * Oberfläche sagt dann „not evaluated yet"; liest sie ein Auswerter,
+   * fällt die Angabe weg (ein Test prüft es).
+   */
+  intended?: string;
   /** Source interfaces; `*` for any. */
   from?: string[];
   /** Target interfaces; `*` for any, `same` for the source's own interface. */
@@ -312,6 +453,12 @@ export interface RelationDef {
   /** The target is deleted with the source. */
   owned?: boolean;
   cardinality?: 'one' | 'many';
+  /**
+   * **Pflicht erst für einen Stand** (T-425, E-180): der Artikel am
+   * Anfang der Kante braucht mindestens eine, bevor er `prepared` bzw.
+   * `ready` wird. Je Art überschreibbar mit `edge:<Kantenart>`.
+   */
+  requiredFor?: RequiredState;
   /**
    * **An welchem Ende diese Verbindung sich wie ein Feld liest** — `from`
    * oder `to`.
@@ -340,6 +487,12 @@ export interface RelationDef {
   /** When set, the edge renders as a composition section under this heading. */
   section?: string;
   props?: ObjectSchema;
+  /**
+   * **Als Filter in der Liste** (T-174), in beide Richtungen: von hier
+   * („grants") und von drüben („granted by"). `false` nimmt die Kante aus
+   * den Facetten, `{label, order}` benennt oder ordnet sie.
+   */
+  facet?: FacetHint;
 }
 
 /**
@@ -368,9 +521,24 @@ export type LayoutElementKind =
   | 'linked'
   | 'knowledge'
   | 'map'
+  /**
+   * **Der Kopf der Spielerseite** (T-247): Trefferpunkte mit Betrag,
+   * Vitals ↔ Spellcasting, Trefferwürfel, Plätze, Inspiration, Gold, die
+   * Attribute und die Statuszeile. Steht über den Reitern.
+   */
   | 'sheet'
+  /** „Your turn" (T-247): alle Aktionen nach Aktionsart, gesperrte mit Grund. */
+  | 'turn'
+  /** Die Zauber einer Figur (T-246): Kopf, nach Grad, Listen, Lernweg. */
+  | 'spells'
+  /** Was die Kampagne einer Figur gezeigt hat (T-247): Handouts, Sitzungen, Quests … */
+  | 'campaign'
   | 'inventory'
   | 'crafting'
+  /** Die Waren eines Ladens mit ihren Preisen und deren Herkunft (T-129). */
+  | 'wares'
+  /** Was ein Wissen vereint, ausgeschrieben und gesiebt (T-287). */
+  | 'knowledgeContents'
   | 'board'
   | 'initiative'
   | 'quests'
@@ -379,6 +547,8 @@ export type LayoutElementKind =
   | 'table'
   | 'prep'
   | 'crawl'
+  /** Die Reise einer Gruppe (T-350, REQ-170): Tag, Wache, Zehrung, „Wait a watch" und „Next node". */
+  | 'travel'
   | 'standing'
   | 'stack'
   /**
@@ -397,7 +567,125 @@ export type LayoutElementKind =
   | 'statblock'
   | 'spell'
   | 'item'
-  | 'tabs';
+  /**
+   * **Die Form eines Gegenstands** (T-142): sein Raster fürs Kachelinventar
+   * mit dem Bild darin, umschaltbar zwischen Raster und Zeilen, dazu die
+   * Stapelgrösse; zum Malen für wer schreibt, Drehen und Spiegeln als
+   * Vorschau, und „Adjust inventory image". Ohne `Item`-Karte nichts.
+   */
+  | 'shape'
+  /**
+   * **Die Kennzahlen** (T-206): Rüstungsklasse, Trefferpunkte, Bewegung,
+   * Initiative, passive Wahrnehmung, Herausforderung als eine Reihe
+   * Kacheln (`keyStats` in `book.ts`), dazu die Zustände einer Figur. An
+   * einem Statblock aus ihm selbst, an einer Kreatur aus dem Statblock, der
+   * über `belongsTo` an ihr hängt, mit ihrem Stand (`Vitals`). Der Ort ist
+   * die Kurzansicht: Karte, Popup, Token.
+   */
+  | 'stats'
+  /**
+   * **Das Token** (T-297): am Statblock sein eigenes, an der Kreatur das
+   * ihres Statblocks — so, wie es auf der Karte steht, mit „Adjust token"
+   * für wer das Bild schreibt. Wo keins ist, zeichnet es nichts.
+   */
+  | 'token'
+  /**
+   * **Die Teile in ihrer Reihenfolge** (T-108, E14): was mit Rang an einem
+   * Kapitel, einer Szene oder einem Arc hängt — Überschriften, Absätze,
+   * Vorlesetexte, Verweise, Szenen —, gezeichnet wie im Buch. Wo nichts
+   * hängt, zeichnet es nichts.
+   */
+  | 'parts'
+  /**
+   * **Die Regeloptionen** (T-190): nimmt die Felder, die `fields` nennt (an
+   * der Kampagne ihre eigenen, `['Campaign']`), aus der Feldtabelle und
+   * verweist auf den Reiter „Rules & options", wo sie nach Sorte und
+   * erklärt stehen. Auf einem Blatt ohne Reiter stehen sie als Felder.
+   */
+  | 'rules'
+  /**
+   * **Die Leseansicht** (T-091, T-191): die Ebene als Buch — Inhaltsverzeichnis,
+   * Suche, Kapitel am Stück, Lesestand je Konto; eine Gruppe als Regal ihrer
+   * Bücher. Steht in `full` der Ebene; die Artikelseite zeichnet es über die
+   * ganze Breite unter dem Kopf. Die Route `/read/:layer` gab es dafür
+   * eigens und leitet jetzt hierher.
+   */
+  | 'reader'
+  /**
+   * **Der Inhalt einer Quelle** (T-189): an einer Ebene ihre Artikel nach
+   * Art, jeder verlinkt, mit Häkchen, die die Wahl der laufenden Kampagne
+   * zeigen und ändern — Ebene an oder aus, welche Arten, einzelne Artikel
+   * (`activates`, `enables`, T-187); an einer Gruppe ihre Ebenen.
+   */
+  | 'contents'
+  /**
+   * **Die Klassenübersicht** (W6, T-191): Eckdaten, die Stufentabelle, die
+   * Unterklassen zum Wählen und Vergleichen, die Merkmale nach Stufe — wie
+   * 5e.tools. Nimmt Übungen und Wahlen aus der Feldtabelle (`BOOK_CARDS`).
+   * Früher die Seite `/classes/:id`.
+   */
+  | 'classOverview'
+  /**
+   * **Die Übersicht einer Herkunft oder eines Hintergrunds** (T-166,
+   * T-191): Eckdaten, Spielarten zum Umschalten und Vergleichen, Merkmale.
+   * Früher die Seiten `/ancestries/:id` und `/backgrounds/:id`.
+   */
+  | 'originOverview'
+  | 'tabs'
+  /*
+   * **Gestaltete Ansichten** (T-268, E-103): Behälter, die andere Elemente
+   * in `children` tragen, und Werte, die über `path` auch Felder
+   * verknüpfter Artikel zeigen. Gezeichnet von `nw-ansichtsbaum`; eine
+   * Anordnung ohne sie zeichnet die Seite wie bisher.
+   */
+  /** Ein Abschnitt mit Überschrift (`text`) über seinen Kindern. */
+  | 'section'
+  /** Die Kinder nebeneinander, `columns` Spalten (0: so viele wie Kinder). */
+  | 'columns'
+  /** Die Werte als Kacheln: je Feld eine Kachel mit Beschriftung und Wert. */
+  | 'tileGroup'
+  /** Die Kinder nacheinander, eins auf einmal, mit ‹ › . */
+  | 'carousel'
+  /** Aufklappbar: `text` ist die Kopfzeile, `open` sagt, ob es offen anfängt. */
+  | 'collapsible'
+  /** Ein Feld als Zitat — die Stimme eines NSC, ein Motto. */
+  | 'quote'
+  /** Die Werte als Marken (Tags, Zustände, Eigenschaften). */
+  | 'badges'
+  /** Je Kante eine Zeile: Ziel und die Eigenschaften der Kante (`props`). */
+  | 'edgeTable'
+  /**
+   * **Die Struktur** (T-341): Organigramm oder Beziehungsnetz vom Artikel
+   * aus — Mitglieder, Teile, Herrschaft, Beziehungen mit ihren Marken —,
+   * gerechnet am Server über das, was der Betrachter sieht
+   * (`structure.ts`). Dasselbe wie die Kachel „Structure" auf dem Board.
+   */
+  | 'structure'
+  /**
+   * **Eine Sammlung** (T-425, REQ-430, E-142): die Artikel am Ende des
+   * Pfads, jeder in der Ansicht **seiner eigenen** Art (`view`, je Zielart
+   * `viewByType`) — als Kacheln (`quick`) oder Liste (`overview`), sortiert
+   * und auf Wunsch nach Art gruppiert. Die Session zeigt so ihre Szenen und
+   * Begegnungen; wer die Kurzansicht der Szene im Designer ändert, ändert
+   * die Kacheln mit. Gesiebt hat der Server: es steht nur da, was der
+   * Betrachter bekommt. „Table from edges" und die Liste „Contains" gehen
+   * darin auf (Schnitt 3).
+   */
+  | 'collection'
+  /**
+   * **Ein geführter Ablauf** (T-425, REQ-440, E-176): jedes Kind ist eine
+   * Seite, sein `text` ihr Titel. In einer Erfassungsmaske zeigt die
+   * Bearbeitung eine Seite auf einmal mit Zurück und Weiter; wo man steht,
+   * liest `currentStep` aus dem Befüllten. Gelesen stehen die Kinder
+   * untereinander.
+   */
+  | 'steps'
+  /**
+   * **Der Charakter-Assistent** (T-425, REQ-433, E-169): in der Maske
+   * `create` heisst es, dass „New article“ in den Assistenten führt; auf
+   * einer Seite steht ein Verweis darauf.
+   */
+  | 'builder';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -445,7 +733,173 @@ export interface LayoutElement {
    * dem Spieltisch.
    */
   tabs?: LayoutTab[];
+  /**
+   * **Nur, wenn der Artikel es sagt** (T-184, REQ-085). Ein Element mit
+   * `when` steht nur an Artikeln, auf die es zutrifft — die Initiative an
+   * einer Begegnung, die ein Kampf ist, das Rätsel an einem Rätsel.
+   * Gelesen über `forArticle`; was ein ausgelassenes Element gezeichnet
+   * hätte, nimmt ein späteres Element (`fields: 'all'`), also verschwindet
+   * kein befülltes Feld.
+   */
+  when?: LayoutWhen;
+  /**
+   * **Was ein Behälter enthält** (T-268): `section`, `columns`,
+   * `carousel`, `collapsible` tragen ihre Elemente hier — ein Baum statt
+   * einer Liste. Reiter (`tabs`) bleiben, wie sie sind.
+   */
+  children?: LayoutElement[];
+  /**
+   * **Woher die Werte kommen** (T-268): ohne Pfad vom Artikel selbst, mit
+   * Pfad von den Artikeln am Ende der Kanten — `shopkeeper › Shop › sells
+   * › Item` ist `[{ relation: 'shopkeeper', dir: 'in' }, { relation:
+   * 'sells' }]`. `fields` gilt dann an diesen Artikeln.
+   */
+  path?: ViewPathStep[];
+  /** `edgeTable`: die Eigenschaften der letzten Kante, die als Spalten stehen. */
+  props?: string[];
+  /** `collapsible`: offen beim Öffnen der Seite. */
+  open?: boolean;
+  /** `reader`: wo die Werte stehen — am Rand rechts, unten oder gar nicht. */
+  side?: 'right' | 'bottom' | 'none';
+  /** `reader`: wo das Inhaltsverzeichnis steht — links, oben oder aus. */
+  toc?: 'left' | 'top' | 'off';
+  /** `structure`: welche Kanten (`STRUCTURE_EDGES`); leer heisst die Vorgabe. */
+  edges?: string[];
+  /** `structure`: wie viele Schritte vom Artikel. */
+  depth?: number;
+  /** `structure`: Baum (Organigramm) oder Netz. */
+  layout?: 'tree' | 'net';
+  /** `collection`: nur Artikel dieser Arten (die `extends`-Kette hoch); leer heisst jede. */
+  types?: string[];
+  /** `collection`: Kacheln (Vorgabe), Liste oder Tabelle (Spalten aus `fields` und `props`). */
+  show?: 'tiles' | 'list' | 'table';
+  /**
+   * `collection`: woher die Treffer kommen — über den Pfad (Vorgabe), ein
+   * Filter über alles Sichtbare, oder `members`: die Mitglieder des
+   * Artikels selbst, wenn er eine Collection ist (Regel und `inCollection`).
+   */
+  source?: 'linked' | 'filter' | 'members';
+  /** `collection` mit Quelle Filter: Marken, Feldbedingungen (`Typ.feld:Wert|Wert`) und Suchtext, wie im Kompendium. */
+  filter?: { tags?: string[]; fields?: string[]; q?: string };
+  /** `collection` mit Quelle Filter: höchstens so viele (Vorgabe 24). */
+  limit?: number;
+  /** `collection`: nur Kanten ohne `rank` — was mit Rang dasteht, zeigt der Lesefluss (`parts`). */
+  unranked?: boolean;
+  /**
+   * `collection`: in welcher Ansicht jeder Treffer steht (eine Gruppe wie
+   * `quick` oder eine eigene); ohne Angabe `quick` bei Kacheln, `overview`
+   * in der Liste. Das Element wählt, nicht die Kante (E-172).
+   */
+  view?: string;
+  /** `collection`: dieselbe Wahl je Zielart, gelesen die `extends`-Kette hoch. */
+  viewByType?: Record<string, string>;
+  /** `collection`: `Time.sort` (Vorgabe, dann Nummer), `name`, `id` oder ein Feld `Typ.feld`. */
+  sort?: { by: string; desc?: boolean };
+  /** `collection`: nach Art gruppiert, je Art eine Überschrift. */
+  groupBy?: 'type';
+  /**
+   * **Die Position als Zahl** (T-425, E-168): wohin ein Element in der
+   * zusammengesetzten Ansicht kommt. Ohne Angabe zählt die Reihenfolge
+   * (10, 20, 30 …), also setzt `pos: 15` zwischen das erste und das
+   * zweite. Gleiche Zahlen sind kein Fehler, sondern Reihenfolge (E-173).
+   */
+  pos?: number;
+  /** Design (T-425, E-170 a): je Stelle ein Token — überschreibt die Vorgabe der Ansicht für diese Elementart. */
+  style?: ElementStyle;
 }
+
+/**
+ * **Ein Schritt über eine Kante** (T-268). `dir: 'out'` (Vorgabe) folgt
+ * der Kante, wie sie gespeichert ist; `in` fragt die Gegenrichtung — die
+ * Kante bleibt nur vorwärts gespeichert (CLAUDE.md), das Zurück ist eine
+ * Abfrage. `type` engt die Artikel am Ende ein (die `extends`-Kette hoch).
+ */
+export interface ViewPathStep {
+  /** Die Kantenart — oder mehrere (T-454): `['features', 'participates']`
+   *  folgt jeder davon, und ein Artikel, der über zwei kommt, steht
+   *  einmal. Gelesen wird über `stepRelations`, nie am Feld selbst. */
+  relation: string | string[];
+  dir?: 'out' | 'in';
+  type?: string;
+}
+
+/**
+ * **Wofür eine Ansicht gilt** (T-268, E-103). Alles Genannte muss
+ * zutreffen. Wie genau sie ist, sagt, was dasteht: ein Artikel schlägt
+ * eine Bedingung, eine Bedingung einen Typ, ein Typ die Ansicht ohne
+ * Geltung (global) — `viewsFor` ordnet danach.
+ */
+export interface ViewApplies {
+  /** Der Artikel ist einer dieser Typen (oder ein Untertyp). */
+  types?: string[];
+  /** Jede Bedingung muss gelten (`LayoutWhen`, auch Kanten in beide Richtungen). */
+  where?: LayoutWhen[];
+  /** Genau dieser Artikel. */
+  article?: string;
+}
+
+/**
+ * **Wann ein Element gilt** (T-184). Es gilt, sobald **eine** der Angaben
+ * zutrifft: das Feld hält einen der Werte (`has`, ein Feld mit mehreren
+ * Werten wie `Encounter.kind` genauso wie eines mit einem), das Feld ist
+ * leer und `empty` sagt, dass leer zählt („nicht gesagt“ ist nicht
+ * „nein“), oder der Artikel trägt eine Kante dieser Art (`relation`).
+ * Eine Art ist eine Bedingung und keine eigene Zeile: ein Untertyp ohne
+ * eigene Felder ist ein Wort (CLAUDE.md).
+ */
+export interface LayoutWhen {
+  /**
+   * Der Artikel ist von dieser Art (seine erste Art, `interfaces[0]`, oder
+   * eine darin genannte). Die Kampagne steht an der Spielerfigur, nicht
+   * an jedem NSC (T-247).
+   */
+  type?: string;
+  /** `Typ.feld`, gelesen an der Karte des Typs. */
+  field?: string;
+  has?: string[];
+  empty?: boolean;
+  relation?: string;
+  /**
+   * Mit `relation`: die Kante muss auf einen dieser Artikel zeigen
+   * (T-285) — „hat Herkunft Orc". Eine Unterart zählt mit, wenn der
+   * Aufrufer ihre Reihe kennt (`subraceOf`, `whenHolds(…, lineOf)`).
+   */
+  to?: string[];
+  /**
+   * Eine Kante dieser Art **zeigt auf** den Artikel (T-268): „hat einen
+   * Shop" ist `incoming: 'shopkeeper'`, denn die Kante steht am Shop.
+   * Gelesen nur, wo der Aufrufer die Rückbezüge mitgibt.
+   */
+  incoming?: string;
+}
+
+/**
+ * **Die Anordnung einer Ansicht, angepasst für eine Art** (T-110, REQ-256).
+ *
+ * Gelesen wird sie über die geerbte Anordnung (`layoutFor`): erst fällt
+ * weg, was `drop` und `hide` nennen, dann kommt dazu, was `add` und
+ * `extra` bringen, zuletzt stellt `order` um. Alles nach `id` bzw. nach
+ * Eintrag (`Typ`, `Typ.feld`) — nie nach Position: eine Position stimmt
+ * nur, bis jemand die Ansicht umstellt.
+ */
+export interface LayoutAdjust {
+  /** Elemente der geerbten Anordnung, die hier wegfallen (nach `id`). */
+  drop?: string[];
+  /**
+   * Einträge, die hier nicht erscheinen — `Typ` oder `Typ.feld`, in jedem
+   * Element der Anordnung (sie werden zu dessen `except`).
+   */
+  hide?: string[];
+  /** Was ein Element hier dazunimmt: Element-`id` → `Typ` / `Typ.feld`. */
+  add?: Record<string, string[]>;
+  /** Elemente, die nur hier stehen — hinten, bis `order` sie stellt. */
+  extra?: LayoutElement[];
+  /** Reihenfolge nach `id`; was nicht genannt ist, folgt in seiner bisherigen. */
+  order?: string[];
+}
+
+/** Was eine Art für eine Ansicht sagt: eine eigene Anordnung oder eine Anpassung. */
+export type TypeLayout = LayoutElement[] | { adjust: LayoutAdjust };
 
 export interface LayoutTab {
   id: string;
@@ -475,7 +929,71 @@ export interface ViewDef {
    * angelegte Art nicht mit einer leeren Seite anfängt.
    */
   layout?: LayoutElement[];
+  /**
+   * **Was kein Element nimmt, steht am Ende** (T-110). Die Artikelseite tat
+   * das immer — ein Feld, das nur ein Element zeigt, das sie noch nicht
+   * zeichnet, wäre sonst nirgends zu lesen. Jetzt sagt es die Ansicht:
+   * `full` ja, die Karte nein.
+   */
+  rest?: boolean;
+  /**
+   * Leere Felder: `hide` (Vorgabe) lässt sie weg, `show` zeigt sie mit
+   * „—" — auf einem Druckbogen will man sehen, was noch fehlt.
+   */
+  empty?: 'hide' | 'show';
+  /**
+   * **Die Gruppe** (T-268, E-103): der Ort, an dem diese Ansicht gilt —
+   * `overview`, `quick`, `full`, `print` oder eine eigene. Ohne Angabe ist
+   * der Schlüssel die Gruppe; die fünf Ansichten der Orte sind so ihre
+   * eigene Gruppe, wie bisher.
+   */
+  group?: string;
+  /** **Wofür sie gilt**; ohne Angabe für jeden Artikel (global). */
+  applies?: ViewApplies;
+  /**
+   * **Wo diese Erfassungsmaske die Vorgabe ist** (T-462, REQ-461): eine
+   * Ansicht in der Gruppe `createFull` steht zur Wahl, sobald mehrere für
+   * eine Art gelten (`createForms`); welche vorgewählt ist, sagt der
+   * Kontext — der Bereich der Seite (`world`, `play` …) oder die Art des
+   * Artikels, von dem aus angelegt wird (`Encounter`). Ohne Angabe gilt
+   * die erste in der Reihenfolge des Registers.
+   */
+  defaultIn?: string[];
+  /**
+   * **Ein Beitrag statt einer Ansicht** (T-425, E-168, REQ-434): legt sich
+   * über die Ansicht seiner Gruppe, statt sie zu ersetzen — fügt Elemente
+   * hinzu (auch mit Position `pos` und Bedingung `when`), nimmt weg,
+   * stellt um. Geltung wie jede Ansicht (`applies`): ohne für alle Artikel,
+   * mit Typ, Bedingung oder einem Artikel. Ein Beitrag ist keine Ansicht
+   * zum Wählen; gezeichnet wird, was sich aus allen geltenden ergibt
+   * (`composeView`).
+   */
+  adjust?: LayoutAdjust;
+  /** Bei gleicher Genauigkeit gewinnt die höhere Priorität (E-173); ohne Angabe 0. */
+  priority?: number;
+  /** Design je Elementart (T-425, E-170 a): `section` → Kopf in `accent`. Ein Element darf je Stelle überschreiben. */
+  styles?: Record<string, ElementStyle>;
 }
+
+/** Wofür ein Token gedacht ist — eine Fläche, ein Text, ein Akzent, eine Linie. */
+export type TokenRole = 'surface' | 'text' | 'accent' | 'line';
+
+/** Ein Design-Token (T-425, E-170 a). */
+export interface TokenDef {
+  label: string;
+  role: TokenRole;
+  /** Farbe im hellen Modus, `#rrggbb` (oder `rgba(…)`, dann ohne Kontrastprüfung). */
+  light: string;
+  /** Farbe im dunklen Modus. */
+  dark: string;
+  /** Ein Text oder Akzent: auf welcher Fläche er stehen soll (Vorgabe `paper`) — dagegen wird der Kontrast geprüft. */
+  on?: string;
+  description?: string;
+}
+
+/** Die benannten Stellen eines Elements, an denen ein Token stehen darf. */
+export type TokenSlot = 'head' | 'surface' | 'frame' | 'text';
+export type ElementStyle = Partial<Record<TokenSlot, string>>;
 
 export interface Registry {
   interfaces: Record<string, InterfaceDef>;
@@ -489,6 +1007,13 @@ export interface Registry {
    * Optional, weil ein Register ohne geteilte Aufzählung vollständig ist.
    */
   enums?: Record<string, EnumDef>;
+  /**
+   * **Design-Tokens** (T-425, REQ-437, E-170 a): benannte Farben mit Rolle,
+   * Wert hell und dunkel. Ein Element nennt je Stelle ein Token
+   * (`LayoutElement.style`), keine Farbe — so bleibt hell und dunkel
+   * zusammen, und der Kontrast lässt sich prüfen.
+   */
+  tokens?: Record<string, TokenDef>;
   views: Record<string, ViewDef>;
   /** Einheiten und wie sie ineinander umgerechnet werden. */
   units: Record<string, UnitDef>;
@@ -559,12 +1084,26 @@ export interface Entity {
   createdAt?: string;
   updatedAt?: string;
   /**
+   * **Die Revision des Artikels** (REQ-192): vom Server gezählt, je
+   * Schreiben eins mehr. Wer schreibt, schickt die Revision mit, die er
+   * gelesen hat; steht inzwischen eine andere da, wird nicht geschrieben,
+   * sondern zusammengeführt (`mergeEntity`). Ohne sie darf nur angelegt
+   * werden — ein Schreiben ohne gelesenen Stand gewänne sonst still.
+   */
+  revision?: number;
+  /**
    * Nur gelesen, nie gespeichert: an einer Instanz, aus welcher Vorlage sie
    * liest und welche Felder (`Karte.feld`) von dort kommen. Der Server setzt
    * es beim Ausliefern; beim Schreiben fällt es weg (`EntitySchema` kennt
    * es nicht), und was gleich steht wie die Vorlage, fällt mit.
    */
   fromTemplate?: { template: EntityId; fields: string[] };
+  /**
+   * Nur gelesen, nie gespeichert (T-300, D8): an einem Stück mit
+   * Enhancements der gerechnete Name, Preis, Seltenheit und Boni
+   * (`enhanceItem`). Beim Schreiben fällt es weg wie `fromTemplate`.
+   */
+  enhanced?: EnhancedItem;
 }
 
 /** One edge seen from its target. */

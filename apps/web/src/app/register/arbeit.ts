@@ -15,13 +15,18 @@
  *
  * Der Klappstand (`offen`) lebt hier und nicht im Baustein: er hält über
  * ein späteres Zeichnen und über einen Seitenwechsel (im Prototyp
- * `UI.regOpen`).
+ * `UI.regOpen`) — und seit T-441 am Konto (`registerGroups`, REQ-361),
+ * also auch über das Neuladen.
  */
 
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Registry, RegistryUsage } from '@nw/model';
 import { Api, ApiError, type RegisterTeil } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Klappstand } from '../kern/klappstand';
+
+/** Unter diesem Namen merkt sich das Konto die offenen Registergruppen (T-441). */
+export const REGISTER_KLAPP = 'registerGroups';
 
 export interface Rueckfrage {
   titel: string;
@@ -40,8 +45,11 @@ export class RegisterArbeit {
   readonly speichert = signal(false);
   readonly usage = signal<RegistryUsage | null>(null);
   readonly frage = signal<Rueckfrage | null>(null);
-  /** Aufgeklappte Gruppen, `Typ::Gruppe`. */
-  readonly offen = signal<ReadonlySet<string>>(new Set());
+  private readonly klapp = inject(Klappstand);
+  /** Aufgeklappte Gruppen, `Typ::Gruppe` — gemerkt am Konto (T-441). */
+  readonly offen = computed<ReadonlySet<string>>(
+    () => new Set(Object.entries(this.klapp.stand(REGISTER_KLAPP)).filter(([, auf]) => auf).map(([k]) => k)),
+  );
 
   /** Einmal je Besuch der Seite zählen; der Bestand ändert sich nicht durchs Register. */
   async zaehlen(): Promise<void> {
@@ -92,12 +100,7 @@ export class RegisterArbeit {
     return this.offen().has(schluessel);
   }
   klappen(schluessel: string): void {
-    this.offen.update((s) => {
-      const n = new Set(s);
-      if (n.has(schluessel)) n.delete(schluessel);
-      else n.add(schluessel);
-      return n;
-    });
+    this.klapp.setze(REGISTER_KLAPP, schluessel, !this.istOffen(schluessel));
   }
 }
 
@@ -122,4 +125,18 @@ export function carry(n: number): string {
 /** „3 articles", „1 article", „no article". */
 export function articles(n: number): string {
   return n === 0 ? 'no article' : n === 1 ? '1 article' : `${n.toLocaleString('en')} articles`;
+}
+
+/**
+ * **Gespeichert und sichtbar** (T-069): wie viele Artikel einer Art in der
+ * laufenden Kampagne im Stapel stehen, und wie viele gespeichert sind. Eine
+ * Zahl allein widersprach der Liste, sobald eine Ebene nicht aufgeschaltet
+ * war. Ohne Kampagne ist alles da, und es bleibt bei einer Zahl.
+ */
+export function inPlayText(u: RegistryUsage | null, typ: string): string | null {
+  if (!u) return null;
+  const gespeichert = u.types[typ] ?? 0;
+  if (!u.inPlay || !u.campaign) return articles(gespeichert);
+  const da = u.inPlay[typ] ?? 0;
+  return `${da.toLocaleString('en')} in play in ‘${u.campaign.name}’ · ${articles(gespeichert)} stored`;
 }

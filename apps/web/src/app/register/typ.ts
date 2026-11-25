@@ -1,11 +1,31 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { areaOf, articlesTaking, fieldTitle, layoutFor, linkedTypes, ownFields, relationsFrom, typeChain, typeList, viewKeys } from '@nw/model';
-import type { InterfaceDef, LayoutElement, Registry } from '@nw/model';
+import {
+  areaOf,
+  articlesTaking,
+  fieldTitle,
+  appliesText,
+  isDesignedView,
+  layoutFor,
+  linkedTypes,
+  ownFields,
+  relationsFrom,
+  typeChain,
+  typeList,
+  typeIcon,
+  viewGroup,
+  viewKeys,
+  MARKER_VIEWS,
+} from '@nw/model';
+import type { InterfaceDef, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { BEREICHE } from '../kern/bereiche';
-import { RegisterArbeit, articles, carry } from './arbeit';
+import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
+import { Kapitel, Kapitelteil } from '../muster/kapitel';
+import { Klappleiste } from '../muster/klappleiste';
+import { Icon } from '../muster/icon';
+import { IconWahl } from '../muster/icon-wahl';
 import {
   ancestorsOf,
   childrenOf,
@@ -43,18 +63,18 @@ interface Gruppe {
  */
 @Component({
   selector: 'nw-reg-typ',
-  imports: [RouterLink, RegFeld],
+  imports: [RouterLink, RegFeld, Kapitel, Kapitelteil, Klappleiste, Icon, IconWahl],
   template: `
     @if (def(); as d) {
       <div class="typkopf">
-        <h2>{{ d.label ?? name() }}</h2>
+        <h2><nw-icon [name]="typIcon()" /> {{ d.label ?? name() }}</h2>
         <code>{{ name() }}</code>
         <span>{{ d.abstract ? 'shared type — no articles of its own' : 'creatable' }}</span>
         @if (bereich()) {
           <span>area <strong>{{ bereich() }}</strong></span>
         }
         @if (!d.abstract) {
-          <span class="dim">{{ zahlText(eigeneArtikel()) }}</span>
+          <span class="dim">{{ artikelText() }}</span>
         }
         @if (kinder().length) {
           <span class="dim"
@@ -66,8 +86,14 @@ interface Gruppe {
         }
       </div>
 
-      <section class="kasten" aria-label="This type">
-        <h3>This type</h3>
+      <!-- Die Kapitel der Typseite (T-277): am Telefon Reiter, am Desktop
+           Felder links breit, Kurzangaben und Kanten rechts schmal. Die
+           Klappleiste (T-359) klappt die geerbten Typen und die Kanten auf
+           und zu und springt von Kapitel zu Kapitel; am Telefon steht sie
+           unten fest und kennt nur den gewählten Reiter. -->
+      <nw-klappleiste beschriftung="Type sections" />
+      <nw-kapitel merke="registry">
+      <nw-kapitelteil key="type" titel="This type" lage="seite">
         <label class="f">
           <span>Label</span>
           <input type="text" [value]="d.label ?? ''" [placeholder]="name()" [disabled]="!darf()"
@@ -108,12 +134,31 @@ interface Gruppe {
           </select>
         </label>
         <p class="hint">Measures are stored in their own unit and converted on read; this overrides the campaign setting for this type and its subtypes.</p>
-      </section>
+        <!-- **Als Marker** (T-214, \`InterfaceDef.markerView\`): geerbt die \`extends\`-Kette hoch. -->
+        <label class="f">
+          <span>On a map</span>
+          <select [disabled]="!darf()" (change)="setzen({ markerView: $any($any($event.target).value) || undefined })">
+            <option value="" [selected]="!d.markerView">{{ geerbteMarkeransicht() ? 'inherited — ' + geerbteMarkeransicht() : 'image (default)' }}</option>
+            @for (v of MARKER_VIEWS; track v.key) {
+              <option [value]="v.key" [selected]="d.markerView === v.key">{{ v.label }}</option>
+            }
+          </select>
+        </label>
+        <p class="hint">How its articles stand as markers: symbol, symbol with name, image or quick card. The campaign can set it per map kind, a map for its markers, and a single marker for itself.</p>
+        <!-- **Das Icon** (T-461, \`InterfaceDef.icon\`): geerbt die \`extends\`-Kette hoch wie der Bereich. -->
+        <div class="f">
+          <span>Icon</span>
+          <nw-icon-wahl [wert]="d.icon ?? ''" [geerbt]="geerbtesIcon()" [disabled]="!darf()" label="Icon of this type"
+            (wertChange)="setzen({ icon: $event || undefined })" />
+        </div>
+        <p class="hint">Shown before the name of its articles in lists, quick views, titles, edges and board cards. Without its own, the nearest supertype’s icon holds; an article can choose another under Identity › Icon.</p>
+      </nw-kapitelteil>
 
-      <section class="kasten" aria-label="Own fields">
-        <h3>Its own fields <span class="dim">· {{ eigene().length ? eigene().length + (eigene().length === 1 ? ' field' : ' fields') : 'nothing of its own' }}</span></h3>
+      <nw-kapitelteil key="fields" titel="Own fields" lage="haupt" [zahl]="eigene().length"
+                      [hinweis]="eigene().length ? '' : 'nothing of its own'">
         @for (k of eigene(); track k) {
           <div class="frow">
+            <nw-icon [name]="prop(name(), k)?.icon" />
             <code class="fk">{{ k }}{{ pflicht(name(), k) ? '*' : '' }}</code>
             <input type="text" class="flabel" aria-label="Label" [value]="prop(name(), k)?.title ?? ''" [placeholder]="k"
               [disabled]="!darf()" (change)="titelSetzen(k, wert($event))" />
@@ -135,13 +180,14 @@ interface Gruppe {
             <button type="submit">+ Field</button>
           </form>
         }
-      </section>
+      </nw-kapitelteil>
 
-      @if (gruppen().length || verlinkt().length || kanten().genannt.length || kanten().allgemein) {
-        <section class="kasten" aria-label="Inherited">
-          <h3>Inherited <span class="dim">· {{ gruppen().length }} {{ gruppen().length === 1 ? 'type' : 'types' }}, {{ geerbteFelder() }} {{ geerbteFelder() === 1 ? 'field' : 'fields' }}</span></h3>
+      <nw-kapitelteil key="inherited" titel="Inherited" lage="haupt" [zahl]="gruppen().length"
+                      [zeigen]="!!(gruppen().length || verlinkt().length || darf())"
+                      [hinweis]="geerbteFelder() + (geerbteFelder() === 1 ? ' field' : ' fields')">
           @for (g of gruppen(); track g.typ) {
-            <div class="teil">
+            <div class="teil" data-bereich data-klappbar [attr.data-offen]="offen(name() + '::' + g.typ)"
+              (klappen)="klappenAuf(name() + '::' + g.typ, $event)">
               <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::' + g.typ)"
                 (click)="klappen(name() + '::' + g.typ)" (keydown.enter)="klappen(name() + '::' + g.typ)">
                 <span class="twist">{{ offen(name() + '::' + g.typ) ? '▾' : '▸' }}</span>
@@ -187,7 +233,8 @@ interface Gruppe {
           }
 
           @for (l of verlinkt(); track l.relation) {
-            <div class="teil verlinkt">
+            <div class="teil verlinkt" data-bereich data-klappbar [attr.data-offen]="offen(name() + '::→' + l.type)"
+              (klappen)="klappenAuf(name() + '::→' + l.type, $event)">
               <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::→' + l.type)"
                 (click)="klappen(name() + '::→' + l.type)" (keydown.enter)="klappen(name() + '::→' + l.type)">
                 <span class="twist">{{ offen(name() + '::→' + l.type) ? '▾' : '▸' }}</span>
@@ -208,32 +255,6 @@ interface Gruppe {
             </div>
           }
 
-          @if (kanten().genannt.length || kanten().allgemein) {
-            <div class="teil kanten">
-              <div class="fhead" role="button" tabindex="0" [attr.aria-expanded]="offen(name() + '::kanten')"
-                (click)="klappen(name() + '::kanten')" (keydown.enter)="klappen(name() + '::kanten')">
-                <span class="twist">{{ offen(name() + '::kanten') ? '▾' : '▸' }}</span>
-                <b>Edges from here</b>
-                <span class="pill" title="Not fields: an edge points at another article and is stored in one direction. The other way round is a query.">edge · its own article</span>
-                <span class="dim">{{ kanten().genannt.length ? kanten().genannt.length + ' kinds' : 'none that name this type' }}</span>
-              </div>
-              <div class="partfields" [hidden]="!offen(name() + '::kanten')">
-                @for (r of kanten().genannt; track r.type) {
-                  <div class="frow lesen">
-                    <a class="fk" [routerLink]="[]" [queryParams]="{ tab: 'edges', edge: r.type }">{{ r.type }}</a>
-                    <span>{{ r.label }}</span>
-                    <span class="holds">→ {{ (r.to ?? ['*']).join(', ') }}</span>
-                    <span class="pill">{{ r.cardinality === 'one' ? 'one' : 'many' }}{{ r.owned ? ' · owned' : '' }}</span>
-                  </div>
-                }
-                @if (kanten().allgemein) {
-                  <p class="hint">Plus {{ kanten().allgemein }} edge kinds that hit every type (*) — they say nothing about this one.</p>
-                }
-              </div>
-            </div>
-          }
-        </section>
-      }
 
       @if (darf()) {
         <div class="addbar">
@@ -246,43 +267,51 @@ interface Gruppe {
           </select>
         </div>
       }
+      </nw-kapitelteil>
 
-      @if (!d.abstract) {
-        <section class="kasten" aria-label="Views">
-          <h3>Views</h3>
+      <!-- Kanten sind keine Felder: ein eigenes Kapitel, am Desktop zugeklappt wie die geerbten. -->
+      <nw-kapitelteil key="edges" titel="Edges from here" lage="seite" [zu]="true" [zahl]="kanten().genannt.length"
+                      [zeigen]="!!(kanten().genannt.length || kanten().allgemein)">
+        <p class="hint">Not fields: an edge points at another article and is stored in one direction. The other way round is a query.</p>
+        @for (r of kanten().genannt; track r.type) {
+          <div class="frow lesen">
+            <a class="fk" [routerLink]="[]" [queryParams]="{ tab: 'edges', edge: r.type }">{{ r.type }}</a>
+            <span>{{ r.label }}</span>
+            <span class="holds">→ {{ (r.to ?? ['*']).join(', ') }}</span>
+            <span class="pill">{{ r.cardinality === 'one' ? 'one' : 'many' }}{{ r.owned ? ' · owned' : '' }}</span>
+          </div>
+        }
+        @if (kanten().allgemein) {
+          <p class="hint">Plus {{ kanten().allgemein }} edge kinds that hit every type (*) — they say nothing about this one.</p>
+        }
+      </nw-kapitelteil>
+
+      <nw-kapitelteil key="views" titel="Views" lage="voll" [zahl]="ansichten().length" [zeigen]="!d.abstract">
           <p class="hint">
-            How an article of this type is drawn — <b>overview</b> in a link or list row, <b>quick</b> on a card,
-            <b>full</b> on its page. The arrangement lives at the type and is inherited until a type says its own.
+            The views that apply to {{ label(name()) }} and why — <b>overview</b> in a link or list row, <b>quick</b> on a card,
+            <b>full</b> on its page, <b>print</b> on paper, and your own. The most specific one of a group wins; “Design” opens the
+            view designer with this type chosen, where it is changed for every article, for this type (its own or adjusted) or
+            under a condition.
           </p>
-          @for (v of ansichten(); track v.key) {
-            <div class="ansicht">
-              <div class="fhead">
-                <b>{{ v.label }}</b>
-                <span class="pill">{{ v.von === name() ? 'its own' : v.von ? 'from ' + label(v.von) : 'the view’s default' }}</span>
-                <span class="dim">{{ v.kurz }}</span>
-                @if (darf()) {
-                  <button type="button" class="klein" (click)="ansichtBearbeiten(v.key, v.layout)">{{ entwurf()?.key === v.key ? 'Close' : 'Edit' }}</button>
-                  @if (v.von === name()) {
-                    <button type="button" class="klein" (click)="ansichtErben(v.key)">Inherit again</button>
-                  }
-                }
-              </div>
-              @if (entwurf()?.key === v.key) {
-                <textarea rows="10" aria-label="Arrangement as JSON" [value]="entwurf()!.text"
-                  (input)="entwurfText($any($event.target).value)"></textarea>
-                <p class="hint">
-                  A list of layout elements (<code>heading</code>, <code>fields</code> with <code>except</code>,
-                  <code>prose</code>, <code>sheet</code>, <code>tabs</code> …). Saving makes it this type’s own; the server
-                  checks it.
-                </p>
-                <div class="knoepfe">
-                  <button type="button" class="pri" (click)="ansichtSpeichern(v.key)">Save arrangement</button>
-                </div>
-              }
+          <div class="ansichten-tabelle" role="table" aria-label="Views of this type">
+            <div role="row" class="az k">
+              <span role="columnheader">View</span><span role="columnheader">Group</span>
+              <span role="columnheader">Applies</span><span role="columnheader">From</span><span role="columnheader"></span>
             </div>
-          }
-        </section>
-      }
+            @for (v of ansichten(); track v.key) {
+              <div role="row" class="az">
+                <span role="cell"><b>{{ v.label }}</b></span>
+                <span role="cell">{{ v.gruppe }}</span>
+                <span role="cell">{{ v.gilt }}</span>
+                <span role="cell" class="dim">{{ v.herkunft }}</span>
+                <span role="cell">
+                  <a class="knopf klein" [routerLink]="['/registry']" [queryParams]="{ tab: 'views', view: v.key, type: name() }">Design</a>
+                </span>
+              </div>
+            }
+          </div>
+      </nw-kapitelteil>
+      </nw-kapitel>
 
       @if (darf()) {
         <div class="knoepfe">
@@ -303,10 +332,10 @@ export class RegTyp {
   readonly darf = input(false);
 
   private readonly bestand = inject(Bestand);
-  private readonly arbeit = inject(RegisterArbeit);
+  protected readonly arbeit = inject(RegisterArbeit);
   protected readonly bereiche = BEREICHE;
   protected readonly feldOffen = signal<string | null>(null);
-  protected readonly entwurf = signal<{ key: string; text: string } | null>(null);
+  /** Der Entwurf einer Ansicht dieser Art: `null` heisst „wie die Ansicht" (T-110). */
 
   private readonly reg = computed(() => this.bestand.registry() as Registry | null);
   protected readonly def = computed(() => this.reg()?.interfaces[this.name()]);
@@ -317,6 +346,26 @@ export class RegTyp {
     for (const t of ancestorsOf(r, this.name())) if (r.interfaces[t]?.area) return r.interfaces[t]!.area!;
     return '';
   });
+  /** Das Icon, das für diese Art gilt (T-461): eigenes oder geerbtes. */
+  protected readonly typIcon = computed(() => (this.reg() ? typeIcon(this.reg()!, this.name()) : undefined));
+  /** Was ein Obertyp als Icon sagt (T-461); leer: keiner. */
+  protected readonly geerbtesIcon = computed(() => {
+    const r = this.reg();
+    if (!r) return '';
+    for (const t of ancestorsOf(r, this.name())) {
+      const i = r.interfaces[t]?.icon;
+      if (i) return i;
+    }
+    return '';
+  });
+  /** Was ein Obertyp für die Markeransicht sagt (T-214); leer: keiner. */
+  protected readonly geerbteMarkeransicht = computed(() => {
+    const r = this.reg();
+    if (!r) return '';
+    for (const t of ancestorsOf(r, this.name())) if (r.interfaces[t]?.markerView) return r.interfaces[t]!.markerView!;
+    return '';
+  });
+  protected readonly MARKER_VIEWS = MARKER_VIEWS;
   protected readonly parents = computed(() => (this.reg() ? parentsOf(this.reg()!, this.name()) : []));
   protected readonly kinder = computed(() => (this.reg() ? childrenOf(this.reg()!, this.name()) : []));
   protected readonly eigene = computed(() => Object.keys(this.reg() ? ownFields(this.reg()!, this.name()) : {}));
@@ -326,6 +375,9 @@ export class RegTyp {
     const u = this.arbeit.usage();
     return u ? (u.types[this.name()] ?? 0) : null;
   });
+
+  /** Im Stapel der laufenden Kampagne und gespeichert (T-069). */
+  protected readonly artikelText = computed(() => inPlayText(this.arbeit.usage(), this.name()) ?? '');
 
   protected readonly gruppen = computed<Gruppe[]>(() => {
     const r = this.reg();
@@ -383,13 +435,28 @@ export class RegTyp {
     return typeList(r).filter((t) => !direkt.includes(t) && !wouldCycle(r, this.name(), t));
   });
 
+  /**
+   * **Die Ansichten, die für diese Art gelten** (T-276): je Ansicht ohne
+   * Geltung, woher ihre Anordnung kommt (die Art, ein Obertyp, die
+   * Ansicht); je gestalteter, ob ihre Geltung die Art nennt.
+   */
   protected readonly ansichten = computed(() => {
     const r = this.reg();
     if (!r) return [];
-    return viewKeys(r).map((key) => {
-      const { layout, from } = layoutFor(r, key, this.name());
-      return { key, label: r.views[key]?.label ?? key, von: from, layout, kurz: kurzLayout(layout) };
-    });
+    const kette = typeChain(r, this.name());
+    const raus: { key: string; label: string; gruppe: string; gilt: string; herkunft: string }[] = [];
+    for (const key of viewKeys(r)) {
+      const def = r.views[key]!;
+      if (isDesignedView(def)) {
+        const typen = def.applies?.types ?? [];
+        if (typen.length && !typen.some((t) => kette.includes(t))) continue;
+        raus.push({ key, label: def.label, gruppe: viewGroup(key, def), gilt: appliesText(def.applies, (id) => this.bestand.name()(id)), herkunft: 'designed view' });
+        continue;
+      }
+      const { from, mode } = layoutFor(r, key, this.name());
+      raus.push({ key, label: def.label, gruppe: key, gilt: from ? `${this.label(from)} and its subtypes` : 'every article', herkunft: this.herkunft({ von: from, mode }) });
+    }
+    return raus;
   });
 
   /** Warum er nicht gehen kann — oder nichts. */
@@ -409,9 +476,6 @@ export class RegTyp {
 
   protected label(t: string): string {
     return this.reg()?.interfaces[t]?.label ?? t;
-  }
-  protected zahlText(n: number | null): string {
-    return n === null ? '' : articles(n);
   }
   protected wert(ev: Event): string {
     return String((ev.target as HTMLInputElement).value ?? '').trim();
@@ -438,6 +502,11 @@ export class RegTyp {
   }
   protected klappen(s: string): void {
     this.arbeit.klappen(s);
+  }
+  /** Die Klappleiste bittet um auf oder zu (T-359). */
+  protected klappenAuf(s: string, e: Event): void {
+    const auf = (e as CustomEvent<unknown>).detail;
+    if (typeof auf === 'boolean' && this.offen(s) !== auf) this.arbeit.klappen(s);
   }
   protected feldUmschalten(id: string): void {
     this.feldOffen.update((x) => (x === id ? null : id));
@@ -593,37 +662,11 @@ export class RegTyp {
     });
   }
 
-  protected ansichtBearbeiten(key: string, layout: LayoutElement[]): void {
-    this.entwurf.update((e) => (e?.key === key ? null : { key, text: JSON.stringify(layout, null, 2) }));
-  }
-  protected entwurfText(text: string): void {
-    this.entwurf.update((e) => (e ? { ...e, text } : e));
-  }
-  protected ansichtSpeichern(key: string): void {
-    const e = this.entwurf();
-    if (!e) return;
-    let layout: unknown;
-    try {
-      layout = JSON.parse(e.text);
-    } catch {
-      this.arbeit.fehler.set('The arrangement is not valid JSON.');
-      return;
-    }
-    if (!Array.isArray(layout)) {
-      this.arbeit.fehler.set('An arrangement is a list of elements: [ … ].');
-      return;
-    }
-    void this.typAendern((d) => {
-      d.views = { ...(d.views ?? {}), [key]: layout as LayoutElement[] };
-    }).then((ok) => ok && this.entwurf.set(null));
-  }
-  protected ansichtErben(key: string): void {
-    void this.typAendern((d) => {
-      const v = { ...(d.views ?? {}) };
-      delete v[key];
-      if (Object.keys(v).length) d.views = v;
-      else delete d.views;
-    });
+  /** Woher die Anordnung dieser Ansicht kommt, in einem Wort. */
+  protected herkunft(v: { von: string | null; mode: string }): string {
+    if (!v.von) return 'as the view says';
+    if (v.von === this.name()) return v.mode === 'adjusted' ? 'adjusted here' : 'its own';
+    return `from ${this.label(v.von)}${v.mode === 'adjusted' ? ' (adjusted)' : ''}`;
   }
 
   protected entfernen(): void {
@@ -639,19 +682,4 @@ export class RegTyp {
         }),
     });
   }
-}
-
-/** Ein Layout in einer Zeile: `heading · fields (all but Secrets) · prose`. */
-function kurzLayout(layout: LayoutElement[]): string {
-  if (!layout.length) return 'nothing arranged';
-  return layout
-    .map((el) => {
-      if (el.el === 'fields') {
-        const was = el.fields === 'all' || !el.fields ? 'all' : el.fields.join(', ') || 'none';
-        return `fields (${was}${el.except?.length ? ' but ' + el.except.join(', ') : ''})`;
-      }
-      if (el.el === 'tabs') return `tabs (${(el.tabs ?? []).map((t) => t.label).join(', ')})`;
-      return el.el;
-    })
-    .join(' · ');
 }

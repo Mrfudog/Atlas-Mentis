@@ -22,13 +22,90 @@
  *    aufgeschalteten Ebene heraus — eine, die immer gälte, wäre eine
  *    Bearbeitung. Die spezifischste gewinnt; die Kette wird bis zum Ende
  *    verfolgt, aber nicht im Kreis.
+ *  - Eine **Gruppe** (`Layer.kind: 'group'`, E-022 b, T-088) ist eine
+ *    Ebene, deren Mitglieder mit `partOf` an ihr hängen. Schaltet die
+ *    Kampagne sie auf, sind alle Mitglieder im Spiel, verschachtelt auch
+ *    die Mitglieder der Mitglieder (nicht im Kreis). Den Rang gibt die
+ *    Gruppe; darin stehen sie nach Erscheinen (`Layer.published`), das
+ *    neuere höher. **Eine ausdrückliche Kante schlägt die Gruppe:** eine
+ *    Ebene, die die Kampagne selbst aufschaltet, steht an ihrer eigenen
+ *    Stelle, und eine mit `activates` `mode: 'off'` ist aus, auch wenn
+ *    eine Gruppe sie brächte — aus schlägt an.
+ *  - **Teilweise aufschalten** (T-105, REQ-255): eine Kante `activates`
+ *    darf sagen, was ihre Ebene bringt — `props.areas` (Bereiche wie
+ *    `rules`, aus `area` der Art) und `props.types` (einzelne Arten). Ohne
+ *    beide: alles. Was nicht passt, bringt die Ebene nicht — auch nicht als
+ *    Herausnahme oder Überschreibung; aus einem Abenteuer kommen so die
+ *    Gegenstände, nicht die Orte. Eine Gruppe gibt ihre Auswahl an ihre
+ *    Mitglieder weiter; die ausdrückliche Kante eines Mitglieds hat ihre
+ *    eigene.
+ *  - **Typ-Regeln** (T-187): `layerRule` an eine Gruppe sagt dasselbe für
+ *    jede Ebene darin, die selbst nichts sagt — einmal für alle Abenteuer.
+ *  - **Einzelne Artikel** (T-187): `enables` an einen Artikel bringt ihn
+ *    ins Spiel, auch wenn seine Ebene es nicht ist.
  */
 
-import type { Entity, EntityId } from './types.js';
+import { entityName } from './entity.js';
+import { areaOf } from './entity.js';
+import type { Entity, EntityId, Registry } from './types.js';
 import { ACTIVATES_RELATION, CAMPAIGN_TYPE, LAYER_RELATION } from './visibility.js';
 
 export const OVERRIDES_RELATION = 'overrides';
+/**
+ * **Vergleichsebenen** (E-021 d, T-092): eine Kante `activates` mit
+ * `props.mode: 'compare'` bringt ihre Ebene nicht ins Spiel, sondern nur
+ * in den Vergleich — ihre Fassungen stehen auf Wunsch an den Feldern und
+ * lassen sich als Überschreibung übernehmen. Für `inPlay` zählt sie nicht.
+ */
+export const COMPARE_MODE = 'compare';
 export const LAYER_COMPONENT = 'Layer';
+/**
+ * **Die Arten, die Ebenen sind** (E-166): `Layer` und seine Unterarten —
+ * ein Regelsystem (`RuleSystem`, z. B. Inventory) und eine Regelmechanik
+ * (`RuleMechanic`, z. B. Grid). Der Stapel, die Schreibrechte und die
+ * Listen fragen „ist eine Ebene“ ohne Register; darum steht die Liste
+ * hier, und `packages/registry/test` prüft, dass jede Art, die von `Layer`
+ * erbt, darin steht.
+ */
+export const LAYER_TYPES: ReadonlySet<string> = new Set([LAYER_COMPONENT, 'RuleSystem', 'RuleMechanic']);
+/** Ist dieser Artikel eine Ebene (auch ein Regelsystem oder eine Regelmechanik)? */
+export const isLayer = (e: Entity | null | undefined): boolean => LAYER_TYPES.has((e?.interfaces ?? [])[0] ?? '');
+/** Die Kontoeinstellung mit der gewählten Schreibebene je Kampagne
+ *  (`{ [Kampagne]: Ebene }`, T-176) — neben dem Konto, nie im Artikel. */
+export const WRITE_LAYER_PREF = 'writeLayer';
+/** Eine Ebene, die andere Ebenen enthält (E-022 b, T-088). */
+export const GROUP_KIND = 'group';
+/**
+ * **Aus, obwohl eine Gruppe es brächte** (T-088): eine Kante `activates`
+ * mit `props.mode: 'off'` nimmt genau diese Ebene (und was nur über sie
+ * hereinkäme) aus dem Stapel. Ohne aufgeschaltete Gruppe tut sie nichts.
+ */
+export const OFF_MODE = 'off';
+/** Die Kante, mit der eine Ebene an ihrer Gruppe hängt (E-022 b). */
+export const GROUP_RELATION = 'partOf';
+/**
+ * **Typ-Regel über viele Quellen** (T-187): eine Kante `layerRule` von der
+ * Kampagne an eine Gruppe mit `props.areas`/`props.types` sagt, was jede
+ * Ebene in dieser Gruppe bringt, wo sie im Spiel ist und selbst nichts
+ * sagt — „aus allen Abenteuern nur Regeln, Gegenstände und Zauber". Die
+ * eigene Auswahl an der Kante `activates` schlägt sie, ebenso die Auswahl
+ * einer aufgeschalteten Gruppe; `activates.props.exempt` nimmt eine Ebene
+ * ausdrücklich aus („alles, trotz Regel"). Eine eigene Kante und kein
+ * weiterer `mode` an `activates`: eine Regel schaltet nichts auf, und jede
+ * Stelle, die `activates` liest, bliebe sonst eine, die es vergisst.
+ */
+export const RULE_RELATION = 'layerRule';
+/**
+ * **Einzelne Artikel freigeben** (T-187): eine Kante `enables` von der
+ * Kampagne an einen Artikel bringt genau ihn ins Spiel, auch wenn seine
+ * Ebene es nicht ist — Extra-Inhalt aus einer Vergleichsebene, ohne das
+ * ganze Buch. Er zählt mit einem Rang unter jeder aufgeschalteten Ebene
+ * (`PICK_RANK`): eine Herausnahme aus dem Stapel schlägt ihn, und eine
+ * Fassung aus einer aufgeschalteten Ebene gilt vor ihm.
+ */
+export const ENABLES_RELATION = 'enables';
+export const PICK_RANK = 0.5;
+
 /** Die Einstellung, die sagt, welche Kampagne läuft. */
 export const CAMPAIGN_SETTING = 'campaign';
 
@@ -37,9 +114,363 @@ type Rel = NonNullable<Entity['relations']>[number];
 const kanten = (e: Entity | undefined, type: string): Rel[] =>
   (e?.relations ?? []).filter((r) => r.type === type);
 
+/** Ist diese Kante `activates` nur ein Vergleich (T-092)? */
+export const isCompareEdge = (r: { type: string; props?: unknown }): boolean =>
+  r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode === COMPARE_MODE;
+
+/** Schaltet diese Kante `activates` eine Ebene ausdrücklich ab (T-088)? */
+export const isOffEdge = (r: { type: string; props?: unknown }): boolean =>
+  r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode === OFF_MODE;
+
+/** Die Kanten, die eine Ebene wirklich aufschalten — ohne Vergleiche und Abschaltungen. */
+const aufschalten = (e: Entity | undefined): Rel[] =>
+  kanten(e, ACTIVATES_RELATION).filter((r) => !isCompareEdge(r) && !isOffEdge(r));
+
+/**
+ * **Was eine Ebene bringt** (T-105, REQ-255): Bereiche und Arten. Ein
+ * Artikel passt, wenn seine Art genannt ist oder ihr Bereich. `null`
+ * heisst: alles — die Vorgabe.
+ */
+export interface LayerFilter {
+  areas?: string[];
+  types?: string[];
+}
+
+const woerter = (x: unknown): string[] | undefined =>
+  Array.isArray(x) ? x.filter((y): y is string => typeof y === 'string') : undefined;
+
+/** Die Auswahl an einer Kante `activates`; ohne `areas` und `types` keine. */
+export function filterOf(r: { props?: unknown } | undefined): LayerFilter | null {
+  const p = r?.props as { areas?: unknown; types?: unknown } | undefined;
+  const areas = woerter(p?.areas);
+  const types = woerter(p?.types);
+  if (!areas && !types) return null;
+  return { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
+}
+
+/** Nimmt diese Kante `activates` ihre Ebene von den Typ-Regeln aus (T-187)? */
+export const isExemptEdge = (r: { props?: unknown } | undefined): boolean =>
+  (r?.props as { exempt?: unknown } | undefined)?.exempt === true;
+
+/** Die Typ-Regeln einer Kampagne (T-187): Gruppe → Auswahl. */
+export function layerRules(campaign: Entity | null): Map<EntityId, LayerFilter> {
+  const out = new Map<EntityId, LayerFilter>();
+  for (const r of kanten(campaign ?? undefined, RULE_RELATION)) {
+    const f = filterOf(r);
+    if (f) out.set(r.to, f);
+  }
+  return out;
+}
+
+/**
+ * **Vorrang an der Kampagne** (T-403, E-111 a): die Kante `prefers` von der
+ * Kampagne an einen Artikel („Prefer this version") oder an eine Ebene mit
+ * `props.types` („Weapons: PHB 2024 first"). `props.over` nennt, worüber
+ * der Vorrang gilt — eine Ebene oder einen Artikel; ohne: über alles. Kein
+ * Buch wird beschrieben, und ins Spiel bringt der Vorrang nichts: er ordnet
+ * nur, welche Fassung derselben Sache Listen und Verweise zeigen.
+ * Reihenfolge: Artikel vor Art vor Ebenenreihenfolge.
+ */
+export const PREFERS_RELATION = 'prefers';
+/** Um so viel steht ein bevorzugter Artikel bzw. eine bevorzugte Art über dem, worüber sie gilt. */
+const VORRANG_ARTIKEL = 0.4;
+const VORRANG_ART = 0.2;
+
+export interface Preference {
+  to: EntityId;
+  over?: EntityId;
+  /** An einer Ebene: die Arten, für die sie vorne steht. Leer an einem Artikel. */
+  types: string[];
+}
+
+/** Die Vorränge einer Kampagne, wie an ihren Kanten. */
+export function preferencesOf(campaign: Entity | null): Preference[] {
+  return kanten(campaign ?? undefined, PREFERS_RELATION).map((r) => {
+    const p = (r.props ?? {}) as { over?: unknown; types?: unknown };
+    return {
+      to: r.to,
+      ...(typeof p.over === 'string' && p.over ? { over: p.over } : {}),
+      types: Array.isArray(p.types) ? p.types.filter((t): t is string => typeof t === 'string') : [],
+    };
+  });
+}
+
+/**
+ * **Einen Vorrang setzen oder nehmen** (T-403). Je Ziel eine Kante; an
+ * einer Ebene kommen Arten dazu (`types` wird vereinigt), `null` mit
+ * `type` nimmt eine Art weg — ohne Art bleibt keine Kante stehen, denn
+ * „die ganze Ebene vorne" ist die Reihenfolge in Order in play.
+ */
+export function withPreference(
+  campaign: Entity,
+  to: EntityId,
+  pref: { over?: EntityId | null; types?: readonly string[] } | null,
+  type?: string,
+): Entity {
+  const alt = preferencesOf(campaign).find((p) => p.to === to);
+  const rest = (campaign.relations ?? []).filter((r) => !(r.type === PREFERS_RELATION && r.to === to));
+  let neu: Preference | null;
+  if (!pref) {
+    const types = type && alt ? alt.types.filter((t) => t !== type) : [];
+    neu = type && alt && types.length ? { ...alt, types } : null;
+  } else {
+    const types = [...new Set([...(alt?.types ?? []), ...(pref.types ?? [])])];
+    const over = pref.over === null ? undefined : (pref.over ?? alt?.over);
+    neu = { to, ...(over ? { over } : {}), types };
+  }
+  if (!neu) return { ...campaign, relations: rest };
+  return {
+    ...campaign,
+    relations: [
+      ...rest,
+      {
+        id: `${PREFERS_RELATION}-${to}`,
+        type: PREFERS_RELATION,
+        to,
+        props: { ...(neu.over ? { over: neu.over } : {}), ...(neu.types.length ? { types: neu.types } : {}) },
+      },
+    ],
+  };
+}
+
+/** Die einzeln freigegebenen Artikel einer Kampagne (T-187). */
+export function enabledArticles(campaign: Entity | null): Set<EntityId> {
+  return new Set(kanten(campaign ?? undefined, ENABLES_RELATION).map((r) => r.to));
+}
+
+/** Zwei Auswahlen zusammen: was eine von beiden bringt. */
+const vereinigt = (a: LayerFilter, b: LayerFilter): LayerFilter => {
+  const areas = [...new Set([...(a.areas ?? []), ...(b.areas ?? [])])];
+  const types = [...new Set([...(a.types ?? []), ...(b.types ?? [])])];
+  return { ...(a.areas || b.areas ? { areas } : {}), ...(a.types || b.types ? { types } : {}) };
+};
+
+/**
+ * **Welche Regel für diese Ebene gilt** (T-187): die der nächsten Gruppe
+ * darüber, die eine hat — „Adventures" vor „Official", wenn ein Abenteuer
+ * in beiden steckt. Gibt es auf derselben Höhe mehrere, gelten sie
+ * zusammen. `null`: keine.
+ */
+export function ruleFor(
+  layerId: EntityId,
+  rules: ReadonlyMap<EntityId, LayerFilter>,
+  parents: ReadonlyMap<EntityId, readonly EntityId[]>,
+): { group: EntityId; filter: LayerFilter } | null {
+  if (!rules.size) return null;
+  const gesehen = new Set<EntityId>([layerId]);
+  let ebene = [...(parents.get(layerId) ?? [])];
+  while (ebene.length) {
+    const treffer = ebene.filter((g) => rules.has(g));
+    if (treffer.length) {
+      return { group: treffer[0]!, filter: treffer.slice(1).reduce((f, g) => vereinigt(f, rules.get(g)!), rules.get(treffer[0]!)!) };
+    }
+    const weiter: EntityId[] = [];
+    for (const g of ebene) {
+      if (gesehen.has(g)) continue;
+      gesehen.add(g);
+      for (const p of parents.get(g) ?? []) if (!gesehen.has(p)) weiter.push(p);
+    }
+    ebene = weiter;
+  }
+  return null;
+}
+
+/** Je Ebene ihre Gruppen — die Umkehrung von `groupMembers`. */
+export function groupParents(members: ReadonlyMap<EntityId, readonly EntityId[]>): Map<EntityId, EntityId[]> {
+  const out = new Map<EntityId, EntityId[]>();
+  for (const [g, ms] of members) for (const m of ms) (out.get(m) ?? out.set(m, []).get(m)!).push(g);
+  return out;
+}
+
+/** Der Bereich einer Art, je Art einmal gerechnet (`areaOf` läuft die Kette hoch). */
+type BereichVon = (type: string) => string;
+function bereichVon(registry: Pick<Registry, 'interfaces'> | undefined): BereichVon | undefined {
+  if (!registry) return undefined;
+  const merk = new Map<string, string>();
+  return (t) => {
+    let a = merk.get(t);
+    if (a === undefined) merk.set(t, (a = areaOf(registry, t)));
+    return a;
+  };
+}
+
+/**
+ * Passt der Artikel zur Auswahl? Ohne Auswahl ja. **Ohne Register** lässt
+ * sich ein Bereich nicht prüfen, und die Bereichsauswahl gilt dann nicht —
+ * lieber zu viel gezeigt als still ein ganzes Buch verloren; wer einen
+ * Stapel rechnet, gibt das Register mit.
+ */
+function passt(f: LayerFilter | null | undefined, entity: Entity, bereich: BereichVon | undefined): boolean {
+  if (!f) return true;
+  const t = (entity.interfaces ?? [])[0] ?? '';
+  if (f.types?.includes(t)) return true;
+  if (!f.areas) return false;
+  if (!bereich) return true;
+  return f.areas.includes(bereich(t));
+}
+
+/** Öffentlich für die Oberfläche und die Tests: dieselbe Frage mit einem Register. */
+export function passesFilter(
+  f: LayerFilter | null | undefined,
+  entity: Entity,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  return passt(f, entity, bereichVon(registry));
+}
+
+const layerKarte = (e: Entity | undefined): Record<string, unknown> =>
+  (e?.components?.[LAYER_COMPONENT] as Record<string, unknown> | undefined) ?? {};
+
+/** Ist diese Ebene eine Gruppe (E-022 b)? Beschreibung wie jedes `kind` — aber eine, die etwas enthält. */
+export const isGroupLayer = (e: Entity | undefined): boolean =>
+  isLayer(e) && layerKarte(e)['kind'] === GROUP_KIND;
+
+/**
+ * **Wonach eine Gruppe ordnet** (T-094): `publisher` — wer das Buch
+ * herausgibt (Official, Partnered, Third party, Homebrew) — oder, ohne
+ * Angabe, `category` (Core rules, Settings, Adventures …). Beides sind
+ * Gruppen nach E-022 b, und ein Buch steht in beiden; die Angabe sagt nur,
+ * in welcher Ansicht der Kampagnenseite die Gruppe steht. Für den Stapel
+ * zählt sie nicht.
+ */
+export const PUBLISHER_GROUPING = 'publisher';
+export const CATEGORY_GROUPING = 'category';
+export const groupingOf = (e: Entity | undefined): 'publisher' | 'category' =>
+  layerKarte(e)['groupBy'] === PUBLISHER_GROUPING ? PUBLISHER_GROUPING : CATEGORY_GROUPING;
+
+/** Was eine Ebene ist, die hier angelegt wurde und in keiner Herausgeber-Gruppe steht (T-094, T-109). */
+export const HOMEBREW = 'Homebrew';
+/**
+ * Was eine eingelesene Ebene ist, die in keiner Herausgeber-Gruppe steht
+ * (T-109). Hiess bis 28.10. „Unassigned“; das Wort trägt seither die
+ * Parkplatz-Ebene (`UNASSIGNED_LAYER`, E-182, E-186) — zwei Dinge mit einem
+ * Namen wären zwei Fragen mit einer Antwort.
+ */
+export const UNKNOWN_PUBLISHER = 'Unknown';
+
+/**
+ * **Die Parkplatz-Ebene** (T-425, E-182, E-186): jeder Artikel hat eine
+ * Ebene; was keine andere hat, liegt hier. Eine gewöhnliche Ebene — die
+ * Leitung schaltet sie von Hand auf, die Werkbank führt ihren Inhalt als
+ * offene Arbeit (`unassigned`). Angelegt beim Start (Startzeile in
+ * `@nw/registry`) und von Migration 152.
+ */
+export const UNASSIGNED_LAYER = 'ly_unassigned';
+
+/** Der Herausgeber einer Ebene samt Begründung (T-109): der Name, die Gruppen, aus denen er kommt, und ein Satz, warum. */
+export interface PublisherInfo {
+  name: string;
+  groups: EntityId[];
+  why: string;
+}
+
+/** Alle Herausgeber-Gruppen (T-109), nach Name — die Auswahl, an die eine Ebene gehängt werden kann. */
+export function publisherGroups(entities: ReadonlyMap<EntityId, Entity>): Entity[] {
+  return [...entities.values()]
+    .filter((g) => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING)
+    .sort((a, b) => entityName(a).localeCompare(entityName(b)));
+}
+
+/**
+ * **Der Herausgeber einer Ebene** (T-094, REQ-249) — gerechnet, nicht
+ * gespeichert (D8): die Namen der Herausgeber-Gruppen, an denen sie mit
+ * `partOf` hängt. Ein zweites Feld `publisher` neben der Gruppe wäre die
+ * zweite Stelle, die beim ersten Umhängen falsch steht. Eine Gruppe hat
+ * keinen.
+ *
+ * Hängt sie an keiner, entscheidet, **woher sie kommt** (T-109):
+ * `homebrew` nennt die Ebenen, die hier angelegt wurden — von einem
+ * Konto, mit einer Kampagne —, die sind „Homebrew"; jede andere ist
+ * eingelesen und „Unassigned". Bis T-109 hiess alles ohne Gruppe
+ * Homebrew, auch die Sammelebene aus 5e.tools, und niemand sah, woher
+ * die Marke kam.
+ */
+export function publisherInfo(
+  entities: ReadonlyMap<EntityId, Entity>,
+  layer: Entity | undefined,
+  homebrew?: ReadonlySet<EntityId>,
+): PublisherInfo {
+  if (!layer || isGroupLayer(layer)) return { name: '', groups: [], why: '' };
+  const gruppen = kanten(layer, GROUP_RELATION)
+    .map((r) => entities.get(r.to))
+    .filter((g): g is Entity => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING);
+  const ids = [...new Set(gruppen.map((g) => g.id))];
+  const namen = [...new Set(gruppen.map((g) => entityName(g)))];
+  if (namen.length) {
+    return { name: namen.join(' / '), groups: ids, why: `Because this layer is part of the publisher group ${namen.join(' and ')}.` };
+  }
+  return homebrew?.has(layer.id)
+    ? { name: HOMEBREW, groups: [], why: 'Not part of any publisher group, and made here rather than imported.' }
+    : { name: UNKNOWN_PUBLISHER, groups: [], why: 'Not part of any publisher group, and imported — who published it is not recorded.' };
+}
+
+/** Nur der Name aus `publisherInfo` — die Marke in Listen und auf der Kampagnenseite. */
+export function publisherOf(
+  entities: ReadonlyMap<EntityId, Entity>,
+  layer: Entity | undefined,
+  homebrew?: ReadonlySet<EntityId>,
+): string {
+  return publisherInfo(entities, layer, homebrew).name;
+}
+
+/**
+ * **Die Mitglieder jeder Gruppe**, einmal gerechnet (T-088): Gruppen-Id →
+ * die Ebenen, die mit `partOf` an ihr hängen, nach Erscheinen
+ * (`Layer.published`, ohne Datum zuletzt), dann nach Name. Gezählt wird
+ * nur, was selbst eine Ebene ist und an einer Gruppe hängt.
+ */
+export function groupMembers(entities: ReadonlyMap<EntityId, Entity>): Map<EntityId, EntityId[]> {
+  const roh = new Map<EntityId, Entity[]>();
+  for (const e of entities.values()) {
+    if (!isLayer(e)) continue;
+    for (const r of kanten(e, GROUP_RELATION)) {
+      if (!isGroupLayer(entities.get(r.to))) continue;
+      const l = roh.get(r.to) ?? [];
+      if (!l.includes(e)) l.push(e);
+      roh.set(r.to, l);
+    }
+  }
+  const datum = (e: Entity) => String(layerKarte(e)['published'] ?? '') || '9999';
+  const out = new Map<EntityId, EntityId[]>();
+  for (const [g, l] of roh) {
+    l.sort((a, b) => (datum(a) < datum(b) ? -1 : datum(a) > datum(b) ? 1 : (a.name ?? '').localeCompare(b.name ?? '')));
+    out.set(g, l.map((e) => e.id));
+  }
+  return out;
+}
+
+/**
+ * **Alle Ebenen in einer Gruppe**, verschachtelt, ohne die Gruppe selbst
+ * und nicht im Kreis (T-088) — in der Reihenfolge, in der sie im Stapel
+ * stünden.
+ */
+export function layersInGroup(
+  entities: ReadonlyMap<EntityId, Entity>,
+  groupId: EntityId,
+  members: Map<EntityId, EntityId[]> = groupMembers(entities),
+): EntityId[] {
+  const out: EntityId[] = [];
+  const gesehen = new Set<EntityId>([groupId]);
+  const lauf = (g: EntityId) => {
+    for (const m of members.get(g) ?? []) {
+      if (gesehen.has(m)) continue;
+      gesehen.add(m);
+      out.push(m);
+      lauf(m);
+    }
+  };
+  lauf(groupId);
+  return out;
+}
+
+/** Die Ebenen, die die Kampagne ausdrücklich abschaltet (T-088). */
+export function offLayers(campaign: Entity | null): Set<EntityId> {
+  return new Set(kanten(campaign ?? undefined, ACTIVATES_RELATION).filter(isOffEdge).map((r) => r.to));
+}
+
 /** Die laufende Kampagne: die Einstellung, sonst die erste im Bestand, sonst keine. */
 export function currentCampaign(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   settings?: Record<string, string> | null,
 ): Entity | null {
   const gesetzt = settings?.[CAMPAIGN_SETTING];
@@ -54,13 +485,22 @@ export function currentCampaign(
 export interface StackEntry {
   layer: Entity;
   order: number;
+  /** Was sie bringt (T-105); `null` heisst alles. */
+  filter: LayerFilter | null;
+  /** Von den Typ-Regeln ausgenommen (T-187). */
+  exempt: boolean;
 }
 
-/** Die aufgeschalteten Ebenen der Kampagne, von unten nach oben. */
-export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | null): StackEntry[] {
+/**
+ * Die Ebenen, die die Kampagne **ausdrücklich** aufschaltet, von unten
+ * nach oben — so, wie sie an ihren Kanten stehen und geschrieben werden.
+ * Eine Gruppe steht hier als eine Ebene; was sie bringt, sagt
+ * `resolvedStack`.
+ */
+export function activeStack(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null): StackEntry[] {
   if (!campaign) return [];
   const out: StackEntry[] = [];
-  for (const r of kanten(campaign, ACTIVATES_RELATION)) {
+  for (const r of aufschalten(campaign)) {
     const layer = entities.get(r.to);
     if (!layer) continue;
     const anKante = (r.props as { order?: unknown } | undefined)?.order;
@@ -68,49 +508,253 @@ export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | 
     const order =
       anKante != null && Number.isFinite(Number(anKante)) ? Number(anKante)
         : Number.isFinite(Number(amLayer)) && amLayer != null ? Number(amLayer) : 10;
-    out.push({ layer, order });
+    out.push({ layer, order, filter: filterOf(r), exempt: isExemptEdge(r) });
   }
   return out.sort((a, b) => a.order - b.order);
 }
 
-/** Ebenen-Id → Rang 1..n; höher heisst spezifischer. */
-export function activeLayerRanks(entities: Map<EntityId, Entity>, campaign: Entity | null): Map<EntityId, number> {
+/**
+ * **Der Stapel mit aufgelösten Gruppen** (T-088, E-022 b), von unten nach
+ * oben: an der Stelle einer Gruppe die Gruppe selbst und darüber ihre
+ * Mitglieder (verschachtelt, nach Erscheinen). Eine Ebene, die die
+ * Kampagne selbst aufschaltet, steht nur an ihrer eigenen Stelle; eine,
+ * die sie abschaltet (`mode: 'off'`), steht gar nicht da, und was nur
+ * über sie käme, auch nicht. Bringen zwei Gruppen dieselbe Ebene, zählt
+ * die höhere.
+ *
+ * Einmal je Anfrage: die Mitglieder werden einmal gesammelt
+ * (`groupMembers`), danach ist jeder Schritt ein Nachschlagen (T-086).
+ */
+export function resolvedStack(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  members?: Map<EntityId, EntityId[]>,
+): Entity[] {
+  return resolvedEntries(entities, campaign, members).map((x) => x.layer);
+}
+
+/** Ein Eintrag des aufgelösten Stapels: die Ebene, was sie bringt, und — gilt eine Typ-Regel — von welcher Gruppe (T-187). */
+export interface ResolvedEntry {
+  layer: Entity;
+  filter: LayerFilter | null;
+  ruleFrom?: EntityId;
+}
+
+/**
+ * Wie `resolvedStack`, mit der Auswahl je Ebene (T-105): ein Mitglied
+ * trägt die seiner Gruppe, eine ausdrücklich aufgeschaltete Ebene ihre
+ * eigene. Wer so keine hat und nicht ausgenommen ist, trägt die
+ * Typ-Regel seiner nächsten Gruppe (T-187).
+ */
+export function resolvedEntries(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  members?: Map<EntityId, EntityId[]>,
+): ResolvedEntry[] {
+  const stapel = activeStack(entities, campaign);
+  if (!stapel.length) return [];
+  const aus = offLayers(campaign);
+  const ausdruecklich = new Set(stapel.map((x) => x.layer.id));
+  const ausgenommen = new Set(stapel.filter((x) => x.exempt).map((x) => x.layer.id));
+  const regeln = layerRules(campaign);
+  const gruppen =
+    regeln.size || stapel.some((x) => isGroupLayer(x.layer)) ? (members ?? groupMembers(entities)) : new Map<EntityId, EntityId[]>();
+  /* Eine Map behält die Einfügereihenfolge; wer später (höher) noch
+     einmal kommt, wird ans Ende gesetzt. */
+  const rang = new Map<EntityId, ResolvedEntry>();
+  const setze = (e: Entity, filter: LayerFilter | null) => {
+    rang.delete(e.id);
+    rang.set(e.id, { layer: e, filter });
+  };
+  for (const { layer, filter } of stapel) {
+    if (aus.has(layer.id)) continue;
+    setze(layer, filter);
+    if (!isGroupLayer(layer)) continue;
+    const gesehen = new Set<EntityId>([layer.id]);
+    const lauf = (g: EntityId) => {
+      for (const m of gruppen.get(g) ?? []) {
+        if (gesehen.has(m) || aus.has(m)) continue;
+        gesehen.add(m);
+        const e = entities.get(m);
+        if (!e) continue;
+        /* Die ausdrückliche Kante schlägt die Gruppe: die Ebene steht an
+           ihrer eigenen Stelle — ihre Mitglieder bringt sie dort selbst. */
+        if (ausdruecklich.has(m)) continue;
+        setze(e, filter);
+        lauf(m);
+      }
+    };
+    lauf(layer.id);
+  }
+  const out = [...rang.values()];
+  if (!regeln.size) return out;
+  /* Die Typ-Regeln (T-187): nur, wo nichts anderes etwas sagt. */
+  const eltern = groupParents(gruppen);
+  return out.map((x) => {
+    if (x.filter || ausgenommen.has(x.layer.id) || isGroupLayer(x.layer)) return x;
+    const r = ruleFor(x.layer.id, regeln, eltern);
+    return r ? { ...x, filter: r.filter, ruleFrom: r.group } : x;
+  });
+}
+
+/**
+ * **Die Vergleichsebenen der Kampagne** (T-092), in ihrer Reihenfolge an
+ * der Kante. Eine Ebene, die schon im Spiel ist, ist hier nicht noch
+ * einmal — sie vergleicht sich ohnehin.
+ */
+export function compareLayers(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null): Entity[] {
+  if (!campaign) return [];
+  const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
+  const order = (r: Rel) => Number((r.props as { order?: unknown } | undefined)?.order ?? 0) || 0;
+  return kanten(campaign, ACTIVATES_RELATION)
+    .filter((r) => isCompareEdge(r) && !imSpiel.has(r.to))
+    .sort((a, b) => order(a) - order(b))
+    .map((r) => entities.get(r.to))
+    .filter((e): e is Entity => !!e);
+}
+
+/**
+ * **Welche Ebenen überhaupt genannt werden** (T-207): was die Kampagne
+ * aufschaltet, samt Gruppen und ihren Mitgliedern (`resolvedStack`), und —
+ * wer sie sehen darf — ihre Vergleichsebenen. Eine Ebene, die nicht
+ * aufgeschaltet ist, erscheint weder als Artikel noch als Fassung,
+ * Filteroption oder Zählung; ein- und ausgeschaltet wird an der Kampagne.
+ * `null` ohne Kampagne: dann gibt es keinen Stapel, und alles steht da.
+ */
+export function shownLayers(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  withCompare: boolean,
+  members?: Map<EntityId, EntityId[]>,
+): Set<EntityId> | null {
+  if (!campaign) return null;
+  const ids = new Set(resolvedStack(entities, campaign, members).map((l) => l.id));
+  if (withCompare) for (const l of compareLayers(entities, campaign)) ids.add(l.id);
+  return ids;
+}
+
+/** Die Auswahl je Vergleichsebene (T-105), wie an ihrer Kante. */
+function compareFilters(campaign: Entity | null): Map<EntityId, LayerFilter | null> {
+  return new Map(kanten(campaign ?? undefined, ACTIVATES_RELATION).filter(isCompareEdge).map((r) => [r.to, filterOf(r)]));
+}
+
+/** Ebenen-Id → Rang 1..n; höher heisst spezifischer. Gruppen sind aufgelöst (T-088). */
+export function activeLayerRanks(entities: ReadonlyMap<EntityId, Entity>, campaign: Entity | null): Map<EntityId, number> {
   const m = new Map<EntityId, number>();
-  activeStack(entities, campaign).forEach((x, i) => m.set(x.layer.id, i + 1));
+  resolvedStack(entities, campaign).forEach((l, i) => m.set(l.id, i + 1));
   return m;
+}
+
+/**
+ * **Rang und Auswahl je Ebene**, einmal gerechnet (T-105): `zaehlt` sagt,
+ * mit welchem Rang eine Ebenenkante dieses Artikels zählt — 0, wenn die
+ * Ebene nicht im Spiel ist oder ihn nach ihrer Auswahl nicht bringt.
+ */
+function sicht(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  registry: Pick<Registry, 'interfaces'> | undefined,
+): {
+  rang: Map<EntityId, number>;
+  filter: Map<EntityId, LayerFilter | null>;
+  zaehlt: (e: Entity, layer: EntityId) => number;
+  /** Einzeln freigegeben (T-187). */
+  frei: Set<EntityId>;
+  /** Der höchste Rang, mit dem dieser Artikel etwas bringt — seine Ebenen oder die Freigabe. */
+  bringt: (e: Entity) => number;
+} {
+  const eintraege = resolvedEntries(entities, campaign);
+  const rang = new Map<EntityId, number>();
+  const filter = new Map<EntityId, LayerFilter | null>();
+  eintraege.forEach((x, i) => {
+    rang.set(x.layer.id, i + 1);
+    filter.set(x.layer.id, x.filter);
+  });
+  const bereich = bereichVon(registry);
+  const zaehlt = (e: Entity, layer: EntityId): number => {
+    const x = rang.get(layer);
+    if (!x) return 0;
+    return passt(filter.get(layer), e, bereich) ? x : 0;
+  };
+  const frei = enabledArticles(campaign);
+  const bringt = (e: Entity): number =>
+    Math.max(frei.has(e.id) ? PICK_RANK : 0, ...kanten(e, LAYER_RELATION).map((x) => zaehlt(e, x.to)));
+  return { rang, filter, zaehlt, frei, bringt };
+}
+
+/**
+ * Ist der Artikel im Stapel, nach den Rängen seiner Ebenenkanten? Eine
+ * Freigabe (T-187) zählt als Bringen mit `PICK_RANK` — unter jeder
+ * aufgeschalteten Ebene, also schlägt eine Herausnahme sie.
+ */
+function stapelFrage(entity: Entity, zaehlt: (e: Entity, layer: EntityId) => number, frei: ReadonlySet<EntityId>): boolean {
+  const ebenen = kanten(entity, LAYER_RELATION);
+  if (!ebenen.length) return true;
+  /* **Eine Kampagne steht immer da** (E-183): sie liegt in ihrer eigenen
+     Ebene, und die schaltet nur sie selbst auf — liefe eine andere, fände
+     man sie sonst nicht einmal mehr, um zu ihr zu wechseln. */
+  if (entity.interfaces?.[0] === CAMPAIGN_TYPE) return true;
+  let addAt = frei.has(entity.id) ? PICK_RANK : 0;
+  let remAt = 0;
+  for (const r of ebenen) {
+    const x = zaehlt(entity, r.to);
+    if (!x) continue;
+    if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
+    else addAt = Math.max(addAt, x);
+  }
+  return addAt > remAt;
 }
 
 /**
  * Steht dieser Artikel im Stapel? Ohne Ebenenkante: ja. Mit: nur, wenn eine
  * aufgeschaltete Ebene ihn bringt und keine spezifischere ihn herausnimmt.
  * Ohne irgendeine Kampagne: ja — es gibt nichts, wogegen man rechnen könnte.
+ * Mit `registry` gilt die Bereichsauswahl der Ebenen (T-105).
  */
-export function inStack(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
-  const ebenen = kanten(entity, LAYER_RELATION);
-  if (!ebenen.length) return true;
+export function inStack(
+  entities: ReadonlyMap<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  if (!kanten(entity, LAYER_RELATION).length) return true;
   if (!campaign) return true;
-  const rang = activeLayerRanks(entities, campaign);
-  let addAt = 0;
-  let remAt = 0;
-  for (const r of ebenen) {
-    const x = rang.get(r.to);
-    if (!x) continue;
-    if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
-    else addAt = Math.max(addAt, x);
+  const { zaehlt, frei } = sicht(entities, campaign, registry);
+  return stapelFrage(entity, zaehlt, frei);
+}
+
+/**
+ * Je Artikel, wer ihn über `overrides` überschreibt — einmal über den
+ * Bestand gerechnet. Mit ihr fragt `overriderOf` nur die Kandidaten statt
+ * jedes Artikels (T-108: mit 250 000 Artikeln und hundert Verweisen auf
+ * einer Seite sonst zehn Sekunden).
+ */
+export function overridersIndex(entities: Iterable<Entity>): Map<EntityId, Entity[]> {
+  const out = new Map<EntityId, Entity[]>();
+  for (const o of entities) {
+    for (const r of kanten(o, OVERRIDES_RELATION)) (out.get(r.to) ?? out.set(r.to, []).get(r.to)!).push(o);
   }
-  if (!addAt && !remAt) return false;
-  return addAt > remAt;
+  return out;
 }
 
 /** Wer diesen Artikel überschreibt: die spezifischste aufgeschaltete Fassung, sonst niemand. */
-export function overriderOf(entities: Map<EntityId, Entity>, id: EntityId, campaign: Entity | null): Entity | null {
+export function overriderOf(
+  entities: ReadonlyMap<EntityId, Entity>,
+  id: EntityId,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+  index?: ReadonlyMap<EntityId, readonly Entity[]>,
+): Entity | null {
   if (!campaign) return null;
-  const rang = activeLayerRanks(entities, campaign);
+  /* Ohne Kandidaten keine Rechnung: die Sicht liest alle Gruppen. */
+  if (index && !index.get(id)?.length) return null;
+  const { bringt } = sicht(entities, campaign, registry);
   let best: Entity | null = null;
   let bestRang = -1;
-  for (const o of entities.values()) {
+  for (const o of index ? (index.get(id) ?? []) : entities.values()) {
     if (!kanten(o, OVERRIDES_RELATION).some((r) => r.to === id)) continue;
-    const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => rang.get(x.to) ?? 0));
+    if (isSupplement(o)) continue; /* eine Ergänzung ersetzt nichts (T-142) */
+    const r2 = bringt(o);
     if (!r2) continue; /* Überschreibung ohne aufgeschaltete Ebene zählt nicht */
     if (r2 > bestRang) {
       bestRang = r2;
@@ -120,24 +764,803 @@ export function overriderOf(entities: Map<EntityId, Entity>, id: EntityId, campa
   return best;
 }
 
-export function isOverridden(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
-  return overriderOf(entities, entity.id, campaign) !== null;
+export function isOverridden(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  return overriderOf(entities, entity.id, campaign, registry) !== null;
 }
 
 /** Was an dieser Stelle wirklich gilt: die Kette der Überschreibungen bis zum Ende, nicht im Kreis. */
-export function resolveArticle(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): Entity {
+export function resolveArticle(
+  entities: ReadonlyMap<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+  index?: ReadonlyMap<EntityId, readonly Entity[]>,
+): Entity {
   let at = entity;
   const gesehen = new Set<EntityId>([entity.id]);
   for (let i = 0; i < 8; i += 1) {
-    const next = overriderOf(entities, at.id, campaign);
-    if (!next || gesehen.has(next.id)) return at;
+    const next = overriderOf(entities, at.id, campaign, registry, index);
+    if (!next || gesehen.has(next.id)) break;
     gesehen.add(next.id);
     at = next;
   }
-  return at;
+  if (!campaign) return at;
+  const { bringt } = sicht(entities, campaign, registry);
+  return withSupplements(at, gesehen, index ?? overridersIndex(entities.values()), bringt).entity;
+}
+
+/**
+ * **Eine Ergänzung** (T-142, E-125): eine Fassung, deren `overrides`-Kante
+ * die Felder nennt, die sie trägt (`props.fields`, `Item.rows`). Sie
+ * ersetzt den Artikel nicht — Text, Preis und jede andere Fassung bleiben,
+ * wie sie sind —, sondern legt nur diese Felder darüber, solange ihre Ebene
+ * aufgeschaltet ist. Die Formen aus Basils System sind so eine eigene
+ * Ebene, die neben den geschätzten Preisen gilt; zwei ganze Fassungen
+ * schlössen einander aus, und es gälte nur die höhere.
+ *
+ * Für sich steht eine Ergänzung nicht im Spiel: keine Liste, keine Suche,
+ * kein Verweisziel.
+ */
+export function supplementFields(entity: Entity | null | undefined): string[] {
+  const out: string[] = [];
+  for (const r of kanten(entity ?? undefined, OVERRIDES_RELATION)) {
+    const f = (r.props as { fields?: unknown } | undefined)?.fields;
+    if (Array.isArray(f)) for (const x of f) if (typeof x === 'string' && x.includes('.') && !out.includes(x)) out.push(x);
+  }
+  return out;
+}
+
+export function isSupplement(entity: Entity | null | undefined): boolean {
+  return supplementFields(entity).length > 0;
+}
+
+/**
+ * Die Ergänzungen über einem Artikel: die aufgeschalteten, die auf eine
+ * der Ids zeigen (das Original und die Fassungen dazwischen), die höhere
+ * Ebene zuletzt — sie gewinnt Feld für Feld. Zurück kommt der Artikel mit
+ * den Feldern und, je Feld, die Ergänzung, aus der es kommt (`supplied`).
+ * Ein Feld, das die Ergänzung nennt, aber nicht trägt, bleibt, wie es war.
+ */
+export function withSupplements(
+  entity: Entity,
+  ids: Iterable<EntityId>,
+  index: ReadonlyMap<EntityId, readonly Entity[]>,
+  rank: (e: Entity) => number,
+): { entity: Entity; supplied: Record<string, EntityId> } {
+  const kandidaten: { e: Entity; rang: number }[] = [];
+  const gesehen = new Set<EntityId>();
+  for (const id of new Set([entity.id, ...ids])) {
+    for (const o of index.get(id) ?? []) {
+      if (gesehen.has(o.id) || !isSupplement(o)) continue;
+      gesehen.add(o.id);
+      const rang = rank(o);
+      if (rang > 0) kandidaten.push({ e: o, rang });
+    }
+  }
+  if (!kandidaten.length) return { entity, supplied: {} };
+  kandidaten.sort((a, b) => a.rang - b.rang);
+  const components: Record<string, Record<string, unknown>> = { ...(entity.components ?? {}) } as Record<string, Record<string, unknown>>;
+  const supplied: Record<string, EntityId> = {};
+  for (const { e } of kandidaten) {
+    for (const ref of supplementFields(e)) {
+      const [karte = '', feld = ''] = ref.split('.');
+      const wert = (e.components?.[karte] as Record<string, unknown> | undefined)?.[feld];
+      if (wert === undefined) continue;
+      components[karte] = { ...(components[karte] ?? {}), [feld]: wert };
+      supplied[ref] = e.id;
+    }
+  }
+  return Object.keys(supplied).length ? { entity: { ...entity, components } as Entity, supplied } : { entity, supplied };
 }
 
 /** Das Sieb, wie der Server es braucht: da und nicht überschrieben. */
-export function inPlay(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
-  return inStack(entities, entity, campaign) && !isOverridden(entities, entity, campaign);
+export function inPlay(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  return !isSupplement(entity) && inStack(entities, entity, campaign, registry) && !isOverridden(entities, entity, campaign, registry);
+}
+
+export interface PlayStack {
+  /** Wie `inPlay`, ohne den Bestand je Artikel neu zu durchsuchen. */
+  inPlay(entity: Entity): boolean;
+  /** Wie `inStack`: da, auch wenn eine Fassung ihn überschreibt. */
+  inStack(entity: Entity): boolean;
+  /** Bringt eine Vergleichsebene ihn (T-092)? Nicht im Spiel, aber auf Wunsch sichtbar. */
+  inCompare(entity: Entity): boolean;
+  /** Der höchste Rang einer aufgeschalteten Ebene, die ihn bringt; 0 heisst keine. */
+  rank(entity: Entity): number;
+  /** Einzeln freigegeben (T-187): im Spiel, ohne dass seine Ebene es ist. */
+  enabled(entity: Entity): boolean;
+  /** Wie `unactivatedLayers`. */
+  unactivated(entity: Entity): EntityId[];
+  /**
+   * Wie `resolveArticle`, mit den Überschreibern aus `overridersIndex` —
+   * ohne die Sicht je Frage neu zu rechnen (T-108: eine Kapitelseite fragt
+   * für jeden Verweis darin).
+   */
+  resolve(entity: Entity, index: ReadonlyMap<EntityId, readonly Entity[]>): Entity;
+  /** Welche Felder einer geltenden Fassung aus welcher Ergänzung kommen (T-142). */
+  supplied(entity: Entity, index: ReadonlyMap<EntityId, readonly Entity[]>): Record<string, EntityId>;
+}
+
+/**
+ * **Der Stapel einmal gerechnet, für viele Artikel** (T-086, REQ-246).
+ *
+ * `inPlay` je Artikel fragt `overriderOf`, und das sucht im ganzen Bestand
+ * nach einer Überschreibung — für eine Liste über alle Artikel also jeder
+ * gegen jeden. Mit 21 576 Artikeln aus 5e.tools und einer Kampagne, die
+ * ihre Bücher aufschaltet, waren das gut 35 Sekunden je Liste und je
+ * Registerzählung; die Seite stand still. Hier stehen die Ränge der Ebenen
+ * und die Ziele aller geltenden Überschreibungen einmal vorab, danach ist
+ * jede Frage ein Nachschlagen. Gleiche Regeln wie oben: eine Überschreibung
+ * zählt nur aus einer aufgeschalteten Ebene heraus.
+ *
+ * Mit `registry` gilt die Bereichsauswahl der Ebenen (T-105); der Bereich
+ * einer Art wird einmal je Art nachgeschlagen, nicht je Artikel.
+ */
+export function playStack(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): PlayStack {
+  if (!campaign) {
+    return {
+      inPlay: () => true,
+      inStack: () => true,
+      inCompare: () => false,
+      rank: () => 0,
+      enabled: () => false,
+      unactivated: () => [],
+      resolve: (e) => e,
+      supplied: () => ({}),
+    };
+  }
+  const { rang, zaehlt, frei, bringt } = sicht(entities, campaign, registry);
+  const bereich = bereichVon(registry);
+  const vergleichAuswahl = compareFilters(campaign);
+  const vergleich = new Map<EntityId, LayerFilter | null>(
+    compareLayers(entities, campaign).map((l) => [l.id, vergleichAuswahl.get(l.id) ?? null]),
+  );
+  /* Eine Gruppe zum Vergleich vergleicht ihre Mitglieder (T-088), soweit
+     sie nicht ohnehin im Spiel sind — mit ihrer Auswahl (T-105). */
+  if ([...vergleich.keys()].some((id) => isGroupLayer(entities.get(id)))) {
+    const gruppen = groupMembers(entities);
+    for (const [id, f] of [...vergleich]) {
+      for (const m of layersInGroup(entities, id, gruppen)) if (!rang.has(m) && !vergleich.has(m)) vergleich.set(m, f);
+    }
+  }
+  const ueberschrieben = new Set<EntityId>();
+  for (const o of entities.values()) {
+    const ziele = kanten(o, OVERRIDES_RELATION);
+    if (!ziele.length || isSupplement(o)) continue;
+    if (!bringt(o)) continue;
+    for (const r of ziele) ueberschrieben.add(r.to);
+  }
+  const imStapel = (entity: Entity): boolean => stapelFrage(entity, zaehlt, frei);
+  const grundRang = (entity: Entity): number => {
+    let best = frei.has(entity.id) ? PICK_RANK : 0;
+    for (const r of kanten(entity, LAYER_RELATION)) {
+      if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
+      best = Math.max(best, zaehlt(entity, r.to));
+    }
+    return best;
+  };
+  /* Der Vorrang der Kampagne (T-403): je Artikel bzw. je Ebene, und worüber. */
+  const vorrangArtikel = new Map<EntityId, Preference>();
+  const vorrangArt = new Map<EntityId, Preference[]>();
+  for (const p of preferencesOf(campaign)) {
+    if (rang.has(p.to)) {
+      if (p.types.length) (vorrangArt.get(p.to) ?? vorrangArt.set(p.to, []).get(p.to)!).push(p);
+    } else vorrangArtikel.set(p.to, p);
+  }
+  const oben = rang.size;
+  /** Der Rang dessen, worüber ein Vorrang gilt — eine Ebene, ein Artikel, sonst ganz oben. */
+  const ueber = (p: Preference): number => {
+    if (!p.over) return oben;
+    if (rang.has(p.over)) return rang.get(p.over)!;
+    const e = entities.get(p.over);
+    return e ? grundRang(e) : oben;
+  };
+  return {
+    inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id) && !isSupplement(entity),
+    inStack: imStapel,
+    inCompare: (entity) =>
+      vergleich.size > 0 &&
+      kanten(entity, LAYER_RELATION).some(
+        (r) =>
+          vergleich.has(r.to) &&
+          (r.props as { mode?: unknown } | undefined)?.mode !== 'removes' &&
+          passt(vergleich.get(r.to), entity, bereich),
+      ),
+    enabled: (entity) => frei.has(entity.id) && !kanten(entity, LAYER_RELATION).some((r) => zaehlt(entity, r.to) > 0),
+    rank: (entity) => {
+      const best = grundRang(entity);
+      /* Vorrang (T-403): nur, was ohnehin im Spiel ist, rückt nach vorn. */
+      if (best <= 0 || (!vorrangArtikel.size && !vorrangArt.size)) return best;
+      const a = vorrangArtikel.get(entity.id);
+      if (a) return Math.max(best, ueber(a)) + VORRANG_ARTIKEL;
+      let raus = best;
+      const typ = (entity.interfaces ?? [])[0] ?? '';
+      for (const r of kanten(entity, LAYER_RELATION)) {
+        for (const v of vorrangArt.get(r.to) ?? []) {
+          if (v.types.includes(typ) && zaehlt(entity, r.to) > 0) raus = Math.max(raus, Math.max(best, ueber(v)) + VORRANG_ART);
+        }
+      }
+      return raus;
+    },
+    unactivated: (entity) => {
+      const ebenen = kanten(entity, LAYER_RELATION);
+      if (!ebenen.length || frei.has(entity.id) || ebenen.some((r) => rang.has(r.to))) return [];
+      const bringen = ebenen.filter((r) => (r.props as { mode?: unknown } | undefined)?.mode !== 'removes');
+      return [...new Set(bringen.map((r) => r.to))];
+    },
+    resolve: (entity, index) => {
+      /* Dieselbe Regel wie `overriderOf`: die Fassung aus der höchsten
+         aufgeschalteten Ebene, die Kette entlang, nicht im Kreis. */
+      let at = entity;
+      const gesehen = new Set<EntityId>([entity.id]);
+      for (let i = 0; i < 8; i += 1) {
+        let best: Entity | null = null;
+        let bestRang = 0;
+        for (const o of index.get(at.id) ?? []) {
+          if (isSupplement(o)) continue;
+          const r2 = bringt(o);
+          if (r2 > bestRang) {
+            bestRang = r2;
+            best = o;
+          }
+        }
+        if (!best || gesehen.has(best.id)) break;
+        gesehen.add(best.id);
+        at = best;
+      }
+      /* Darüber die Ergänzungen (T-142): nur ihre Felder. */
+      return withSupplements(at, gesehen, index, bringt).entity;
+    },
+    supplied: (entity, index) => {
+      const gesehen = new Set<EntityId>([entity.id]);
+      for (const r of kanten(entity, OVERRIDES_RELATION)) if (!isSupplement(entity)) gesehen.add(r.to);
+      return withSupplements(entity, gesehen, index, bringt).supplied;
+    },
+  };
+}
+
+/** Ein Treffer zwischen zwei Ebenen (T-188): wie oft, und ob als Fassung oder als Herausnahme. */
+export interface StackClash {
+  /** Die andere Ebene; `''` heisst: Artikel ohne Ebene. */
+  layer: EntityId;
+  how: 'version' | 'removal';
+  n: number;
+}
+
+/** Was eine Ebene im Stapel gegen andere ausrichtet (T-188). */
+export interface StackOutcome {
+  /** Sie gewinnt: ihre Fassung gilt über Artikeln dieser Ebene, oder ihre Herausnahme nimmt sie weg. */
+  wins: StackClash[];
+  /** Sie verliert: ihre Fassung oder Herausnahme gilt nicht, weil diese Ebene höher steht. */
+  loses: StackClash[];
+}
+
+/**
+ * **Was die Reihenfolge bewirkt** (T-188): je aufgeschaltete Ebene, über
+ * welche andere sie gewinnt und gegen welche sie verliert — gezählt in
+ * Artikeln. Dieselben Regeln wie `playStack`, einmal über den Bestand:
+ *
+ *  - Eine **Fassung** (`overrides`) aus einer Ebene im Spiel ersetzt ihr
+ *    Original, wo dieses auch steht — „overrides 12 articles of PHB".
+ *    Gibt es mehrere Fassungen im Spiel, gilt die aus der höchsten Ebene;
+ *    die übrigen verlieren gegen sie. Nur hier entscheidet die
+ *    Reihenfolge, wer gilt.
+ *  - Eine **Herausnahme** (`inLayer` mit `mode: 'removes'`) gilt, wenn
+ *    sie höher steht als jede Ebene, die den Artikel bringt; sonst verliert
+ *    sie gegen die höchste davon.
+ *
+ * Treffer innerhalb derselben Ebene zählen nicht. Eine Einzelfreigabe
+ * (`enables`) ist keine Ebene und steht nicht da.
+ */
+export function stackOutcomes(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): Map<EntityId, StackOutcome> {
+  const out = new Map<EntityId, StackOutcome>();
+  if (!campaign) return out;
+  const { zaehlt, frei } = sicht(entities, campaign, registry);
+  /* Die höchste Ebene, aus der dieser Artikel kommt (nicht herausnehmend), mit Rang. */
+  const oben = (e: Entity, modus: 'bringt' | 'removes'): { layer: EntityId; rang: number } | null => {
+    let best: { layer: EntityId; rang: number } | null = null;
+    for (const r of kanten(e, LAYER_RELATION)) {
+      const weg = (r.props as { mode?: unknown } | undefined)?.mode === 'removes';
+      if (weg !== (modus === 'removes')) continue;
+      const x = zaehlt(e, r.to);
+      if (x && (!best || x > best.rang)) best = { layer: r.to, rang: x };
+    }
+    return best;
+  };
+  const zaehle = (von: EntityId, seite: 'wins' | 'loses', gegen: EntityId, how: StackClash['how']) => {
+    if (von === gegen) return;
+    const o = out.get(von) ?? out.set(von, { wins: [], loses: [] }).get(von)!;
+    const t = o[seite].find((x) => x.layer === gegen && x.how === how);
+    if (t) t.n += 1;
+    else o[seite].push({ layer: gegen, how, n: 1 });
+  };
+  /* Fassungen: je Original die Bewerber im Spiel. */
+  const bewerber = new Map<EntityId, { layer: EntityId; rang: number }[]>();
+  for (const o of entities.values()) {
+    const ziele = isSupplement(o) ? [] : kanten(o, OVERRIDES_RELATION);
+    if (ziele.length) {
+      const von = oben(o, 'bringt');
+      if (von) for (const r of ziele) (bewerber.get(r.to) ?? bewerber.set(r.to, []).get(r.to)!).push(von);
+    }
+    /* Herausnahmen: gilt die höchste, oder schlägt sie eine Ebene, die bringt? */
+    const weg = oben(o, 'removes');
+    if (!weg) continue;
+    const bringt = oben(o, 'bringt');
+    if (!bringt) continue;
+    if (weg.rang > bringt.rang) zaehle(weg.layer, 'wins', bringt.layer, 'removal');
+    else zaehle(weg.layer, 'loses', bringt.layer, 'removal');
+  }
+  for (const [ziel, liste] of bewerber) {
+    const original = entities.get(ziel);
+    if (!original) continue;
+    /* Das Original muss da sein, sonst ersetzt die Fassung nichts. */
+    if (!stapelFrage(original, zaehlt, frei)) continue;
+    const sieger = liste.reduce((a, b) => (b.rang > a.rang ? b : a));
+    zaehle(sieger.layer, 'wins', oben(original, 'bringt')?.layer ?? '', 'version');
+    for (const x of liste) if (x !== sieger) zaehle(x.layer, 'loses', sieger.layer, 'version');
+  }
+  for (const o of out.values()) {
+    o.wins.sort((a, b) => b.n - a.n);
+    o.loses.sort((a, b) => b.n - a.n);
+  }
+  return out;
+}
+
+/**
+ * **Die Ebene, die dieser Kampagne gehört** (REQ-237): die spezifischste
+ * aufgeschaltete Ebene, die keine andere Kampagne aufschaltet. Dorthin legt
+ * der Server, was Spielende anlegen — so gehört der Artikel der Runde, in
+ * der er entstand, und deren Leitung sieht ihn (`campaignOf`). Gibt es
+ * keine solche Ebene, `null`: der Artikel liegt dann in keiner, wie heute
+ * die meisten.
+ *
+ * **Eine Ebene, die einem Konto gehört, ist nicht die der Kampagne**
+ * (T-098, E-001): schaltet die Leitung die eigene Ebene einer Spielerin
+ * auf, wird sie dadurch nicht zur Kampagnenebene — sonst schrieben `gm`
+ * und `co-gm` darin, und was andere anlegen, landete dort. Wem eine Ebene
+ * gehört, steht am Server neben dem Konto; der Aufrufer gibt diese Ebenen
+ * als `owned` mit.
+ */
+export function campaignLayer(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  owned?: ReadonlySet<EntityId>,
+): Entity | null {
+  if (!campaign) return null;
+  const stapel = activeStack(entities, campaign);
+  for (let i = stapel.length - 1; i >= 0; i -= 1) {
+    const ebene = stapel[i]!.layer;
+    /* Eine Gruppe ist kein Ort für Artikel (T-088). */
+    if (isGroupLayer(ebene)) continue;
+    if (owned?.has(ebene.id)) continue;
+    let andere = false;
+    for (const e of entities.values()) {
+      if (e.id === campaign.id || (e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
+      if (aufschalten(e).some((r) => r.to === ebene.id)) {
+        andere = true;
+        break;
+      }
+    }
+    if (!andere) return ebene;
+  }
+  return null;
+}
+
+/**
+ * **Fehlt der Artikel nur, weil seine Ebene nicht aufgeschaltet ist?**
+ * (T-069) Dann die Ebenen, die ihn brächten; sonst eine leere Liste.
+ *
+ * Auf dev verschwanden nach dem Anlegen einer Kampagne alle Artikel aus
+ * 5e.tools, ohne dass die Seite sagte, warum: die Kampagne schaltete ihre
+ * Ebene nicht auf. Nimmt eine aufgeschaltete Ebene den Artikel heraus
+ * oder überschreibt ihn eine Fassung, ist das Absicht und zählt hier
+ * nicht — nur, was gar keine aufgeschaltete Ebene nennt.
+ */
+export function unactivatedLayers(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+): EntityId[] {
+  if (!campaign) return [];
+  const ebenen = kanten(entity, LAYER_RELATION);
+  if (!ebenen.length) return [];
+  const rang = activeLayerRanks(entities, campaign);
+  if (ebenen.some((r) => rang.has(r.to))) return [];
+  const bringen = ebenen.filter((r) => (r.props as { mode?: unknown } | undefined)?.mode !== 'removes');
+  return [...new Set(bringen.map((r) => r.to))];
+}
+
+/**
+ * **Die Kampagnen, die eine Ebene aufschalten.** Genau eine heisst: die
+ * Ebene gehört ihr (`campaignsOf`). Wer sie dann in einer zweiten
+ * aufschaltet, macht sie gemeinsam — und die Leitung der zweiten sähe,
+ * was in der ersten nur deren Leitung sieht.
+ */
+export function campaignsActivating(
+  entities: Map<EntityId, Entity>,
+  layerId: EntityId,
+  index?: ReadonlyMap<EntityId, readonly EntityId[]>,
+): EntityId[] {
+  return [...(index ?? activatingIndex(entities)).get(layerId) ?? []];
+}
+
+/**
+ * **Ebene → die Kampagnen, die sie aufschalten**, einmal gerechnet
+ * (T-143). `campaignsActivating` je Ebene lief jedes Mal über den ganzen
+ * Bestand — für die Ebenenseite mit 174 Ebenen und einer Viertelmillion
+ * Artikel gut eine Sekunde je Abruf. Wer viele Ebenen fragt, rechnet die
+ * Tafel einmal und gibt sie mit.
+ */
+export function activatingIndex(entities: ReadonlyMap<EntityId, Entity>): Map<EntityId, EntityId[]> {
+  const out = new Map<EntityId, EntityId[]>();
+  for (const e of entities.values()) {
+    if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
+    /* Wer nur vergleicht, schaltet nicht auf (T-092): die Ebene bleibt, wem sie gehört. */
+    for (const r of aufschalten(e)) {
+      const l = out.get(r.to) ?? out.set(r.to, []).get(r.to)!;
+      if (!l.includes(e.id)) l.push(e.id);
+    }
+  }
+  return out;
+}
+
+/**
+ * Die Kanten `activates` einer Kampagne neu, von unten nach oben
+ * (T-069): `props.order` zählt in Zehnern, damit die Reihenfolge an der
+ * Kante steht und nicht an der Spezifität der Ebene hängt. Die übrigen
+ * Kanten bleiben, wie sie sind.
+ */
+/**
+ * **Die Id einer neuen Kante `activates`** (T-410): mit der Kampagne
+ * vorn. In Postgres ist `relation.id` eindeutig über alle Artikel; ohne
+ * die Kampagne stiess die Kante der zweiten Kampagne, die dieselbe Ebene
+ * aufschaltet, auf die der ersten. Eine bestehende Kante behält ihre Id.
+ */
+export function activatesId(campaign: Entity, to: EntityId, mode?: string): string {
+  return `${campaign.id}~${ACTIVATES_RELATION}-${mode ? `${mode}-` : ''}${to}`;
+}
+
+export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Entity {
+  const alt = aufschalten(campaign);
+  const ins = new Set(layerIds);
+  /* Die Vergleiche und Abschaltungen bleiben stehen (T-092, T-088) —
+     ausser für eine Ebene, die jetzt ausdrücklich im Spiel ist: die
+     vergleicht sich ohnehin, und ihre Kante schlägt jede Abschaltung. */
+  const andere = (campaign.relations ?? []).filter(
+    (r) => r.type !== ACTIVATES_RELATION || ((isCompareEdge(r) || isOffEdge(r)) && !ins.has(r.to)),
+  );
+  const neu: Rel[] = [...new Set(layerIds)].map((to, i) => ({
+    /* Eine Kante, die bleibt, behält ihre Id. */
+    id: alt.find((r) => r.to === to)?.id ?? activatesId(campaign, to),
+    type: ACTIVATES_RELATION,
+    to,
+    props: { ...(alt.find((r) => r.to === to)?.props ?? {}), order: (i + 1) * 10 },
+  }));
+  return { ...campaign, relations: [...andere, ...neu] };
+}
+
+/**
+ * Die Vergleichsebenen einer Kampagne neu (T-092): je Ebene eine Kante
+ * `activates` mit `mode: 'compare'`, in dieser Reihenfolge. Eine Ebene, die
+ * im Spiel ist, wird nicht noch einmal zum Vergleich; die übrigen Kanten
+ * bleiben, wie sie sind.
+ */
+export function withCompare(campaign: Entity, layerIds: readonly EntityId[]): Entity {
+  const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
+  const alt = kanten(campaign, ACTIVATES_RELATION).filter(isCompareEdge);
+  const andere = (campaign.relations ?? []).filter((r) => !isCompareEdge(r));
+  const neu: Rel[] = [...new Set(layerIds)]
+    .filter((to) => !imSpiel.has(to))
+    .map((to, i) => ({
+      id: alt.find((r) => r.to === to)?.id ?? activatesId(campaign, to, COMPARE_MODE),
+      type: ACTIVATES_RELATION,
+      to,
+      /* Die Auswahl (T-105) bleibt an der Kante. */
+      props: { ...auswahlVon(alt.find((r) => r.to === to)), mode: COMPARE_MODE, order: (i + 1) * 10 },
+    }));
+  return { ...campaign, relations: [...andere, ...neu] };
+}
+
+const auswahlVon = (r: Rel | undefined): Record<string, unknown> => {
+  const f = filterOf(r);
+  return f ? { ...f } : {};
+};
+
+/**
+ * **Die Auswahl einer Ebene setzen** (T-105, REQ-255): an der Kante
+ * `activates`, die sie aufschaltet oder zum Vergleich nennt. `null` heisst
+ * wieder alles. Ohne solche Kante `null` zurück — eine Ebene, die nur über
+ * ihre Gruppe kommt, trägt deren Auswahl.
+ */
+export function withFilter(campaign: Entity, layerId: EntityId, filter: LayerFilter | null): Entity | null {
+  const kante = kanten(campaign, ACTIVATES_RELATION).find((r) => r.to === layerId && !isOffEdge(r));
+  if (!kante) return null;
+  const { areas: _a, types: _t, ...rest } = (kante.props ?? {}) as Record<string, unknown>;
+  const props = {
+    ...rest,
+    ...(filter?.areas ? { areas: [...new Set(filter.areas)] } : {}),
+    ...(filter?.types ? { types: [...new Set(filter.types)] } : {}),
+  };
+  return {
+    ...campaign,
+    relations: (campaign.relations ?? []).map((r) => (r === kante ? { ...r, props } : r)),
+  };
+}
+
+/**
+ * **Eine Typ-Regel setzen** (T-187): an der Kante `layerRule` zur Gruppe.
+ * `null` nimmt sie weg; eine Regel „alles" gibt es nicht — das ist keine.
+ */
+export function withRule(campaign: Entity, groupId: EntityId, filter: LayerFilter | null): Entity {
+  const alt = kanten(campaign, RULE_RELATION).find((r) => r.to === groupId);
+  const rest = (campaign.relations ?? []).filter((r) => !(r.type === RULE_RELATION && r.to === groupId));
+  if (!filter) return { ...campaign, relations: rest };
+  const props = {
+    ...(filter.areas ? { areas: [...new Set(filter.areas)] } : {}),
+    ...(filter.types ? { types: [...new Set(filter.types)] } : {}),
+  };
+  return {
+    ...campaign,
+    relations: [...rest, { id: alt?.id ?? `${RULE_RELATION}-${groupId}`, type: RULE_RELATION, to: groupId, props }],
+  };
+}
+
+/**
+ * **Eine Ebene von den Typ-Regeln ausnehmen** (T-187): `exempt` an ihrer
+ * Kante `activates` — „aus diesem Abenteuer doch alles". Ohne eigene
+ * Kante `null`, wie `withFilter`.
+ */
+export function withExempt(campaign: Entity, layerId: EntityId, on: boolean): Entity | null {
+  const kante = aufschalten(campaign).find((r) => r.to === layerId);
+  if (!kante) return null;
+  const { exempt: _e, ...rest } = (kante.props ?? {}) as Record<string, unknown>;
+  const props = on ? { ...rest, exempt: true } : rest;
+  return { ...campaign, relations: (campaign.relations ?? []).map((r) => (r === kante ? { ...r, props } : r)) };
+}
+
+/** **Einen Artikel freigeben oder zurücknehmen** (T-187): die Kante `enables`. */
+export function withEnabled(campaign: Entity, articleId: EntityId, on: boolean): Entity {
+  const rest = (campaign.relations ?? []).filter((r) => !(r.type === ENABLES_RELATION && r.to === articleId));
+  if (!on) return { ...campaign, relations: rest };
+  return {
+    ...campaign,
+    relations: [...rest, { id: `${ENABLES_RELATION}-${articleId}`, type: ENABLES_RELATION, to: articleId, props: {} }],
+  };
+}
+
+/**
+ * Die abgeschalteten Ebenen einer Kampagne neu (T-088): je Ebene eine
+ * Kante `activates` mit `mode: 'off'` — „die Gruppe ist an, dieses Buch
+ * darin nicht". Eine Ebene, die die Kampagne ausdrücklich aufschaltet,
+ * wird nicht zugleich abgeschaltet; die übrigen Kanten bleiben.
+ */
+export function withOff(campaign: Entity, layerIds: readonly EntityId[]): Entity {
+  const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
+  const alt = kanten(campaign, ACTIVATES_RELATION).filter(isOffEdge);
+  const andere = (campaign.relations ?? []).filter((r) => !isOffEdge(r));
+  const neu: Rel[] = [...new Set(layerIds)]
+    .filter((to) => !imSpiel.has(to))
+    .map((to) => ({
+      id: alt.find((r) => r.to === to)?.id ?? activatesId(campaign, to, OFF_MODE),
+      type: ACTIVATES_RELATION,
+      to,
+      props: { mode: OFF_MODE },
+    }));
+  return { ...campaign, relations: [...andere, ...neu] };
+}
+
+/**
+ * **Eine ganze Gruppe an oder aus** (T-185): das Häkchen an einer Gruppe
+ * schaltet alle ihre Ebenen, verschachtelt — und stellt keine alte
+ * Teilwahl wieder her. Die Leitung schaltete eine Gruppe aus und wieder
+ * an und hatte danach die Bücher wieder, die sie vorher einzeln gewählt
+ * hatte; eine Teilwahl gibt es nur über die Häkchen am Buch.
+ *
+ * - **an:** die Gruppe kommt in den Stapel (an die Stelle, die ihre
+ *   Spezifität sagt, wie `POST …/layers/:layer`), und keine Ebene darin
+ *   bleibt abgeschaltet;
+ * - **aus:** die Gruppe und jede Ebene darin gehen aus dem Stapel. Bringt
+ *   eine andere aufgeschaltete Gruppe eine davon trotzdem, wird sie dort
+ *   abgeschaltet (`off`) — „aus" heisst aus, nicht „nur nicht über diese
+ *   Gruppe". Bleibt in einer solchen Gruppe nichts an, geht sie mit.
+ *
+ * Zurück kommen der neue Stapel (von unten nach oben) und die neue Liste
+ * der Abschaltungen, so wie `PUT /api/campaigns/:c/layers` sie nimmt.
+ */
+export function groupSwitched(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity,
+  groupId: EntityId,
+  on: boolean,
+  members: Map<EntityId, EntityId[]> = groupMembers(entities),
+): { layers: EntityId[]; off: EntityId[] } {
+  const stapel = activeStack(entities, campaign);
+  const darin = new Set([groupId, ...layersInGroup(entities, groupId, members)]);
+  const aus = [...offLayers(campaign)].filter((id) => !darin.has(id));
+  if (on) {
+    const ids = stapel.map((x) => x.layer.id);
+    if (!ids.includes(groupId)) {
+      const spez = (e: Entity | undefined) => {
+        const o = (e?.components?.[LAYER_COMPONENT] as { order?: unknown } | undefined)?.order;
+        return o != null && Number.isFinite(Number(o)) ? Number(o) : 10;
+      };
+      const eigene = spez(entities.get(groupId));
+      const bei = stapel.findIndex((x) => spez(x.layer) > eigene);
+      ids.splice(bei < 0 ? ids.length : bei, 0, groupId);
+    }
+    return { layers: ids, off: aus };
+  }
+  const layers = stapel.map((x) => x.layer.id).filter((id) => !darin.has(id));
+  /* Was eine andere Gruppe noch brächte, wird abgeschaltet — einmal
+     gerechnet genügt, denn eine Abschaltung nimmt nur weg. */
+  const probe = withOff(withStack(campaign, layers), aus);
+  const noch = resolvedStack(entities, probe, members).filter((e) => darin.has(e.id));
+  const off = [...aus, ...noch.map((e) => e.id)];
+  /* Eine andere Gruppe, in der danach nichts mehr an ist, geht mit aus dem
+     Stapel — sonst stünde sie als leere Gruppe da, die nichts bringt. Ihre
+     Abschaltungen bleiben: sie gelten für jede Gruppe, die das Buch bringt. */
+  const aus2 = new Set(off);
+  const leer = (g: EntityId) => {
+    const innen = layersInGroup(entities, g, members).filter((id) => !isGroupLayer(entities.get(id)));
+    return innen.length > 0 && innen.every((id) => aus2.has(id));
+  };
+  return { layers: layers.filter((id) => !isGroupLayer(entities.get(id)) || !leer(id)), off };
+}
+
+/**
+ * **Was diese Fassung ersetzt** (E-018, T-082): die Artikel, auf die sie
+ * über `overrides` zeigt, und deren Originale — die ganze Kette zurück,
+ * nicht im Kreis. Wer auf das Original zeigt, zeigt in einer Kampagne mit
+ * dieser Fassung auf sie; die Rückbezüge der Fassung fragen darum auch
+ * nach diesen.
+ */
+export function replacedIds(entities: ReadonlyMap<EntityId, Entity>, entity: Entity): EntityId[] {
+  const out: EntityId[] = [];
+  const gesehen = new Set<EntityId>([entity.id]);
+  let at: Entity | undefined = entity;
+  for (let i = 0; i < 8 && at; i += 1) {
+    const ziel: EntityId | undefined = kanten(at, OVERRIDES_RELATION)[0]?.to;
+    if (!ziel || gesehen.has(ziel)) break;
+    gesehen.add(ziel);
+    out.push(ziel);
+    at = entities.get(ziel);
+  }
+  return out;
+}
+
+/** Kanten, die zum Original als Artikel gehören und an der Fassung neu entstehen. */
+const NICHT_MIT = new Set([LAYER_RELATION, OVERRIDES_RELATION, 'instanceOf', 'variantOf']);
+
+/**
+ * **Eine Fassung über der Vorlage** (E-018 a, T-082): ein neuer Artikel
+ * derselben Art mit denselben Karten und Kanten, der in der Ebene der
+ * Kampagne liegt und das Original über `overrides` ersetzt — solange diese
+ * Ebene aufgeschaltet ist (E2). Das Original bleibt, wie es ist; zurück
+ * heisst, die Fassung zu löschen.
+ *
+ * Die Kanten gehen mit (die Szene bleibt Teil ihres Kapitels, die
+ * Begegnung behält ihre Teilnehmer), ausser denen, die zum Original als
+ * Artikel gehören: Ebene, Überschreibung, Vorlage, Variante. Die Nummer
+ * vergibt der Aufrufer (`nextId`) — eine Fassung ist ein eigener Artikel.
+ */
+export function adaptedVersion(
+  original: Entity,
+  neu: { id: EntityId; number: string; layer: EntityId },
+): Entity {
+  /* Eine Kopie über JSON: das Modell kennt kein `structuredClone` (keine
+     Laufzeitbibliothek), und Karten sind ohnehin JSON. */
+  const kopie = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+  const components = kopie(original.components ?? {});
+  components['Identity'] = { ...(components['Identity'] ?? {}), id: neu.number };
+  const mit = (original.relations ?? []).filter((r) => !NICHT_MIT.has(r.type));
+  const relations: Rel[] = [
+    ...mit.map((r, i) => ({ ...kopie(r), id: `${neu.id}~${r.type}-${i + 1}` })),
+    { id: `${neu.id}~${LAYER_RELATION}`, type: LAYER_RELATION, to: neu.layer, props: {} },
+    { id: `${neu.id}~${OVERRIDES_RELATION}`, type: OVERRIDES_RELATION, to: original.id, props: {} },
+  ];
+  return { id: neu.id, interfaces: [...(original.interfaces ?? [])], name: original.name, components, relations };
+}
+
+/** Die Kanten, über die ein Teil an seinem Ganzen hängt: Szene am Kapitel, Karte an der Szene. */
+export const TAKE_EDGES: readonly string[] = ['partOf', 'mapOf'];
+
+/**
+ * **Was „in die Geschichte holen" mitnimmt** (E-026, REQ-252): der Artikel und alles,
+ * was über `partOf` oder `mapOf` an ihm hängt, in jeder Tiefe — ein
+ * Kapitel mit seinen Szenen, deren Räumen, Begegnungen und Karten. Gezählt
+ * wird nur, was in dieser Kampagne im Stapel steht (`inStack`), nicht
+ * schon in der Zielebene liegt und selbst keine Fassung ist: die Fassung
+ * eines Teils ersetzt ihr Original, und genommen wird das Original. Zuerst
+ * der Artikel selbst, dann die Teile in der Reihenfolge, in der sie
+ * gefunden werden.
+ */
+export function takenWith(
+  entities: ReadonlyMap<EntityId, Entity>,
+  root: Entity,
+  campaign: Entity | null,
+  targetLayer: EntityId,
+  registry?: Pick<Registry, 'interfaces'>,
+): Entity[] {
+  const teile = new Map<EntityId, Entity[]>();
+  for (const e of entities.values()) {
+    for (const r of e.relations ?? []) {
+      if (!TAKE_EDGES.includes(r.type)) continue;
+      (teile.get(r.to) ?? teile.set(r.to, []).get(r.to)!).push(e);
+    }
+  }
+  const mit = (e: Entity) =>
+    inStack(entities, e, campaign, registry) && !kanten(e, LAYER_RELATION).some((r) => r.to === targetLayer) && !kanten(e, OVERRIDES_RELATION).length;
+  const out: Entity[] = [root];
+  const gesehen = new Set<EntityId>([root.id]);
+  for (let i = 0; i < out.length; i += 1) {
+    for (const t of teile.get(out[i]!.id) ?? []) {
+      if (gesehen.has(t.id) || !mit(t)) continue;
+      gesehen.add(t.id);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+/**
+ * **Eine geholte Fassung umhängen** (E-026): ihre `partOf`/`mapOf`, die
+ * auf ein mitgenommenes Original zeigen, zeigen danach auf dessen Fassung
+ * (`mapping`: Original → Fassung) — sonst hinge die Szene der Fassung am
+ * Kapitel, das diese Kampagne gar nicht mehr sieht. Mit `into` hängt der
+ * Artikel selbst danach nur noch dort (`partOf`), am Arc oder an der
+ * Kampagne, wohin die Leitung ihn holt — mit `rank` an der Stelle, die
+ * der Aufrufer ihm dort gibt (T-108).
+ */
+export function rehang(fassung: Entity, mapping: ReadonlyMap<EntityId, EntityId>, into?: EntityId, rank?: number): Entity {
+  let relations = (fassung.relations ?? []).map((r) =>
+    TAKE_EDGES.includes(r.type) && mapping.has(r.to) ? { ...r, to: mapping.get(r.to)! } : r,
+  );
+  if (into) {
+    relations = relations.filter((r) => r.type !== 'partOf');
+    /* Ein Teil eines Buchs (T-108) bekommt seinen Platz im Ziel: hinter
+       dem, was dort schon steht (`rank`). */
+    relations.push({ id: `${fassung.id}~partOf-into`, type: 'partOf', to: into, props: rank === undefined ? {} : { rank } });
+  }
+  return { ...fassung, relations };
+}
+
+/** Die Kante zwischen Regelmechaniken, die zusammen gelten (E-166). */
+export const COMPATIBLE_RELATION = 'compatibleWith';
+
+/**
+ * **Mit welchen Mechaniken gilt diese zusammen?** (E-166) Die Kante
+ * `compatibleWith` steht einmal, an einer der beiden; gelesen wird sie in
+ * beide Richtungen — die Gegenrichtung ist eine Abfrage.
+ */
+export function compatibleMechanics(entities: Map<EntityId, Entity>, mechanicId: EntityId): EntityId[] {
+  const raus = new Set<EntityId>();
+  for (const r of kanten(entities.get(mechanicId), COMPATIBLE_RELATION)) raus.add(r.to);
+  for (const e of entities.values()) {
+    if (e.id !== mechanicId && kanten(e, COMPATIBLE_RELATION).some((r) => r.to === mechanicId)) raus.add(e.id);
+  }
+  raus.delete(mechanicId);
+  return [...raus];
+}
+
+/** Die Mechaniken eines Regelsystems (`partOf`), in der Reihenfolge, in der sie als Gruppe im Stapel stünden. */
+export function mechanicsOf(entities: Map<EntityId, Entity>, systemId: EntityId): Entity[] {
+  return (groupMembers(entities).get(systemId) ?? []).map((id) => entities.get(id)).filter((e): e is Entity => !!e && (e.interfaces ?? [])[0] === 'RuleMechanic');
 }

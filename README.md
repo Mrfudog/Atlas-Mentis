@@ -11,29 +11,34 @@ Paketnamen (`@nw/*`) und die Datenbanknamen tragen die Kampagne im Namen,
 und das dürfen sie.
 
 Ein Artikel ist die Grundform für alles in der Welt: Geschöpfe, Orte, Fraktionen,
-Regeln, Statblöcke, Wissensartikel. Er besteht aus **Komponenten** (typisierte
-Felder), **Blöcken** (Fliesstext mit eigener Sichtbarkeit) und **Verknüpfungen**
-(typisierte, gerichtete Kanten zu anderen Artikeln). Welche Artikelarten es gibt,
-welche Felder sie tragen und wie sie dargestellt werden, steht im **Register** —
-als Daten, nicht als Code. Eine neue Artikelart ist eine Zeile, keine Migration.
+Regeln, Statblöcke, Wissensartikel. Er ist eine Id; was er ist, sagen seine
+**Typen** — sie tragen ihre **Felder** selbst und erben voneinander —, und
+mit anderen Artikeln verbinden ihn typisierte, gerichtete **Kanten**. Welche
+Artikelarten es gibt, welche Felder sie tragen und wie sie dargestellt werden,
+steht im **Register** — als Daten, nicht als Code. Eine neue Artikelart ist
+eine Zeile, keine Codeänderung.
+
+**Die Dokumentation beginnt bei [docs/README.md](docs/README.md)** — Einstieg,
+Bestandsaufnahme und je Thema eine Übersicht, die tiefer führt.
 
 Was gilt, steht in [docs/Datenmodell.md](docs/Datenmodell.md); das
 ursprüngliche Konzept (`VTT/Backbone Concept.md`, `Schemas.md`, `Data
 Definitions.md`) ist überholt und bleibt als Herkunft stehen. Die
-Anforderungen mit unveränderlichen REQ-Nummern: [`VTT/Requirements.md`](VTT/Requirements.md),
-ihr Stand: [`VTT/Umsetzung.md`](VTT/Umsetzung.md).
+Anforderungen sind User Stories mit unveränderlichen REQ-Nummern, je eine
+Notiz unter `VTT/Stories/`, gegliedert in Epics und Features; was davon
+steht: [docs/Anforderungen.md](docs/Anforderungen.md).
 
 ## Aufbau
 
 | Pfad | Was |
 | --- | --- |
 | `packages/model` | Das Rückgrat als TypeScript: Typen, Validierung, Rechenwerk, Ansichtsauflösung. Kein Framework. Wird von Front und Back geteilt. |
-| `packages/registry` | Die Startzeilen des Registers: Komponenten, Schnittstellen, Verknüpfungsarten, Darstellungsstufen. |
-| `apps/server` | Fastify + Postgres. Drei generische Tabellen plus Register (D0). |
-| `apps/web` | Angular. |
+| `packages/registry` | Die Startzeilen des Registers — Typen, Kantenarten, Aufzählungen, Ansichten — und die Skripte, die Seed, Katalog und Anforderungsübersichten schreiben. |
+| `apps/server` | Fastify + Postgres. Routen sprechen mit `Repository`, nie direkt mit Postgres; gesiebt wird am Server. |
+| `apps/web` | Angular: Kompendium, Bereiche, Artikel, Boards, Karte, Inventar, Register, Werkbank, Suche, Leseansicht. |
 | `legacy/` | Die alte React-App (Kanalgang). Eingefroren, weiter lauffähig, wird nicht mehr weiterentwickelt. |
-| `prototype/` | Die Artikel-Engine v0 als eigenständige HTML-Seite — zum Ausprobieren des Modells. |
-| `docs/` | Datenmodell, Begriffe, Betrieb, Abgleich — die geltende Erklärung. |
+| `prototype/` | Die Artikel-Engine als eigenständige HTML-Seite. Eingefroren seit 13.10.2026 (D59), Vorlage für die Seite. |
+| `docs/` | Die geltende Erklärung — Einstieg: [docs/README.md](docs/README.md). |
 | `VTT/`, `Ideen/` | Der Obsidian-Vault: Anforderungen, Umsetzungsstand, Entscheidungslog, Notizen. |
 
 ## Entwickeln
@@ -78,7 +83,7 @@ nach der Produktion — steht in [docs/Betrieb.md](docs/Betrieb.md).
 
 | Zweig | Rolle |
 | --- | --- |
-| `main` | Woran der Tisch spielt. Wird nur aus einem grünen `preprod` vorgespult. |
+| `main` | Woran der Tisch spielt. `preprod` wird hineingemerged (nicht vorgespult), weil der Vault auch direkt auf `main` geschrieben wird; das merged die Verwaltung. |
 | `preprod` | Integration und Test, eigene Instanz, eigene Datenbank. |
 | `feature/*` | Ein Anliegen je Zweig → Pull Request nach `preprod`. |
 
@@ -86,16 +91,16 @@ Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Stand
 
-Das Rückgrat steht und ist geprüft: Modell, Register, Validierung, Rechenwerk,
-Ansichtsauflösung, die HTTP-Oberfläche und das Datenbankschema. Die Angular-App
-ist bisher ein Gerüst — das Kompendium darüber ist der nächste Schritt.
-
-Karte, Initiative und Begegnungen laufen bis auf Weiteres in `legacy/`.
+Modell, Register, Server und die Seite stehen und laufen auf dev und prod;
+was je Anforderung steht, sagt [docs/Anforderungen.md](docs/Anforderungen.md).
+Initiative, Nebel und Licht fehlen in der Seite noch und laufen bis dahin
+in `legacy/`.
 
 ## Der Vault
 
 Dieses Repository ist zugleich der Obsidian-Vault: `VTT/` trägt die
-Anforderungen (`Requirements.md`, unveränderliche REQ-Nummern), den Stand
-der Umsetzung (`Umsetzung.md`, aus dem Repo erzeugt) und das Entscheidungs-
-log; `Ideen/` die losen Notizen. Code und Konzept wohnen seit dem 7.10.2026
+Anforderungen als Epics, Features und Stories (unveränderliche
+REQ-Nummern), die daraus erzeugten Übersichten und das Entscheidungslog;
+`docs/` die geltende Erklärung samt Zeichnungen (`docs/Bilder/`,
+Excalidraw); `Ideen/` die losen Notizen. Code und Konzept wohnen seit dem 7.10.2026
 in einem Repo — zwei waren eines zu viel.

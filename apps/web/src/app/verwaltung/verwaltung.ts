@@ -1,7 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   Api,
   ApiError,
@@ -14,6 +14,25 @@ import {
   type TableRole,
 } from '../kern/api';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
+import { KampagnenEbenenListe } from './ebenen';
+import { KampagnenGeschichteListe } from './geschichte';
+import { Regeloptionen } from '../artikel/regeloptionen';
+import { Reiterleiste } from '../bogen/reiterleiste';
+import { KampagnenSichtbarkeit } from './sichtbarkeit';
+import { KampagnenArtikel } from './artikel-sicht';
+import { KampagnenEntscheidungen, springeZu, type Aenderungsort } from './entscheidungen';
+
+/** Die Reiter der Kampagnenseite (T-254), in ihrer Reihenfolge. Ebenen und
+ *  Regeln brauchen den Kampagnenartikel; ohne ihn stehen sie nicht da. */
+const REITER: { id: string; label: string; artikel?: boolean }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'members', label: 'Members' },
+  { id: 'layers', label: 'Layers', artikel: true },
+  { id: 'rules', label: 'Rules & options', artikel: true },
+  /* Wer sieht was, je Gruppe (T-252, E-098) — für Leitung und Mitleitung. */
+  { id: 'visibility', label: 'Visibility', artikel: true },
+];
 
 /** Was jede Rolle heisst — dieselben Sätze wie auf der Tafel (`Members.dc.html`). */
 const ROLLEN: { role: TableRole; text: string }[] = [
@@ -38,7 +57,7 @@ const ROLLEN: { role: TableRole; text: string }[] = [
  */
 @Component({
   selector: 'nw-verwaltung',
-  imports: [FormsModule, NgTemplateOutlet],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, KampagnenEbenenListe, KampagnenGeschichteListe, Regeloptionen, Reiterleiste, KampagnenSichtbarkeit, KampagnenArtikel, KampagnenEntscheidungen],
   template: `
     <div class="kopf">
       @if (mitglieder()) {
@@ -53,10 +72,21 @@ const ROLLEN: { role: TableRole; text: string }[] = [
           } @else {
             <b>{{ mitglieder()?.campaign?.name ?? '…' }}</b>
           }
-          › Members
+          › {{ reiterName() }}
         </span>
       }
       <span class="stand">{{ standText() }}</span>
+      @if (mitglieder()?.campaign?.exists) {
+        <button
+          type="button"
+          class="ausfuhr"
+          [disabled]="laeuft()"
+          title="Download this campaign as a file: registry and its articles, without accounts"
+          (click)="ausfuehren()"
+        >
+          Export campaign
+        </button>
+      }
     </div>
 
     @if (fehler()) {
@@ -85,6 +115,12 @@ const ROLLEN: { role: TableRole; text: string }[] = [
     }
 
     @if (mitglieder(); as m) {
+      <!-- Reiter (T-254): die Seite war eine lange Rolle — Mitglieder,
+           Ebenen, Geschichte, Einladungen untereinander. Man schaut auf
+           einen; welcher, steht in der Adresse (\`?tab=\`). -->
+      <nw-reiterleiste [reiter]="reiterListe()" [aktiv]="reiter()" (waehle)="zeigeReiter($event)" />
+      @switch (reiter()) {
+      @case ('members') {
       <div class="flaeche">
         <section class="kasten tisch" aria-label="Members">
           <h2>At the table</h2>
@@ -113,6 +149,17 @@ const ROLLEN: { role: TableRole; text: string }[] = [
                   }
                   @if (p.disabled) {
                     <span class="marke aus">disabled</span>
+                  }
+                  <!-- REQ-241: sehen, was dieses Mitglied sieht; der Server sagt, wo es geht. -->
+                  @if (p.viewAs) {
+                    <button
+                      type="button"
+                      class="klein ansehen"
+                      [attr.aria-label]="'View as ' + p.name"
+                      (click)="sichtEinnehmen(p)"
+                    >
+                      View as
+                    </button>
                   }
                 </span>
                 <span role="cell">
@@ -304,8 +351,77 @@ const ROLLEN: { role: TableRole; text: string }[] = [
           <p class="dim">None open.</p>
         }
       </section>
+      <ng-container *ngTemplateOutlet="kontenListe" />
+      }
+      @case ('layers') {
+        <!-- Die Geschichte liest beim Zeichnen neu; ein Abenteuer, das hier
+             aufgeschaltet wird, steht danach in der Übersicht. -->
+        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="stapel.geaendert()" />
+        <!-- Jeder Artikel mit seiner Ebene (T-387) — Leitung und Mitleitung; der Server sagt es. -->
+        @if (m.may) {
+          <div class="eingerueckt">
+            <nw-kampagnen-artikel [kampagne]="m.campaign.id" sortierung="layer" />
+          </div>
+        }
+      }
+      @case ('visibility') {
+        <div class="eingerueckt">
+          <nw-kampagnen-sichtbarkeit [kampagne]="m.campaign.id" />
+          <nw-kampagnen-artikel [kampagne]="m.campaign.id" />
+        </div>
+      }
+      @case ('rules') {
+        <div class="eingerueckt">
+          <nw-regeloptionen [kampagne]="m.campaign.id" [darfSchreiben]="m.may === 'manage'" />
+        </div>
+      }
+      @default {
+        <section class="kasten uebersicht" aria-label="Overview">
+          <h2>{{ m.campaign.name }}</h2>
+          @if (nichtLaufend()) {
+            <!-- T-411: die Seite kann eine andere Kampagne zeigen als die
+                 Kopfleiste; dann sagt sie es, und die Verwaltung schaltet
+                 hier um wie dort. -->
+            <p class="nicht-laufend">
+              Not the running campaign — the bar shows <b>{{ stapel.laufend()?.name }}</b>.
+              @if (kampagnen()?.isAdmin && m.campaign.exists) {
+                <button type="button" class="laufend-machen" [disabled]="laeuft()" (click)="laufendMachen(m.campaign.id)">
+                  Make this the running campaign
+                </button>
+              }
+            </p>
+          }
+          <ul class="kennzahlen">
+            <li><b>{{ m.members.length }}</b> at the table</li>
+            <li><b>{{ einladungenHier().length }}</b> open invitation{{ einladungenHier().length === 1 ? '' : 's' }}</li>
+            @if (m.campaign.exists) {
+              <li><a [routerLink]="['/artikel', m.campaign.id]">Open the campaign article</a></li>
+            }
+          </ul>
+        </section>
+        @if (m.campaign.exists) {
+          <!-- Der Kampagnenmanager (T-141): jede Entscheidung für sich, mit Ort und Folgen. -->
+          <nw-kampagnen-entscheidungen
+            [kampagne]="m.campaign.id"
+            [mitglieder]="m.members"
+            [darfSchreiben]="m.may === 'manage'"
+            (aendern)="entscheidungAendern($event)"
+          />
+          <nw-kampagnen-geschichte [kampagne]="m.campaign.id" />
+        }
+        @if (kampagnen()?.isAdmin) {
+          <section class="kasten" aria-label="New campaign">
+            <h2>New campaign</h2>
+            <ng-container *ngTemplateOutlet="anlegen" />
+          </section>
+        }
+      }
+      }
+    } @else if (kampagnen()?.isAdmin) {
+      <ng-container *ngTemplateOutlet="kontenListe" />
     }
 
+    <ng-template #kontenListe>
     @if (kampagnen()?.isAdmin) {
       <section class="kasten" aria-label="Accounts">
         <h2>Accounts of this installation</h2>
@@ -337,6 +453,29 @@ const ROLLEN: { role: TableRole; text: string }[] = [
                   · plays {{ figurenText(k) }}
                 }
               </span>
+              <!-- In welchen Ebenen das Konto schreibt (T-098, E-001): je Konto
+                   verwaltbar. Die Ebene der Kampagne kommt aus der Rolle. -->
+              <span class="schreibt">
+                @for (l of k.layers ?? []; track l.id) {
+                  <span class="chip">
+                    {{ l.name ?? l.id }}{{ l.owner ? ' (owner)' : '' }}
+                    <button type="button" class="x" [disabled]="laeuft()"
+                            [attr.aria-label]="(k.name) + ' no longer edits ' + (l.name ?? l.id)"
+                            (click)="ebeneWeg(k, l.id)">×</button>
+                  </span>
+                }
+                @if (ebenenWahl().length) {
+                  <select [attr.aria-label]="'Let ' + k.name + ' edit a layer'" [disabled]="laeuft()"
+                          (change)="ebeneDazu(k, $any($event.target))">
+                    <option value="">edits layer…</option>
+                    @for (l of ebenenWahl(); track l.id) {
+                      @if (!schreibtIn(k, l.id)) {
+                        <option [value]="l.id">{{ l.name }}</option>
+                      }
+                    }
+                  </select>
+                }
+              </span>
               @if (gewaehlt() && !istMitglied(k)) {
                 <button type="button" (click)="kontoAufnehmen(k)">Add to this campaign</button>
               }
@@ -344,13 +483,8 @@ const ROLLEN: { role: TableRole; text: string }[] = [
           }
         </ul>
       </section>
-      @if (kampagnen()?.campaigns?.length) {
-        <section class="kasten" aria-label="New campaign">
-          <h2>New campaign</h2>
-          <ng-container *ngTemplateOutlet="anlegen" />
-        </section>
-      }
     }
+    </ng-template>
 
     <ng-template #anlegen>
       <form class="dazunehmen" (ngSubmit)="kampagneAnlegen()">
@@ -375,6 +509,8 @@ export class Verwaltung {
   private readonly session = inject(Session);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  /** Die Zahl der Ebenen in der Kopfleiste folgt dem Schalten hier (T-143). */
+  protected readonly stapel = inject(Stapel);
 
   protected readonly rollen = TABLE_ROLES;
   protected readonly rollenText = ROLLEN;
@@ -384,6 +520,9 @@ export class Verwaltung {
   protected readonly mitglieder = signal<Mitglieder | null>(null);
   protected readonly einladungen = signal<Einladung[]>([]);
   protected readonly konten = signal<Konto[]>([]);
+  /** Die Ebenen, die die Verwaltung einem Konto zuteilen kann (T-098) —
+   *  ohne Gruppen: in einer Gruppe liegt nichts. */
+  protected readonly ebenenWahl = signal<{ id: string; name: string }[]>([]);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laeuft = signal(false);
   protected readonly link = signal<string | null>(null);
@@ -414,7 +553,37 @@ export class Verwaltung {
     return '';
   });
 
+  /** Welche Reiter es gibt — ohne Kampagnenartikel nur Übersicht und Mitglieder. */
+  protected readonly reiterListe = computed(() => {
+    const da = !!this.mitglieder()?.campaign.exists;
+    return REITER.filter((r) => da || !r.artikel);
+  });
+  /** Der offene Reiter: `?tab=`, sonst die Übersicht. Ein alter Link ohne
+   *  Reiter landet so dort, wo die Seite anfängt. */
+  protected readonly reiter = computed(() => {
+    const w = this.tabParam();
+    return this.reiterListe().some((r) => r.id === w) ? w! : 'overview';
+  });
+  protected readonly reiterName = computed(() => REITER.find((r) => r.id === this.reiter())?.label ?? '');
+  private readonly tabParam = signal<string | null>(null);
+  protected zeigeReiter(id: string): void {
+    this.tabParam.set(id);
+    void this.router.navigate([], { queryParams: { tab: id }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
+  /** „Change" an einer Entscheidung (T-141): in ihren Reiter, bei einer Regel an ihr System, sobald es geladen ist. */
+  protected entscheidungAendern(ort: Aenderungsort): void {
+    this.zeigeReiter(ort.tab);
+    if (ort.anchor) springeZu(ort.anchor);
+  }
+
   protected readonly mehrere = computed(() => (this.kampagnen()?.campaigns.length ?? 0) > 1);
+
+  /** Ob die gezeigte Kampagne eine andere ist als die laufende in der Kopfleiste (T-411). */
+  protected readonly nichtLaufend = computed(() => {
+    const l = this.stapel.laufend()?.id;
+    return !!l && !!this.gewaehlt() && this.gewaehlt() !== l;
+  });
 
   /** Eine Methode und kein `computed`: `neu` ist ein gewöhnliches Objekt
    *  hinter `ngModel`, ein Signal sähe seine Änderungen nicht. */
@@ -428,6 +597,34 @@ export class Verwaltung {
 
   constructor() {
     void this.laden(this.route.snapshot.queryParamMap.get('c'));
+    this.route.queryParamMap.subscribe((q) => this.tabParam.set(q.get('tab')));
+    /* **Dem Wechsel in der Kopfleiste folgen** (T-411): zeigte die Seite
+       die bisher laufende Kampagne, zeigt sie danach die neue. Wer hier
+       bewusst eine andere gewählt hat, bleibt bei ihr — dann sagt die
+       Übersicht, dass sie nicht läuft. */
+    let vorher = this.stapel.laufend()?.id ?? null;
+    effect(() => {
+      const jetzt = this.stapel.laufend()?.id ?? null;
+      untracked(() => {
+        const war = vorher;
+        vorher = jetzt;
+        if (!jetzt || !war || jetzt === war || this.gewaehlt() !== war) return;
+        if (!this.kampagnen()?.campaigns.some((c) => c.id === jetzt)) return;
+        void this.waehlen(jetzt);
+      });
+    });
+  }
+
+  /** Die gezeigte Kampagne laufen lassen — dasselbe wie die Wahl in der Kopfleiste (T-143, T-411). */
+  protected async laufendMachen(id: string): Promise<void> {
+    await this.tun(() => this.stapel.wechseln(id));
+  }
+
+  /** Die Sicht dieses Mitglieds einnehmen (REQ-241) und dorthin, wo man
+   *  am ehesten etwas vermisst: ins Kompendium. */
+  protected async sichtEinnehmen(p: Mitglied): Promise<void> {
+    await this.session.viewAsUser(p.id);
+    await this.router.navigateByUrl('/compendium');
   }
 
   /** Wer sich selbst nicht ändert: eine Leitung, die sich zum Zuschauer
@@ -464,6 +661,22 @@ export class Verwaltung {
     })}`;
   }
 
+  /** Die Kampagne als Datei herunterladen (T-077) — unabhängig von den
+   *  Sicherungen des Servers. Was hineingeht, sagt der Server (`ausfuhr.ts`). */
+  protected async ausfuehren(): Promise<void> {
+    const c = this.gewaehlt();
+    if (!c) return;
+    await this.tun(async () => {
+      const { blob, name } = await this.api.exportCampaign(c);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+  }
+
   private async tun(was: () => Promise<unknown>): Promise<boolean> {
     this.fehler.set(null);
     this.laeuft.set(true);
@@ -483,7 +696,10 @@ export class Verwaltung {
       const k = await this.api.campaigns();
       this.kampagnen.set(k);
       const ids = k.campaigns.map((c) => c.id);
-      const c = wunsch && ids.includes(wunsch) ? wunsch : (ids[0] ?? null);
+      /* Ohne Wunsch die laufende Kampagne (T-411) — die alphabetisch
+         erste war oft eine andere als die in der Kopfleiste. */
+      const lauft = k.current?.id;
+      const c = wunsch && ids.includes(wunsch) ? wunsch : lauft && ids.includes(lauft) ? lauft : (ids[0] ?? null);
       this.gewaehlt.set(c);
       await Promise.all([this.ladeKampagne(), k.isAdmin ? this.ladeKonten() : Promise.resolve()]);
     });
@@ -501,7 +717,36 @@ export class Verwaltung {
   }
 
   private async ladeKonten(): Promise<void> {
-    this.konten.set(await this.api.users());
+    const c = this.gewaehlt();
+    const [konten, ebenen] = await Promise.all([
+      this.api.users(),
+      c ? this.api.campaignLayers(c).catch(() => null) : Promise.resolve(null),
+    ]);
+    this.konten.set(konten);
+    this.ebenenWahl.set(
+      (ebenen?.layers ?? [])
+        .filter((l) => l.kind !== 'group')
+        .map((l) => ({ id: l.id, name: l.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    );
+  }
+
+  protected schreibtIn(k: Konto, layer: string): boolean {
+    return (k.layers ?? []).some((l) => l.id === layer);
+  }
+
+  /** Ein Konto in einer Ebene schreiben lassen (T-098). */
+  protected async ebeneDazu(k: Konto, wahl: HTMLSelectElement): Promise<void> {
+    const layer = wahl.value;
+    wahl.value = '';
+    if (!layer) return;
+    await this.tun(() => this.api.addLayerEditor(layer, { user: k.id }));
+    await this.tun(() => this.ladeKonten());
+  }
+
+  protected async ebeneWeg(k: Konto, layer: string): Promise<void> {
+    await this.tun(() => this.api.dropLayerEditor(layer, k.id));
+    await this.tun(() => this.ladeKonten());
   }
 
   private async neuLaden(): Promise<void> {
@@ -512,7 +757,7 @@ export class Verwaltung {
   protected async waehlen(id: string): Promise<void> {
     this.gewaehlt.set(id);
     this.link.set(null);
-    void this.router.navigate([], { queryParams: { c: id }, replaceUrl: true });
+    void this.router.navigate([], { queryParams: { c: id }, queryParamsHandling: 'merge', replaceUrl: true });
     await this.tun(() => this.ladeKampagne());
   }
 
@@ -617,7 +862,9 @@ export class Verwaltung {
     if (!ok) return;
     this.kampagneName = '';
     if (this.selbstLeiten) await this.session.load(true);
-    if (id) void this.router.navigate([], { queryParams: { c: id }, replaceUrl: true });
+    /* Die Kopfleiste bietet sie gleich zum Wechseln an (T-411), nicht erst nach dem Neuladen. */
+    void this.stapel.laden();
+    if (id) void this.router.navigate([], { queryParams: { c: id }, queryParamsHandling: 'merge', replaceUrl: true });
     await this.laden(id);
   }
 }

@@ -1,6 +1,6 @@
 export { lies, ausschluss, STICHTAG_2024, ARTEN_WEG } from './lesen.js';
 export type { Datenstand, Auswahl, Quelle } from './lesen.js';
-export { lauf, ausschnitt, PROBE, ZUORDNUNGEN, EBENE, Prueffehler } from './lauf.js';
+export { lauf, ausschnitt, PROBE, ZUORDNUNGEN, EBENE, OHNE_BUCH, Prueffehler } from './lauf.js';
 export type { Ergebnis } from './lauf.js';
 export { berichtMarkdown } from './bericht.js';
 export { inline, markdown, klartext } from './text.js';

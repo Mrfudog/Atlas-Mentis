@@ -1,4 +1,5 @@
 import type { RelationDef } from '@nw/model';
+import { TOOLS_ONLY } from './fieldgroups.js';
 
 /**
  * `relation_def` rows. Every edge is stored once, in one direction;
@@ -13,6 +14,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'composedOf',
     label: 'composed of',
     inverseLabel: 'used in',
+    means: 'A statblock is built from a pooled rule (an attack, a trait); the rule lists the statblocks that use it.',
     from: ['Statblock'],
     to: ['Rule'],
     section: 'Actions & traits',
@@ -55,6 +57,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'belongsTo',
     label: 'belongs to',
     inverseLabel: 'statblock of',
+    means: 'A statblock belongs to one creature; the creature reads its numbers from it.',
     from: ['Statblock'],
     /* **Jede Kreatur**, nicht nur ein NSC: ein Spielercharakter hat
        dieselben Zahlen wie ein Monster und mehr darüber hinaus. Solange
@@ -89,6 +92,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'stageOf',
     label: 'stage of',
     inverseLabel: 'has stages',
+    means: 'A condition is a stage of another (exhaustion 3 of exhaustion); the base condition lists its stages.',
     from: ['Condition'],
     to: ['Condition'],
     cardinality: 'one',
@@ -106,6 +110,8 @@ export const relations: Record<string, RelationDef> = {
     type: 'affects',
     label: 'affects',
     inverseLabel: 'affected by',
+    means: 'A rule changes another rule (a feat that alters grappling); the changed rule lists what affects it.',
+    intended: 'Apply the change in play: when the source rule is active, the effect it names should alter the target rule’s numbers or text where the target is used.',
     from: ['Rule'],
     to: ['Rule'],
     props: {
@@ -127,6 +133,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'worships',
     label: 'worships',
     inverseLabel: 'worshipped by',
+    means: 'A creature or faction worships a deity; the deity lists its worshippers.',
     from: ['Creature', 'Faction'],
     to: ['Deity'],
   },
@@ -143,12 +150,17 @@ export const relations: Record<string, RelationDef> = {
    * Zauberwirken wohnen dort. Seit P4 auch von der Unterklasse und der
    * Abstammung: Domänenzauber des Klerikers, das angeborene Thaumaturgy
    * des Tieflings — mit `fromLevel`, ab welcher Klassen- bzw. Figurenstufe.
+   * Seit T-089 auch vom Talent: Drow High Magic wirkt Levitate einmal am Tag
+   * wie die Abstammung ihr Thaumaturgy — `grants` hätte das „1/day"
+   * verloren. Seit T-084 auch vom Kult (`Faction`) und vom Segen (`Rule`):
+   * ihre Signaturzauber, die wirkt, wer ihm angehört oder ihn trägt.
    */
   casts: {
     type: 'casts',
     label: 'casts',
     inverseLabel: 'cast by',
-    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry'],
+    means: 'A statblock, character, item, subclass, ancestry, feat, cult or boon can cast a spell; the spell lists who casts it.',
+    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat', 'Faction', 'Rule'],
     to: ['Spell'],
     props: {
       type: 'object',
@@ -159,6 +171,10 @@ export const relations: Record<string, RelationDef> = {
           enum: ['prepared', 'known', 'innate', 'item'],
         },
         uses: { type: 'string', suggest: true, title: 'Uses' },
+        /* Mit welchem Attribut (T-309): das Regelwerk sagt es je Quelle —
+           der Tiefling wirkt mit CHA, auch wenn er Magier ist. Ohne Angabe
+           das Attribut der Quelle, sonst das der Figur. */
+        ability: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
         level: { type: 'number', min: 0, max: 9, title: 'At level' },
         charges: { type: 'number', min: 0, title: 'Charges per cast' },
         fromLevel: { type: 'number', min: 1, max: 20, title: 'From level' },
@@ -167,14 +183,47 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Die Zauberliste einer Klasse** (T-212): welche Zauber ein Magier, ein
+   * Kleriker, ein Hexenmeister mit Paktgeber lernen oder vorbereiten
+   * *darf* — nicht, was er wirkt (das ist `casts`), und nicht, was er
+   * bekommt (das wäre `grants`: dessen Ziele bringen ihre Wirkungen ohne
+   * Bedingung an die Figur, `effectsAt`). Von der Unterklasse die
+   * erweiterte Liste (Paktgeber, Eldritch Knight). `optional` sind die
+   * Ergänzungen aus Tasha's (`classVariant` bei 5e.tools), die eine Kampagne
+   * erlaubt oder nicht.
+   *
+   * „Usable by <Figur>" liest sie: ein Zauber auf der Liste einer Klasse der
+   * Figur, bis zu dem Grad, den sie dort wirkt (`spellListRequirement`).
+   */
+  spellList: {
+    type: 'spellList',
+    label: 'spell list',
+    inverseLabel: 'on the spell list of',
+    means: 'A class or subclass has a spell on its spell list; the spell lists the classes that may learn it.',
+    from: ['Class', 'Subclass'],
+    to: ['Spell'],
+    /* Am Zauber die erste Frage: welche Klasse ihn hat (T-212). */
+    facet: { label: 'Class spell list', order: 0 },
+    props: {
+      type: 'object',
+      properties: {
+        optional: { type: 'boolean', title: 'Optional (expanded list)' },
+      },
+    },
+  },
+
+  /**
    * **Was ein Statblock in der Hand hat** (M5): der Goblin führt Krummsäbel
    * und Kurzbogen. Ein Verweis auf den Gegenstand aus dem Buch und kein
    * Inventar — das hat eine Figur am Tisch (`carries`), nicht eine Vorlage.
+   * Gelesen wird sie für die Wirkungen der geführten Gegenstände (T-275,
+   * `itemsAt`); Waffen als Angriffe des Statblocks stehen noch aus.
    */
   equips: {
     type: 'equips',
     label: 'equips',
     inverseLabel: 'equipped by',
+    means: 'A statblock has an item equipped; the item lists who wears or wields it.',
     from: ['Statblock'],
     to: ['Item'],
   },
@@ -186,16 +235,21 @@ export const relations: Record<string, RelationDef> = {
     type: 'subclassOf',
     label: 'subclass of',
     inverseLabel: 'subclasses',
+    means: 'A subclass belongs to one class; the class lists its subclasses.',
     from: ['Subclass'],
     to: ['Class'],
     cardinality: 'one',
   },
 
-  /** Hill Dwarf ist eine Unterart von Dwarf (M3). */
+  /** Hill Dwarf ist eine Unterart von Dwarf (M3). Die Herkunftsansicht
+      liest sie (T-166): die Seite der Herkunft führt ihre Unterarten als
+      Leiste. Dass eine Unterart erbt, was die Herkunft gewährt, tut noch
+      niemand — das steht als Aufgabe am Brett, nicht als Versprechen hier. */
   subraceOf: {
     type: 'subraceOf',
     label: 'subrace of',
     inverseLabel: 'subraces',
+    means: 'An ancestry is a subrace of another; the parent lists its subraces.',
     from: ['Ancestry'],
     to: ['Ancestry'],
     cardinality: 'one',
@@ -211,6 +265,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'hasClass',
     label: 'class',
     inverseLabel: 'taken by',
+    means: 'A player character has levels in a class; the class lists who took it.',
     from: ['PlayerCharacter'],
     to: ['Class'],
     props: {
@@ -224,6 +279,11 @@ export const relations: Record<string, RelationDef> = {
           title: 'Subclass',
           target: { interfaces: ['Subclass'] },
         },
+        /* **Was der Trefferwürfel je Stufe brachte** (T-194), ohne KON; der
+           erste Eintrag die erste Stufe. Gewürfelt oder der Durchschnitt,
+           sagt die Kampagne (`Campaign.hitPoints`). Das Maximum am
+           Statblock rechnet daraus, wer KON ändert, würfelt nicht neu. */
+        hp: { type: 'array', items: { type: 'number' }, title: 'Hit points per level' },
       },
     },
   },
@@ -233,6 +293,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'hasAncestry',
     label: 'ancestry',
     inverseLabel: 'ancestry of',
+    means: 'A player character has one ancestry; the ancestry lists the characters of it.',
     from: ['PlayerCharacter'],
     to: ['Ancestry'],
     cardinality: 'one',
@@ -243,9 +304,129 @@ export const relations: Record<string, RelationDef> = {
     type: 'hasBackground',
     label: 'background',
     inverseLabel: 'background of',
+    means: 'A player character has one background; the background lists the characters with it.',
     from: ['PlayerCharacter'],
     to: ['Background'],
     cardinality: 'one',
+  },
+
+  /**
+   * **Welche Attributsverfahren eine Kampagne erlaubt** (E-016 a). Nennt
+   * sie keines, gelten Standardreihe und Punktekauf
+   * (`DEFAULT_ABILITY_METHODS`).
+   */
+  allowsMethod: {
+    type: 'allowsMethod',
+    label: 'allows ability method',
+    inverseLabel: 'allowed in',
+    means: 'A campaign allows a way of determining ability scores; the method lists the campaigns that allow it.',
+    from: ['Campaign'],
+    to: ['AbilityMethod'],
+  },
+
+  /**
+   * **Welche Verfahren für die Startausrüstung eine Kampagne erlaubt**
+   * (REQ-250, T-096). Nennt sie keines, gelten „Klasse und Hintergrund"
+   * und „Startgold" (`DEFAULT_EQUIPMENT_METHODS`).
+   */
+  /**
+   * **Welche Ersatzregeln eine Kampagne spielt** (T-197): Pflanzen statt
+   * Reagenzien und dergleichen. Nennt sie keine, zählt nur, was das Rezept
+   * nennt (`materialFit`).
+   */
+  allowsSubstitution: {
+    type: 'allowsSubstitution',
+    label: 'allows substitution',
+    inverseLabel: 'allowed in',
+    means: 'A campaign plays by a material substitution rule; the rule lists the campaigns that allow it.',
+    from: ['Campaign'],
+    to: ['Substitution'],
+  },
+
+  /**
+   * **Ein Glossarbegriff erklärt einen Artikel** (T-242): „Poisoned" im
+   * Glossar zeigt auf den Zustand, „Versatile" auf die Eigenschaft. Der
+   * Begriff sagt in einem Satz, was er heisst; die Regel steht am Ziel.
+   * Rückwärts liest eine Regel, welche Begriffe sie erklären — so findet
+   * die Maske zu einem Zustand seinen Eintrag.
+   */
+  explains: {
+    type: 'explains',
+    label: 'explains',
+    inverseLabel: 'explained by',
+    means: 'A glossary term explains an article (a condition, a property, a rule); the article lists the terms that explain it.',
+    from: ['GlossaryTerm'],
+    to: ['*'],
+  },
+
+  allowsEquipment: {
+    type: 'allowsEquipment',
+    label: 'allows equipment method',
+    inverseLabel: 'allowed in',
+    means: 'A campaign allows a way of getting starting equipment; the method lists the campaigns that allow it.',
+    from: ['Campaign'],
+    to: ['EquipmentMethod'],
+  },
+
+  /**
+   * **Der Gruppenpool** (E-016 a): einmal für die Gruppe gewürfelt, und
+   * jede ihrer Figuren verteilt dieselben Werte selbst. Gewürfelt wird am
+   * Server (`POST /api/abilities/roll`), und jeder Wurf steht im
+   * Protokoll; wer gewürfelt hat, steht dort und nicht hier (REQ-199).
+   */
+  abilityPool: {
+    type: 'abilityPool',
+    label: 'rolled ability pool',
+    inverseLabel: 'pool of',
+    means: 'A party has rolled a pool of ability scores with a method; the method lists the parties that rolled with it.',
+    from: ['Party'],
+    to: ['AbilityMethod'],
+    props: {
+      type: 'object',
+      required: ['values'],
+      properties: {
+        values: { type: 'array', items: { type: 'number' }, title: 'Scores' },
+        rolls: { type: 'array', items: { type: 'string' }, title: 'Rolls' },
+        at: { type: 'string', title: 'Rolled at' },
+      },
+    },
+  },
+
+  /**
+   * **Was eine Figur gewählt hat** (REQ-238, E-015 a): je Wahl eine Kante
+   * auf den Artikel, der fragt, mit der `id` der Wahl und den Antworten
+   * (Namen, Artikel-Ids oder der Schlüssel einer Möglichkeit). Die Figur
+   * kopiert nichts — was die Antworten ergeben, wird beim Lesen gerechnet
+   * (`chosenResult`, D8), also erreicht eine Änderung am Artikel jede
+   * Figur. Eine Antwort, deren Wahl es nicht mehr gibt, ist verwaist und
+   * bleibt stehen, bis jemand sie löscht.
+   *
+   * An einem Merkmal, das mehrfach gewährt wird, sagen `by` und `level`,
+   * zu welcher Kante `grants` die Antwort gehört (T-107, E-027): die
+   * Attributssteigerung auf Stufe 4 und die auf 8 sind zwei Antworten.
+   *
+   * `items` füllt die offenen Stellen der gewählten Möglichkeit (T-162):
+   * „two martial weapons of your choice" sind zwei Artikel-Ids, der Reihe
+   * nach; geprüft wird beim Ausrüsten (`slotAccepts`).
+   */
+  chose: {
+    type: 'chose',
+    label: 'chose',
+    inverseLabel: 'chosen by',
+    means: 'A player character answered a choice (a skill, a feat, a subclass); the source of the choice lists who chose from it.',
+    from: ['PlayerCharacter'],
+    to: ['Choices'],
+    props: {
+      type: 'object',
+      required: ['choice'],
+      properties: {
+        choice: { type: 'string', title: 'Choice' },
+        picks: { type: 'array', items: { type: 'string' }, title: 'Picks' },
+        by: { type: 'string', title: 'Granted by' },
+        level: { type: 'number', min: 1, max: 20, title: 'At level' },
+        items: { type: 'array', items: { type: 'string' }, title: 'Items for open slots' },
+      },
+    },
   },
 
   /**
@@ -262,6 +443,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'grants',
     label: 'grants',
     inverseLabel: 'granted by',
+    means: 'A class, subclass, ancestry, background or feat grants a feature, from a level on; the feature lists what grants it.',
     from: ['Class', 'Subclass', 'Ancestry', 'Background', 'Feat'],
     to: ['Rule'],
     props: {
@@ -272,13 +454,42 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  /** Weapon properties are pooled rules, referenced rather than copied. */
+  /**
+   * Weapon properties are pooled rules, referenced rather than copied.
+   * **Was bei diesem Gegenstand gilt, steht an der Kante** (T-324, E-163):
+   * Versatile ist eine Regel, 1d10 ist die des Langschwerts; Thrown eine,
+   * 20/60 die des Dolchs — wie `composedOf` am Statblock.
+   */
   hasProperty: {
     type: 'hasProperty',
     label: 'has property',
     inverseLabel: 'property of',
+    means: 'A weapon, armour or item has a property (finesse, heavy); the property lists the items that have it.',
     from: ['Weapon', 'Item', 'Armor'],
     to: ['ItemProperty'],
+    props: {
+      type: 'object',
+      properties: {
+        damage: { type: 'string', title: 'Damage', description: 'The damage this property gives here, such as 1d10 for versatile.' },
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range', description: 'The range this property gives here, such as 20/60 for thrown.' },
+        note: { type: 'string', title: 'Only here' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Stück mit einem Enhancement** (T-300, E-107): der +1-Dolch einer
+   * Figur ist ein Stück von „Dagger" mit dieser Kante auf „+1 Weapon".
+   * Mehrere je Stück; geprüft gegen `Item.appliesTo` (`enhancementRefusal`).
+   */
+  enchantedWith: {
+    type: 'enchantedWith',
+    label: 'enhanced with',
+    inverseLabel: 'enhances',
+    means: 'A piece of an item carries an enhancement such as +1 Weapon or Silvered; its name, price and bonuses are worked out from both.',
+    from: ['Item'],
+    /* Seit T-324 (E-163) ein Regelartikel und kein Gegenstand mehr. */
+    to: ['Enhancement'],
   },
 
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
@@ -288,14 +499,30 @@ export const relations: Record<string, RelationDef> = {
     type: 'owes',
     label: 'owes',
     inverseLabel: 'creditor of',
+    means: 'A creature owes another something (a favour, a debt); the creditor lists who owes it.',
     from: ['Creature'],
     to: ['Creature'],
   },
 
+  inCollection: {
+    type: 'inCollection',
+    label: 'in collection',
+    inverseLabel: 'members (by hand)',
+    means: 'An article belongs to a collection by hand, next to what its rule takes; with Exclude it is taken out even where the rule would take it.',
+    from: ['*'],
+    to: ['Collection'],
+    props: {
+      type: 'object',
+      properties: {
+        exclude: { type: 'boolean', title: 'Exclude', description: 'Takes the article out of the collection, even where its rule would take it (T-425, E-174).' },
+      },
+    },
+  },
   memberOf: {
     type: 'memberOf',
     label: 'member of',
     inverseLabel: 'members',
+    means: 'A creature is a member of a faction, at a rank; the faction lists its members.',
     from: ['Creature'],
     to: ['Faction'],
     /* Der Rang steht an der Kante: dieselbe Figur ist in der einen Fraktion
@@ -314,6 +541,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'livesIn',
     label: 'lives in',
     inverseLabel: 'residents',
+    means: 'A creature lives in a place; the place lists its residents.',
     from: ['Creature'],
     to: ['Place'],
   },
@@ -341,24 +569,157 @@ export const relations: Record<string, RelationDef> = {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest', 'Event', 'Board'],
-    to: ['Place', 'Story', 'Event'],
+    means: 'An article is part of a larger one (a room of a house, a scene of an arc, a book of a group, a circle of a faction); the larger one lists what it contains, in rank order.',
+    /* `Encounter` (T-082): eine Begegnung hängt an ihrer Szene oder ihrem
+       Kapitel — so stand es am Typ, die Kante liess es nicht zu. */
+    /* `Rule` (T-270): eine Option hängt an ihrer Regel, die Regel an ihrem System. */
+    /* `Faction` (T-341): eine Unterfraktion hängt an ihrer Fraktion — der
+       Zirkel ist Teil der Wacht, und die Struktur zeichnet ihn darunter. */
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer', 'Chapter', 'BookPart', 'Rule', 'Faction'],
+    /* `Layer` (E-022 b, T-088): eine Ebene hängt an ihrer Gruppe — einer
+       Ebene mit `kind: 'group'`. Eine Ebene darf in mehreren Gruppen sein. */
+    to: ['Place', 'Story', 'Event', 'Layer', 'Chapter', 'Rule', 'Faction'],
+    /* **Die Reihenfolge der Teile steht an der Kante** (T-108): derselbe
+       Vorlesetext steht im Kapitel an dritter Stelle und in der eigenen
+       Szene an erster — eine Zahl am Teil gälte nur für eines davon. Ohne
+       `rank` ist ein Teil angehängt (eine Begegnung an ihrer Szene) und
+       steht nicht im Lesefluss. */
+    props: {
+      type: 'object',
+      properties: {
+        rank: { type: 'number', title: 'Order' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Kapitel und sein Arc** (T-108, E-029): ein Kapitel eines
+   * offiziellen Abenteuers ist aus Buchsicht ein `Chapter` und aus
+   * Geschichtssicht ein `Arc`. Die Kante geht vom Kapitel zum Arc und sagt
+   * nur, dass beide dasselbe erzählen — ihre Teile (Szenen, Vorlesetexte,
+   * Begegnungen) gibt es einmal, und beide zeigen auf sie.
+   */
+  chapterOf: {
+    type: 'chapterOf',
+    label: 'chapter of',
+    inverseLabel: 'read as chapter',
+    means: 'A chapter is read as a chapter of a story (the arc of an adventure); the story lists the chapters that read it.',
+    from: ['Chapter'],
+    to: ['Story'],
+    cardinality: 'one',
   },
 
   controls: {
     type: 'controls',
     label: 'controls',
     inverseLabel: 'controlled by',
+    means: 'A faction controls a place; the place lists who controls it.',
     from: ['Faction'],
     to: ['Place'],
+  },
+
+  /**
+   * **Was ein Laden führt** (T-129). Menge, Preis und Abschlag stehen an
+   * der Kante, nicht am Gegenstand: dieselbe Laterne kostet im einen Laden
+   * mehr als im anderen, und ein Feld am Gegenstand trüge nur eine der
+   * beiden Wahrheiten. `price` ersetzt den Listenpreis (`Item.copperPrice`,
+   * ebenfalls in Kupfer), `mod` schlägt etwas ab oder auf (`−1 gp`,
+   * `−10 %`). Leere Menge heisst: so viele, wie man will; 0 ist
+   * ausverkauft.
+   */
+  sells: {
+    type: 'sells',
+    label: 'sells',
+    inverseLabel: 'sold at',
+    means: 'A shop sells an item — or every item in a collection —, with quantity, its own price and mark-down; the item lists where it is sold.',
+    from: ['Shop'],
+    /* Eine Collection steht für ihre Mitglieder (REQ-439, E-175): „verkauft
+       einfache Waffen" ist eine Kante und nicht vierzig. Menge und eigener
+       Preis gelten dann nicht, Abschlag und `available` für jede. */
+    to: ['Item', 'Collection'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', min: 0, title: 'Quantity' },
+        price: { type: 'number', min: 0, title: 'Price in copper (instead of list price)' },
+        mod: { type: 'string', title: 'Price modifier (−1 gp, −10 %)' },
+        available: { type: 'boolean', title: 'Available', default: true },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Laden ankauft** (T-425, REQ-439, E-175 a): ein Gegenstand
+   * oder eine Collection, zu einem Satz in Prozent des Listenpreises
+   * (`rate`, leer: `Shop.buyRate`) und mit einem Abschlag (`mod`). Ohne
+   * jede `buys`-Kante kauft der Laden alles zu `Shop.buyRate`; mit ihnen
+   * nur das Genannte. Eine Kante auf den Gegenstand schlägt die Collection.
+   */
+  buys: {
+    type: 'buys',
+    label: 'buys',
+    inverseLabel: 'bought at',
+    means: 'A shop buys an item, or every item in a collection, at a rate of the list price; without any buys edge it buys everything at its buy rate.',
+    from: ['Shop'],
+    to: ['Item', 'Collection'],
+    props: {
+      type: 'object',
+      properties: {
+        rate: { type: 'number', min: 0, title: 'Buy rate (% of list price)', description: 'Empty: the buy rate of the shop, or 50 %.' },
+        mod: { type: 'string', title: 'Price modifier (−1 gp, −10 %)' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Rabatt ist eine Kante vom Gebenden zum Empfangenden** (T-129).
+   * Geben kann der Laden selbst, eine Fraktion, die ihn kontrolliert
+   * (`controls`), oder einer seiner Ladenhalter (`shopkeeper`) — so gibt
+   * die Gilde in jedem ihrer Läden dasselbe, ohne dass es an jedem Laden
+   * steht. Empfangen kann eine Figur, eine Gruppe (die der Kampagne) oder
+   * eine Fraktion; an einer Fraktion darf die Kante einen Mindestrang
+   * nennen (`rank`, ein Wort aus `Faction.ranks`, wie bei `knownBy`, A7):
+   * was der Zirkel bekommt, bekommt der Novize noch nicht. Eine Fraktion,
+   * die ihren eigenen Mitgliedern Rabatt gibt, zeigt auf sich selbst.
+   * Gerechnet wird beim Lesen (D8, `shopWares`).
+   */
+  discount: {
+    type: 'discount',
+    label: 'discount for',
+    inverseLabel: 'discount from',
+    means: 'A shop, a faction or a shopkeeper gives a creature, a party or a faction (from a rank) a price modifier at its shops; the receiver lists who gives it one.',
+    from: ['Shop', 'Faction', 'Creature'],
+    to: ['Creature', 'Party', 'Faction'],
+    props: {
+      type: 'object',
+      properties: {
+        mod: { type: 'string', title: 'Price modifier (−10 gp, −10 %)' },
+        rank: { type: 'string', title: 'From rank (faction)' },
+        note: { type: 'string', title: 'Why' },
+      },
+    },
+  },
+
+  /** Wer einen Laden hält (T-129): seine Rabatte und seine Beziehungen gelten dort. */
+  shopkeeper: {
+    type: 'shopkeeper',
+    label: 'shopkeeper',
+    inverseLabel: 'keeps shop',
+    means: 'A shop is kept by a creature, whose discounts count at the shop; the creature lists the shops it keeps.',
+    from: ['Shop'],
+    to: ['Creature'],
   },
 
   describedIn: {
     type: 'describedIn',
     label: 'described in',
     inverseLabel: 'describes',
+    means: 'An article is described in another article or a section of a book; that one lists what it describes.',
     from: ['*'],
-    to: ['Article'],
+    /* Auch ein Abschnitt eines Buchs (`BookPart`, eine Überschrift) und
+       eine Szene: ein Ort aus einem Buch zeigt auf den Text, der ihn
+       beschreibt (T-175). */
+    to: ['Article', 'Story', 'BookPart'],
   },
 
   // ------------------------------------------------------ players & party
@@ -372,6 +733,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'memberOfParty',
     label: 'in the party',
     inverseLabel: 'members',
+    means: 'A creature is in a party; the party lists its members.',
     from: ['Creature'],
     to: ['Party'],
   },
@@ -388,6 +750,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'partyOf',
     label: 'party of',
     inverseLabel: 'parties',
+    means: 'A party plays in one campaign; the campaign lists its parties.',
     from: ['Party'],
     to: ['Campaign'],
     cardinality: 'one',
@@ -397,6 +760,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'carries',
     label: 'carries',
     inverseLabel: 'carried by',
+    means: 'A creature, party or item carries one inventory; the inventory knows who carries it.',
     /* Ein Gegenstand trägt eins, wenn er ein Behälter ist (M4): der
        Rucksack hat sein Raster, der Köcher seine Form. */
     from: ['Creature', 'Party', 'Item'],
@@ -423,6 +787,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'holds',
     label: 'holds',
     inverseLabel: 'held in',
+    means: 'An inventory holds an item, with quantity and place in the grid; the item lists where it is held.',
     from: ['Inventory'],
     to: ['Item'],
     props: {
@@ -447,21 +812,73 @@ export const relations: Record<string, RelationDef> = {
            `ringL1` — Wanderung: `prototype/migration/plaetze-nach-dem-blatt.mjs`.
            Wie schnell etwas von einem Platz kommt, sagt die Einstellung
            `slotDraw`, nicht diese Liste. */
+        /* `armor` (T-365, E-153 V5): der eine Rüstungsplatz, bis T-388 die
+           Kleidung einzeln bringt. `head`, `torso`, `hands`, `feet` bleiben
+           in der Liste — was dort liegt, behält seinen Platz. */
         slot: {
           type: 'string',
           title: 'Body slot',
           enum: ['head', 'shoulders', 'torso', 'hands', 'mainHand', 'offHand',
             'legs', 'feet', 'belt', 'holster1', 'holster2',
             'ringR1', 'ringR2', 'ringR3', 'ringR4', 'ringL1', 'ringL2', 'ringL3', 'ringL4',
-            'neck1', 'neck2', 'neck3', 'neck4'],
+            'neck1', 'neck2', 'neck3', 'neck4', 'armor'],
         },
+        /* **Der Griff** (T-244): `two` heisst beide Hände — eine
+           vielseitige Waffe mit dem zweiten Würfel, eine zweihändige zum
+           Angreifen. An der Kante wie die Drehung: dieselbe Waffe liegt
+           hier in einer Hand und dort in zweien. Nur mit `slot: mainHand`. */
+        grip: { type: 'string', title: 'Grip', enum: ['one', 'two'], description: 'Two: held in both hands (versatile damage, or a two-handed weapon ready to attack).' },
         gx: { type: 'number', title: 'Grid column' },
         gy: { type: 'number', title: 'Grid row' },
         /* Die Drehung im Raster schrieb der Prototyp schon immer; hier
            stand sie nicht (D54 zieht sie nach). */
         rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
+        /* **Gespiegelt** (T-142): vor dem Drehen, wie `itemShape` rechnet.
+           Nur wo die Form nicht symmetrisch ist (`shapeChiral`). */
+        flip: { type: 'boolean', title: 'Mirrored' },
         attuned: { type: 'boolean', title: 'Attuned' },
         note: { type: 'string', title: 'Note' },
+        /* **Reserviert für …** (T-127, für den Handwerksauftrag T-128): der
+           Artikel, der diesen Stapel gerade braucht. Das Stück bleibt, wo es
+           liegt; verschieben lässt es sich nicht, bis die Reservierung fällt
+           (`reservedFor`, `moveHeld`). */
+        reservedFor: { type: 'string', format: 'link', target: { interfaces: ['Identity'] }, title: 'Reserved for' },
+        /* **Für welchen Bestandteil** (T-197): die `needs`-Kante des
+           Rezepts, für die das Stück reserviert ist — ein Ersatzstück oder
+           eines aus einer Gruppe ist nicht der Gegenstand, den das Rezept
+           nennt, und die Abrechnung muss wissen, ob es verbraucht wird. */
+        forNeed: { type: 'string', title: 'For the recipe’s material' },
+        /* **Noch nicht verstaut** (T-140): gekauft, erbeutet, geschenkt —
+           liegt vor der Figur und noch nicht in ihren Sachen. Verstaut ist
+           es im Raster, an einem Platz, in einem Behälter. Wie lange es so
+           liegen darf, sagt `Campaign.stowing`; danach steht es als
+           `leftBehind` an der Sitzung. */
+        unstowed: { type: 'boolean', title: 'Not stowed yet' },
+      },
+    },
+  },
+
+  /**
+   * **Liegengelassen** (T-140): was bis zum Sitzungsende (oder bis der
+   * Tisch weiterzog) nicht verstaut war, bleibt an der Sitzung zurück —
+   * nicht gelöscht, nur nicht mehr im Inventar. Die Kante steht an der
+   * Sitzung, weil dort der Ort ist, an dem es liegt; `from` nennt das
+   * Inventar, aus dem es kam. Aufheben nimmt die Kante weg und legt den
+   * Stapel unverstaut zurück (`pickUp`).
+   */
+  leftBehind: {
+    type: 'leftBehind',
+    label: 'left behind',
+    inverseLabel: 'left behind at',
+    means: 'A session keeps what was not stowed in time, with quantity and the inventory it came from; the item lists where it was left behind.',
+    from: ['Session'],
+    to: ['Item'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', min: 1, title: 'Quantity' },
+        from: { type: 'string', format: 'link', target: { interfaces: ['Inventory'] }, title: 'Left by' },
+        at: { type: 'string', title: 'When' },
       },
     },
   },
@@ -476,6 +893,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'questGiver',
     label: 'given by',
     inverseLabel: 'gives',
+    means: 'A quest is given by a creature or faction; they list the quests they give.',
     from: ['Quest'],
     to: ['Creature', 'Faction'],
   },
@@ -484,15 +902,19 @@ export const relations: Record<string, RelationDef> = {
     type: 'questAbout',
     label: 'concerns',
     inverseLabel: 'concerned by',
+    means: 'A quest concerns an article; the article lists the quests about it.',
     from: ['Quest'],
     to: ['*'],
   },
 
+  /* Seit T-333 auch die Begegnung: der Ort, an dem sie vorbereitet ist —
+     unabhängig davon, ob Szene und Begegnung eins werden (E-118). */
   happensAt: {
     type: 'happensAt',
     label: 'happens at',
-    inverseLabel: 'scenes here',
-    from: ['Story'],
+    inverseLabel: 'scenes and encounters here',
+    means: 'A story or encounter happens at a place; the place lists the scenes and encounters there.',
+    from: ['Story', 'Encounter'],
     to: ['Place'],
   },
 
@@ -500,8 +922,12 @@ export const relations: Record<string, RelationDef> = {
     type: 'features',
     label: 'features',
     inverseLabel: 'appears in',
-    from: ['Story'],
-    to: ['Creature', 'Statblock', 'Faction'],
+    means: 'A story or encounter features a creature, statblock, faction or hazard; they list where they appear.',
+    /* Seit T-184 auch die Begegnung: wer an einem Gespräch beteiligt ist
+       (die Haltung steht als `regards` bei der Kreatur), welche Falle eine
+       Fallenbegegnung ist — die Falle steht als `Hazard` für sich. */
+    from: ['Story', 'Encounter'],
+    to: ['Creature', 'Statblock', 'Faction', 'Hazard'],
   },
 
   // ------------------------------------------------------------- knowledge
@@ -515,6 +941,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'knowledge',
     label: 'knowledge about it',
     inverseLabel: 'about',
+    means: 'An article has a piece of information about it; the information says what it is about.',
     from: ['*'],
     to: ['Information'],
     owned: true,
@@ -528,6 +955,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'knownBy',
     label: 'known by',
     inverseLabel: 'knows',
+    means: 'Information or knowledge is known by a creature, party or faction (from a rank) — or by every character with an ancestry, background, class, subclass or feat; they list what they know.',
     /* Eine einzelne Information **oder ein Bündel**: dieselbe Kante, weil
        es dieselbe Frage ist. Wer ein Bündel kennt, kennt alles darin. */
     from: ['Information', 'Knowledge'],
@@ -536,7 +964,11 @@ export const relations: Record<string, RelationDef> = {
     //
     // „Die Spieler dieser Kampagne“ sind eine Rolle am Konto, kein Träger:
     // `audience: players` sagt es. `Group` als vierter Träger ist weg (A8).
-    to: ['Creature', 'Party', 'Faction'],
+    //
+    // Herkunft, Hintergrund, Klasse, Unterklasse und Talent (T-285,
+    // REQ-351): jede Figur, die das ist oder gewählt hat, weiss es — ein
+    // Schritt weit, wie Gruppe und Fraktion (`knowledgeHolders`).
+    to: ['Creature', 'Party', 'Faction', 'Ancestry', 'Background', 'Class', 'Subclass', 'Feat'],
     /* An eine Fraktion darf die Zuteilung einen **Mindestrang** nennen
        (`Faction.ranks`): wer auf dieser Sprosse oder höher steht, weiss es.
        Ohne Rang weiss es jedes Mitglied. An einer Figur oder Gruppe sagt
@@ -560,6 +992,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'includes',
     label: 'includes',
     inverseLabel: 'part of',
+    means: 'A bundle of knowledge includes a piece of information; the information lists the bundles it is part of.',
     from: ['Knowledge'],
     to: ['Information'],
   },
@@ -570,6 +1003,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'mapOf',
     label: 'map of',
     inverseLabel: 'maps',
+    means: 'A map shows a place or story; the place lists its maps.',
     from: ['Map'],
     to: ['Place', 'Story'],
   },
@@ -583,6 +1017,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'insideMap',
     label: 'inside',
     inverseLabel: 'zoom into',
+    means: 'A map lies inside another map, at a rectangle or a shape; the outer map lists what you can zoom into.',
     from: ['Map'],
     to: ['Map'],
     cardinality: 'one',
@@ -593,6 +1028,21 @@ export const relations: Record<string, RelationDef> = {
         y: { type: 'number', title: 'Y (0–1)' },
         w: { type: 'number', title: 'Width (0–1)' },
         h: { type: 'number', title: 'Height (0–1)' },
+        /* **Verknüpfung als Form** (T-327, `maplinks.ts`): `area` ist ein
+           Vieleck in Anteilen der Karte darüber, wie die Fläche eines
+           Übergangs; `x`/`y`/`w`/`h` bleiben sein Kasten. `near` ist die
+           Zoomtiefe (Anteil des Blicks, Vorgabe 0,55), `show` und
+           `showPlayers` die Anzeige, `outer` der blasse Rand der Karte
+           darüber in der Unterkarte — ohne Angabe die Kampagne. */
+        area: { type: 'array', title: 'Link area', items: { type: 'array' } },
+        near: { type: 'number', title: 'Enter at share of view', min: 0.1, max: 1 },
+        show: { type: 'string', title: 'Shown to the GM', enum: ['jump', 'frame', 'icon', 'hidden'] },
+        showPlayers: { type: 'string', title: 'Shown to players', enum: ['jump', 'frame', 'icon', 'hidden'] },
+        outer: { type: 'string', title: 'Map above as border', enum: ['faded', 'none'] },
+        /* **Am Raster darüber ausgerichtet** (T-329, `mapscale.ts`): Grösse
+           aus beiden Massstäben, Lage am Raster, gerechnet beim Lesen (D8);
+           `x`/`y`/`w`/`h` bleiben die freie Lage und Grösse. */
+        align: { type: 'boolean', title: 'Align to parent grid' },
       },
     },
   },
@@ -611,6 +1061,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'marker',
     label: 'marker',
     inverseLabel: 'on the map',
+    means: 'A map has a marker for an article, at a point; the article lists the maps it is marked on.',
     from: ['Map'],
     to: ['*'],
     props: {
@@ -621,10 +1072,15 @@ export const relations: Record<string, RelationDef> = {
         kind: {
           type: 'string',
           title: 'Token kind',
-          enum: ['static', 'scenery', 'party', 'quest', 'play'],
+          enum: ['static', 'scenery', 'party', 'quest', 'play', 'passage', 'light'],
           default: 'static',
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },
+        /* Welcher Grössen-Zustand gilt, wenn sich mehrere überlappen
+           (T-428, E-164): die Id der Quelle. An der Kante, weil es eine
+           Wahl der Leitung an diesem Token ist; leer: der zuletzt
+           hinzugekommene. */
+        sizeSource: { type: 'string', title: 'Size effect that applies' },
         /* Gedreht wird an der Kante und nicht am Bild: dasselbe Fass steht
            auf einer Karte quer und auf der nächsten längs, und ein
            gedrehtes Bild als eigenes Asset wäre ein zweites Fass. */
@@ -639,6 +1095,19 @@ export const relations: Record<string, RelationDef> = {
         // ein anderes ist. Also steht der Radius an der Kante (REQ-140).
         light: { type: 'number', title: 'Bright light in squares' },
         dim: { type: 'number', title: 'Dim light in squares' },
+        /* An/aus in Play (T-305): die Laterne bleibt, wo sie steht, und
+           behält ihre Radien — aus ist sie nur gerade. Gilt auch für das
+           Licht, das das Ziel trägt (die Fackel in der Hand). */
+        lightOff: { type: 'boolean', title: 'Light switched off' },
+        /* Fix oder verschiebbar (T-306): ein Asset (`scenery`) steht fest,
+           bis die Leitung es in der Bearbeitung verschiebt; mit `movable`
+           wandert es auch in Play — an der Instanz, nicht an der Vorlage.
+           An der Kante, weil dieselbe Kiste hier Kulisse und dort Hindernis
+           ist, das man schiebt. */
+        movable: { type: 'boolean', title: 'Movable in play' },
+        /* Was das Asset hält (T-306), als Sperrart (`WALL_KINDS`): sein
+           Umriss wird beim Lesen zu Sperren dieser Art. Leer: nichts. */
+        blocks: { type: 'string', title: 'Blocks like', enum: ['wall', 'window', 'chasm', 'invisible'] },
         /* Versteckt (REQ-209): Spielende sehen das Token nicht, bis es
            aufgedeckt wird — von Hand oder entlang eines bestätigten Pfads.
            `stealth` ist, was die passive Wahrnehmung schlagen muss: der
@@ -647,6 +1116,39 @@ export const relations: Record<string, RelationDef> = {
            auf der nächsten unter Laub. */
         hidden: { type: 'boolean', title: 'Hidden from players' },
         stealth: { type: 'number', title: 'Stealth (to notice)' },
+        /* Vorplatziert (T-203): das Token steht für diese Begegnung bereit,
+           versteckt, bis „Start encounter" sie beginnt und es aufdeckt. An
+           der Kante, weil dieselbe Kreatur auf einer anderen Karte für eine
+           andere Begegnung stehen kann. */
+        encounter: { type: 'string', format: 'link', target: { interfaces: ['Encounter'] }, title: 'Prepared for encounter' },
+        /* **Ebene und Übergang** (T-307, E-108). `floor`: auf welcher Ebene
+           der Karte der Marker steht (leer: der ersten). Ein Marker
+           `kind: 'passage'` ist ein Übergang — Treppe, Leiter, Brücke,
+           Portal; die Kante zeigt auf die Zielkarte (dieselbe für Treppen),
+           `toFloor`/`toX`/`toY` sagen Ebene und Punkt dort. `sight`:
+           durchsehen oder nur durchgehen; `oneWay`: kein Weg zurück. */
+        floor: { type: 'string', title: 'Floor' },
+        passage: { type: 'string', title: 'Passage', enum: ['stairs', 'ladder', 'bridge', 'portal'] },
+        toFloor: { type: 'string', title: 'Leads to floor' },
+        toX: { type: 'number', title: 'Leads to X (0–1)' },
+        toY: { type: 'number', title: 'Leads to Y (0–1)' },
+        sight: { type: 'string', title: 'Sight through it', enum: ['through', 'none'], default: 'through' },
+        oneWay: { type: 'boolean', title: 'One way' },
+        /* **Übergang als Fläche** (T-326): `area`/`toArea` sind Vielecke in
+           Anteilen der Karte (`[[x, y], …]`, ein Rechteck vier Ecken); ohne
+           sie ist ein Ende das Feld um seinen Punkt. `rules` überschreibt
+           die Vorgabe der Kampagne (`passageRulesOf`): `trigger`, `when`,
+           `move` oder `feet`, `action`, `confirm`. */
+        area: { type: 'array', title: 'Passage area', items: { type: 'array' } },
+        toArea: { type: 'array', title: 'Target area', items: { type: 'array' } },
+        rules: { type: 'object', title: 'Passage rules' },
+        /* **Hier gemeint** (T-328): ein Marker im Bereich einer Unterkarte
+           ist dort ein Vorschlag zum Platzieren (`placementSuggestions`);
+           mit `stay` gehört er auf diese Karte, und keine schlägt ihn vor. */
+        stay: { type: 'boolean', title: 'Keep on this map' },
+        /* **Wie dieser Marker steht** (T-214): überschreibt Karte,
+           Kartenart und Art (`markerViewOf`). Leer: was die sagen. */
+        view: { type: 'string', title: 'Shows as', enum: ['symbol', 'name', 'image', 'card'], description: 'How this marker stands on the map: symbol, symbol with name, image, or a quick card. Empty: what the map, its kind or the article type say.' },
       },
     },
   },
@@ -662,6 +1164,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'zone',
     label: 'zone',
     inverseLabel: 'lies on',
+    means: 'A map has a zone of a kind (difficult terrain, darkness); the zone kind lists where it lies.',
     from: ['Map'],
     to: ['ZoneKind'],
     props: {
@@ -677,10 +1180,16 @@ export const relations: Record<string, RelationDef> = {
         y: { type: 'number', title: 'Y (0–1)' },
         w: { type: 'number', title: 'Width (0–1)' },
         h: { type: 'number', title: 'Height (0–1)' },
+        /* Kreis und Vieleck wie an `territory` (T-219): `shapeOf` las sie
+           schon, das Schema nannte sie nicht. */
+        r: { type: 'number', title: 'Radius (0–1)' },
+        pts: { type: 'array', title: 'Points' },
         /* Eine Zone mit `hiddenUntil` ist versteckt, bis jemand sie
            bemerkt; dann steht hier, dass sie es nicht mehr ist. */
         found: { type: 'boolean', title: 'Found' },
         note: { type: 'string', title: 'Note' },
+        /* Die Ebene, auf der sie liegt (T-219, wie am Marker); leer: das Erdgeschoss. */
+        floor: { type: 'string', title: 'Floor' },
       },
     },
   },
@@ -695,6 +1204,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'territory',
     label: 'territory',
     inverseLabel: 'holds ground on',
+    means: 'A map shows an article’s territory as a shape; the article lists where it holds ground.',
     from: ['Map'],
     to: ['*'],
     props: {
@@ -714,6 +1224,8 @@ export const relations: Record<string, RelationDef> = {
         pts: { type: 'array', title: 'Points' },
         color: { type: 'string', format: 'color', title: 'Colour' },
         opacity: { type: 'number', title: 'Opacity', default: 0.18 },
+        /* Die Ebene, auf der es liegt (T-219, wie am Marker); leer: das Erdgeschoss. */
+        floor: { type: 'string', title: 'Floor' },
       },
     },
   },
@@ -729,8 +1241,11 @@ export const relations: Record<string, RelationDef> = {
     type: 'needs',
     label: 'needs',
     inverseLabel: 'used in',
+    means: 'A recipe needs an item — or any piece of a material group — in a quantity; the item lists the recipes that use it.',
     from: ['Recipe'],
-    to: ['Item'],
+    /* Eine Materialgruppe (T-197) steht für „irgendein Reagenz ab
+       ungewöhnlich" — welches Stück, wählt man beim Start. */
+    to: ['Item', 'MaterialGroup'],
     props: {
       type: 'object',
       properties: {
@@ -746,9 +1261,37 @@ export const relations: Record<string, RelationDef> = {
     type: 'yields',
     label: 'yields',
     inverseLabel: 'made by',
+    means: 'A recipe yields one item; the item lists the recipe that makes it.',
     from: ['Recipe'],
     to: ['Item'],
     cardinality: 'one',
+  },
+
+  /**
+   * **Womit gefertigt wird, wenn nicht wie im Buch** (T-122). Das Rezept
+   * nennt Werkzeug, Attribut und SG seiner Quelle; eine Kampagne, eine
+   * Gruppe oder eine Figur weicht davon ab, ohne das Rezept zu kopieren —
+   * für ein Rezept (Kante zum Rezept) oder für jedes Rezept eines Werkzeugs
+   * (Kante zum Werkzeug: „Kräuterkunde mit Weisheit"). Die Kante trägt nur,
+   * was sie ändert; Spezifischeres schlägt Allgemeineres (`craftCheck`).
+   * Das Werkzeug selbst tauscht nur eine Kante zum Rezept.
+   */
+  craftsWith: {
+    type: 'craftsWith',
+    label: 'crafts with',
+    inverseLabel: 'crafted differently by',
+    means: 'A campaign, party or creature crafts a recipe — or every recipe of a tool — with another tool, ability or DC than the source says; the recipe or tool lists who does.',
+    from: ['Campaign', 'Party', 'Creature'],
+    to: ['Recipe', 'Item'],
+    props: {
+      type: 'object',
+      properties: {
+        tool: { type: 'string', title: 'Tool instead', enumRef: 'Item', enumWhere: TOOLS_ONLY },
+        ability: { type: 'string', title: 'Ability instead', enumRef: 'Ability' },
+        dc: { type: 'number', title: 'DC instead' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
   },
 
   // ---------------------------------------------------------------- boards
@@ -762,6 +1305,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'placed',
     label: 'on the board',
     inverseLabel: 'lies on',
+    means: 'A board has an article placed on it as a card; the article lists the boards it lies on.',
     from: ['Board'],
     to: ['*'],
     props: {
@@ -775,6 +1319,50 @@ export const relations: Record<string, RelationDef> = {
         z: { type: 'number', title: 'Layer', default: 0 },
         locked: { type: 'boolean', title: 'Locked' },
         note: { type: 'string', title: 'Note' },
+        hidden: { type: 'boolean', title: 'GM only', description: 'The card is not sent to players at all (T-339).' },
+        /* Die Abfrage-Kachel (T-340): eine Kante des Boards auf sich selbst,
+           deren Quelle eine Frage an den Bestand ist (`boardquery.ts`). */
+        title: { type: 'string', title: 'Title', description: 'Query card: the name in its title bar, e.g. Rumours.' },
+        query: {
+          type: 'object',
+          title: 'Query',
+          description: 'Query card (T-340): where its articles come from — types, single articles, tags, layers and a filter chain. Answered on the server for each viewer.',
+        },
+        display: {
+          type: 'string',
+          title: 'Shows as',
+          enum: ['list', 'draw', 'slideshow'],
+          default: 'list',
+          description: 'Query card: a list, a random draw without replacement, or a slideshow.',
+        },
+        drawn: {
+          type: 'array',
+          items: { type: 'string' },
+          title: 'Drawn',
+          readOnly: true,
+          description: 'Query card: what has been drawn, in order. Changed only by Draw and Reset on the server.',
+        },
+        interval: { type: 'number', title: 'Seconds per slide', default: 8, min: 2, max: 600 },
+        reveal: {
+          type: 'boolean',
+          title: 'Reveal when drawn',
+          description: 'Query card: what is drawn becomes knowledge of the party (knownBy) and visible to it.',
+        },
+        party: {
+          type: 'string',
+          format: 'link',
+          title: 'Reveal to',
+          target: { interfaces: ['Party'] },
+          description: 'Query card: the party that learns what is drawn. Empty: the first party of the running campaign.',
+        },
+        /* Die Struktur-Kachel (T-341): ebenfalls eine Kante des Boards auf
+           sich selbst; die Frage ist ein Startartikel und Kanten (`structure.ts`). */
+        structure: {
+          type: 'object',
+          title: 'Structure',
+          description:
+            'Structure card (T-341): an organisation chart or relationship web from a start article — which edges (members, parts, control, residents, regards), how deep, tree or web. Worked out on the server for each viewer.',
+        },
       },
     },
   },
@@ -795,6 +1383,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'participates',
     label: 'in the fight',
     inverseLabel: 'fights in',
+    means: 'An encounter has a creature, statblock or party in the fight, with initiative and hit points; they list the fights they are in.',
     from: ['Encounter'],
     to: ['Creature', 'Statblock', 'Party'],
     props: {
@@ -827,11 +1416,13 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  /** Wo sie stattfindet — damit der Initiative-Zeiger auf die Karte kann. */
+  /** Wo sie stattfindet — damit der Initiative-Zeiger auf die Karte kann
+      (REQ-144, T-117: `turnOf`, `/api/maps/:id/context`). */
   onMap: {
     type: 'onMap',
     label: 'fought on',
     inverseLabel: 'fights here',
+    means: 'An encounter or story is fought on a map; the map lists what is fought there.',
     from: ['Encounter', 'Story'],
     to: ['Map'],
     cardinality: 'one',
@@ -850,6 +1441,8 @@ export const relations: Record<string, RelationDef> = {
     type: 'loot',
     label: 'loot',
     inverseLabel: 'found in',
+    means: 'An encounter, story or quest has loot (an item, information, a feat), with quantity and chance; the loot lists where it is found.',
+    intended: 'Roll and hand out: finishing the encounter should roll the chance and offer the loot to the party’s inventory or knowledge.',
     from: ['Encounter', 'Story', 'Quest'],
     to: ['Item', 'Information', 'Feat', 'Skill'],
     props: {
@@ -868,6 +1461,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'involves',
     label: 'involves',
     inverseLabel: 'took part in',
+    means: 'An event involves an article; the article lists the events it took part in.',
     from: ['Event'],
     to: ['*'],
   },
@@ -884,6 +1478,8 @@ export const relations: Record<string, RelationDef> = {
     type: 'entry',
     label: 'entry',
     inverseLabel: 'rolled on',
+    means: 'A table has an entry, with a weight; the entry lists the tables it can be rolled on.',
+    intended: 'Roll on the table: the weights should decide which entry a roll lands on.',
     from: ['Table'],
     to: ['*'],
     props: {
@@ -908,6 +1504,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'tableFor',
     label: 'rolls on',
     inverseLabel: 'used at',
+    means: 'A place, story, encounter or character option rolls on a table; the table lists where it is used.',
     from: ['Place', 'Story', 'Encounter', 'Class', 'Subclass', 'Ancestry', 'Background'],
     to: ['Table'],
   },
@@ -925,6 +1522,8 @@ export const relations: Record<string, RelationDef> = {
     type: 'route',
     label: 'leads to',
     inverseLabel: 'reached from',
+    means: 'A place leads to another, with travel hours and terrain; the other lists where it is reached from.',
+    intended: 'Travel: moving the party along a route should advance the watch and day counters by its hours.',
     from: ['Place'],
     to: ['Place'],
     props: {
@@ -942,6 +1541,65 @@ export const relations: Record<string, RelationDef> = {
   // ---------------------------------------------------------------- layers
 
   /**
+   * **Welche Regelmechaniken zusammen gelten** (E-166): Grid mit Weight,
+   * Default shapes mit Grid. Einmal gespeichert, gilt in beide Richtungen
+   * (die Gegenrichtung ist eine Abfrage, `compatibleMechanics`). Was nicht
+   * so verbunden ist, schliesst sich innerhalb eines Regelsystems aus.
+   */
+  compatibleWith: {
+    type: 'compatibleWith',
+    label: 'compatible with',
+    inverseLabel: 'also works with',
+    means: 'Two rule mechanics can apply together in a campaign, such as the grid inventory with weight; stored once, it reads both ways.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+  },
+
+  /**
+   * **Ein System erweitert ein anderes** (E-100, T-132 Schritt 2): es gilt
+   * nur zusammen mit ihm — Default shapes auf Grid oder Slots, Basils
+   * Handwerk auf Kibbles; eine von mehreren Grundlagen genügt
+   * (`mechanicSelection`). `mode: 'overrides'` heisst: bei Gleichstand
+   * gewinnt die Erweiterung. Sie verträgt sich mit allem, womit ihre
+   * Grundlage sich verträgt.
+   */
+  extendsMechanic: {
+    type: 'extendsMechanic',
+    label: 'extends',
+    inverseLabel: 'extended by',
+    means: 'A rule mechanic builds on another and only applies together with it, such as default shapes on the grid inventory; with “overrides” it wins where both say something.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+    props: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', title: 'How', enum: ['extends', 'overrides'], description: 'Extends adds to the base; overrides also wins where both say something.' },
+      },
+    },
+  },
+
+  /**
+   * **Ein System schliesst ein anderes aus** (E-100): Kibbles und das
+   * Handwerk aus D&D 5e. Einmal gespeichert, gilt in beide Richtungen;
+   * von beiden gilt das höhere im Stapel (E-091), das tiefere wird nicht
+   * angezeigt (E-094). Im selben Modul schliesst sich ohnehin aus, was
+   * keine Kante verbindet — die Kante braucht es dort, wo das nicht reicht:
+   * über Modulgrenzen, oder gegen eine Verträglichkeit, die eine
+   * Grundlage mitbrächte.
+   */
+  excludesMechanic: {
+    type: 'excludesMechanic',
+    label: 'excludes',
+    inverseLabel: 'excluded by',
+    means: 'Two rule mechanics never apply together in a campaign; stored once, it reads both ways, and the higher one in the stack wins.',
+    from: ['RuleMechanic'],
+    to: ['RuleMechanic'],
+    cardinality: 'many',
+  },
+
+  /**
    * Wozu ein Artikel gehört (REQ-005). Ohne diese Kante gehört er der
    * Kampagne selbst und ist immer da — das ist der Normalfall und soll
    * keine Zeile kosten.
@@ -954,6 +1612,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'inLayer',
     label: 'from',
     inverseLabel: 'brings',
+    means: 'An article comes from a layer (a book, the campaign, homebrew); the layer lists what it brings.',
     from: ['*'],
     to: ['Layer'],
     props: {
@@ -980,21 +1639,104 @@ export const relations: Record<string, RelationDef> = {
     type: 'inWorld',
     label: 'in the world',
     inverseLabel: 'campaigns',
+    means: 'A campaign plays in one world; the world lists its campaigns.',
+    intended: 'Share the world: the campaign should read its calendar and history from this world.',
     from: ['Campaign'],
     to: ['World'],
     cardinality: 'one',
   },
 
+  /**
+   * **Was eine Kampagne zeigt** (E2, T-069): die Ebenen, die sie
+   * aufschaltet, von unten nach oben (`props.order`). Was keine davon
+   * bringt, steht nicht in ihren Listen — gelöscht ist es nicht. Die Kante
+   * hiess „runs on", und die Leitung fand sie nicht, als nach dem Anlegen
+   * einer Kampagne alle Artikel aus 5e.tools fehlten. Gepflegt wird sie
+   * auf der Kampagnenseite (Liste mit Häkchen und Reihenfolge).
+   */
   activates: {
     type: 'activates',
-    label: 'runs on',
-    inverseLabel: 'used by',
+    label: 'Layers in play',
+    inverseLabel: 'In play in',
+    means: 'A campaign puts a layer in play, in an order and mode; the layer lists the campaigns it is in play in.',
     from: ['Campaign'],
     to: ['Layer'],
     props: {
       type: 'object',
       properties: {
         order: { type: 'number', title: 'Order' },
+        /* `compare` (T-092, E-021 d): die Ebene ist nicht im Spiel, ihre
+           Fassungen stehen auf Wunsch an den Feldern und lassen sich als
+           Überschreibung übernehmen. `off` (T-088): die Ebene ist aus,
+           auch wenn eine aufgeschaltete Gruppe sie brächte. Ohne Angabe:
+           im Spiel. */
+        mode: { type: 'string', title: 'Mode', enum: ['compare', 'off'] },
+        /* Teilweise aufschalten (T-105, REQ-255): was die Ebene bringt —
+           Bereiche (`area` der Art) und einzelne Arten. Ohne beide: alles. */
+        areas: { type: 'array', items: { type: 'string' }, title: 'Areas' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
+        /* Von den Typ-Regeln ausgenommen (T-187): die Ebene bringt alles,
+           auch wenn eine Regel ihrer Gruppe weniger sagt. */
+        exempt: { type: 'boolean', title: 'Exempt from type rules' },
+      },
+    },
+  },
+
+  /**
+   * **Typ-Regel über viele Quellen** (T-187): was jede Ebene einer Gruppe
+   * bringt, wo sie im Spiel ist und selbst nichts sagt — „aus allen
+   * Abenteuern nur Regeln, Gegenstände und Zauber", einmal gesetzt statt je
+   * Buch. Die eigene Auswahl an `activates` schlägt sie.
+   */
+  layerRule: {
+    type: 'layerRule',
+    label: 'Type rule for',
+    inverseLabel: 'Type rule in',
+    means: 'A campaign says what every layer in a group brings when that layer says nothing itself; the group lists the campaigns with such a rule.',
+    from: ['Campaign'],
+    to: ['Layer'],
+    props: {
+      type: 'object',
+      properties: {
+        areas: { type: 'array', items: { type: 'string' }, title: 'Areas' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
+      },
+    },
+  },
+
+  /**
+   * **Einzelne Artikel freigeben** (T-187): Extra-Inhalt aus einer Ebene,
+   * die nicht im Spiel ist — der Artikel ist es trotzdem. Rückgängig an
+   * derselben Stelle; die Fassungen (Vergleich) bleiben, wie sie sind.
+   */
+  enables: {
+    type: 'enables',
+    label: 'Extra content',
+    inverseLabel: 'Enabled in',
+    means: 'A campaign puts a single article in play although its layer is not; the article lists the campaigns that enabled it.',
+    from: ['Campaign'],
+    to: ['*'],
+  },
+
+  /**
+   * **Vorrang an der Kampagne** (T-403, E-111 a): welche Fassung derselben
+   * Sache Listen und Verweise zeigen, wenn mehrere Ebenen sie bringen — ein
+   * Artikel („Prefer this version") oder eine Ebene für einzelne Arten
+   * („Weapons: PHB 2024 first"). `over` nennt, worüber; ohne: über alles.
+   * Kein Buch wird beschrieben; ins Spiel bringt der Vorrang nichts.
+   */
+  prefers: {
+    type: 'prefers',
+    label: 'Prefers',
+    inverseLabel: 'Preferred in',
+    means: 'A campaign shows this version first among the versions of the same thing — a single article, or a layer for some types; the article or layer lists the campaigns that prefer it.',
+    from: ['Campaign'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        over: { type: 'string', title: 'Over' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
       },
     },
   },
@@ -1009,15 +1751,21 @@ export const relations: Record<string, RelationDef> = {
    * nachliest. Erlaubt ist es am Statblock und am Gegenstand (M4): das
    * +1-Langschwert am Tisch ist eine Instanz des Langschwerts, die nur
    * `bonusWeapon` und `rarity` selbst trägt. **Eine Instanz ist von
-   * derselben Art wie ihre Vorlage** (`same`): ein Statblock liest keinen
-   * Gegenstand. Eine weitere Art kommt in `from` dazu und braucht keine
-   * Codeänderung.
+   * derselben Art wie ihre Vorlage** (`same`) **oder von einem Untertyp**:
+   * ein Statblock liest keinen Gegenstand, ein Fertigungsauftrag aber sein
+   * Rezept (T-128) — er *ist* eines, mit Fortschritt dazu. Eine weitere
+   * Art kommt in `from` dazu und braucht keine Codeänderung.
    */
   instanceOf: {
     type: 'instanceOf',
     label: 'instance of',
     inverseLabel: 'instances',
-    from: ['Statblock', 'Item'],
+    means: 'A statblock, item, crafting order, map or encounter is an instance of a template and stores only what differs; the template lists its instances.',
+    /* Ein Fertigungsauftrag ist eine Instanz seines Rezepts (T-128) —
+       `same` nimmt die Obertypen mit: ein Auftrag *ist* ein Rezept. Eine
+       Karte oder Begegnung im Spiel ist eine Instanz ihrer Vorlage (T-289):
+       Tokens, Nebel und Kampfstand je Runde, die Vorlage bleibt unberührt. */
+    from: ['Statblock', 'Item', 'CraftingOrder', 'Map', 'Encounter'],
     to: ['same'],
     cardinality: 'one',
   },
@@ -1027,6 +1775,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'variantOf',
     label: 'variant of',
     inverseLabel: 'has variants',
+    means: 'An article is a variant of another (an adopted or adapted copy); the original lists its variants.',
     from: ['*'],
     to: ['*'],
     cardinality: 'one',
@@ -1041,6 +1790,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'overrides',
     label: 'replaces',
     inverseLabel: 'replaced by',
+    means: 'A version replaces another article wherever its layer is in play; the replaced one lists what replaces it.',
     from: ['*'],
     to: ['*'],
     cardinality: 'one',
@@ -1049,6 +1799,15 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         scope: { type: 'string', title: 'Scope' },
         note: { type: 'string', title: 'Why' },
+        /* **Eine Ergänzung** (T-142, E-125): nennt die Kante Felder, ersetzt
+           die Fassung das Original nicht, sondern legt nur diese darüber
+           (`withSupplements`). */
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          title: 'Only these fields',
+          description: 'Makes it a supplement: only these fields (Type.field) are laid over the article, which stays in play.',
+        },
       },
     },
   },
@@ -1056,28 +1815,24 @@ export const relations: Record<string, RelationDef> = {
   // ------------------------------------------------- Beziehungen
 
   /**
-   * Ein laufender Handwerksgang (REQ-184). Er hängt an beiden Enden — an
-   * dem, der arbeitet, und an dem Rezept — also steht er an einer Kante,
-   * wie die Tragestufe im Inventar. Kein Artikel: ein Gang ist vorbei, wenn
-   * er vorbei ist, und ein Artikel, den man anschliessend löscht, war
-   * keiner.
+   * **Wer fertigt** (REQ-184). In der Seite zeigt die Kante auf einen
+   * **Fertigungsauftrag** (T-128) — eine Instanz des Rezepts, die
+   * Fortschritt, Ausgang und Proben hält (`CraftingOrder`); ein Auftrag
+   * *ist* ein Rezept, darum reicht `to: ['Recipe']`. Das Material bleibt
+   * im Inventar und ist für den Auftrag reserviert
+   * (`holds.props.reservedFor`, T-127): sichtbar, unbeweglich, bei Erfolg
+   * verbraucht, beim Abbruch frei, beim Misserfolg nach
+   * `Campaign.craftFailure` (nur dort, T-165).
    *
-   * `put` ist das Stück, an dem alles hängt: **das Material wird beim
-   * Start gebunden** (REQ-219, D55). Was das Rezept braucht und dabei ist,
-   * verlässt das Inventar und steht hier — auch, was nicht verbraucht wird,
-   * denn gebunden heisst: nicht zugleich für etwas anderes da. Bis D52 ging
-   * nichts hinein, und angehängt wurde unterwegs (Aufgabe #34); das bleibt
-   * für Material, das erst später dazukommt, und ein Gang aus der Zeit davor
-   * ist dieselbe Kante mit weniger in `put`. Tage lassen sich von Anfang an
-   * arbeiten; fertig wird es nicht, bevor alles drin ist.
-   *
-   * Was am Ende zurückkommt: was nicht verbraucht wird, immer; das Übrige
-   * beim Misslingen und beim Abbruch nach `Recipe.onFailure`.
+   * Die Eigenschaften `day`, `days`, `put` und `rolls` an der Kante sind
+   * die Form des Prototyps (D55: ein Gang ohne Artikel, das Material in
+   * `put`); die Seite liest und schreibt sie nicht.
    */
   crafting: {
     type: 'crafting',
     label: 'working on',
     inverseLabel: 'worked on by',
+    means: 'A creature or party works on a crafting order (an instance of a recipe, with progress and checks); the order lists who works on it.',
     from: ['Creature', 'PlayerCharacter', 'Party'],
     to: ['Recipe'],
     props: {
@@ -1114,6 +1869,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'regards',
     label: 'regards',
     inverseLabel: 'judged by',
+    means: 'A creature, party or faction regards another, in words (trusts, fears); the other lists who judges it — the reverse is its own edge.',
     /* `PlayerCharacter` stand hier daneben, obwohl die `extends`-Kette es
        abdeckt — eine Spielerfigur *ist* eine Kreatur (Abgleich A12). */
     from: ['Creature', 'Party', 'Faction'],

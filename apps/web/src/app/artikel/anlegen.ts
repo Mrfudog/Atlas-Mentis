@@ -1,17 +1,14 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
-import { Router } from '@angular/router';
-import { areaOf, enumOptions, fieldTitle, typeChain } from '@nw/model';
-import type { PropertySchema } from '@nw/model';
+import { Router, RouterLink } from '@angular/router';
+import { LAYER_RELATION, areaOf, createFormFor, createForms, createLayout, hasBuilder, typeChain } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
+import { pflichtFelder, type Pflicht } from './schnell';
 import { Wahl } from './wahl';
+import { mitnahmeParams } from '../figur/mitnahme';
 
-interface Pflicht {
-  ref: string;
-  label: string;
-  prop: PropertySchema;
-  werte: string[];
-}
 
 /**
  * „New article" (W7): Art wählen, Name, und was die Art verlangt und keine
@@ -19,12 +16,16 @@ interface Pflicht {
  * Nummer (`nextId`), Vorgaben aus dem Register — und prüft wie beim
  * Schreiben. Danach öffnet sich die Artikelseite gleich zum Bearbeiten.
  *
+ * **Wohin** steht dabei (T-161): die Schreibebene aus der Kopfleiste,
+ * für diesen einen Artikel änderbar unter den wählbaren Ebenen. Der Server
+ * prüft die genannte Ebene gegen die Zielebenen.
+ *
  * Angeboten werden die **anlegbaren** Arten (nicht `abstract`), in einem
  * Bereich nur seine (`area`, `areaOf`). Im Code steht keine Liste davon.
  */
 @Component({
   selector: 'nw-anlegen',
-  imports: [Wahl],
+  imports: [Wahl, RouterLink],
   template: `
     <div class="schleier" (click)="zu.emit()"></div>
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="anlegen-titel">
@@ -48,6 +49,18 @@ interface Pflicht {
           autofocus
         />
       </label>
+      <!-- Die Erfassungsmaske (T-462, REQ-461): Roleplay oder Fight an einer Kreatur;
+           vorgewählt nach dem Bereich (defaultIn). Mit einer einzigen gibt es nichts zu wählen. -->
+      @if (formen().length > 1) {
+        <label>
+          <span>Form</span>
+          <select [value]="form() ?? ''" (change)="form.set($any($event.target).value || null)">
+            @for (m of formen(); track m.key) {
+              <option [value]="m.key" [selected]="m.key === form()">{{ m.label }}</option>
+            }
+          </select>
+        </label>
+      }
       @for (p of pflicht(); track p.ref) {
         <label>
           <span>{{ p.label }} <i class="pflicht" title="required">*</i></span>
@@ -70,13 +83,44 @@ interface Pflicht {
           }
         </label>
       }
+      @if (stapel.schreib(); as w) {
+        @if (wahlEbenen().length > 1) {
+          <label>
+            <span>Layer</span>
+            <select [value]="ebene()" (change)="ebene.set($any($event.target).value)">
+              @for (l of wahlEbenen(); track l.id) {
+                <option [value]="l.id" [selected]="l.id === ebene()">{{ l.name }}{{ l.id === w.layer?.id ? ' (write layer)' : '' }}{{ l.inPlay === false ? ' — not in this campaign' : '' }}</option>
+              }
+            </select>
+          </label>
+          <!-- Ausserhalb des Stapels (T-418): angelegt wird dort, gezeigt erst, wenn die Kampagne die Ebene aufschaltet. -->
+          @if (ebeneAusserhalb()) {
+            <p class="hinweis ziel">That layer is not turned on in this campaign: the new article will not show here until it is.</p>
+          }
+        } @else {
+          <p class="hinweis ziel">Goes to <b>{{ w.layer?.name ?? 'no layer' }}</b>.</p>
+        }
+      }
+      @if (assistent()) {
+        <!-- Die Maske create der Art führt in den Assistenten (T-425, E-169). -->
+        <p class="hinweis">
+          Creating opens the character builder — ancestry, background, class and their choices, step by
+          step{{ name().trim() ? ', with what you entered here' : '' }}.
+        </p>
+      } @else if (typ() === 'PlayerCharacter') {
+        <!-- Klasse, Herkunft, Hintergrund und ihre Wahlen (T-080). -->
+        <p class="hinweis">
+          <a routerLink="/characters/new" [queryParams]="mitnehmen()" (click)="zu.emit()">Use the character builder</a> — ancestry, background,
+          class and their choices, step by step{{ name().trim() ? ', with what you entered here' : '' }}.
+        </p>
+      }
       @if (problem(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
       }
       <div class="knoepfe">
         <button type="button" (click)="zu.emit()">Cancel</button>
         <button type="button" class="pri" [disabled]="laeuft() || !name().trim() || !typ()" (click)="anlegen()">
-          {{ laeuft() ? 'Creating…' : 'Create' }}
+          {{ laeuft() ? 'Creating…' : assistent() ? 'Open the builder' : 'Create' }}
         </button>
       </div>
     </div>
@@ -141,6 +185,10 @@ interface Pflicht {
       margin: 0;
       color: var(--warn);
     }
+    .hinweis {
+      margin: 0;
+      color: var(--dim);
+    }
   `,
 })
 export class Anlegen {
@@ -153,6 +201,8 @@ export class Anlegen {
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
   private readonly router = inject(Router);
+  private readonly session = inject(Session);
+  protected readonly stapel = inject(Stapel);
 
   protected readonly name = signal('');
   protected readonly werte = signal<Partial<Record<string, string>>>({});
@@ -163,11 +213,21 @@ export class Anlegen {
     const r = this.bestand.registry();
     if (!r) return [];
     const b = this.bereich();
+    /* Spielende legen nur Arten mit Stand an (REQ-237): ohne Status-Karte
+       wäre ein Entwurf sofort für alle fertig. Der Server lehnt es ab. */
+    const mitStand = !this.session.isAdmin();
     return Object.values(r.interfaces)
       .filter((d) => !d.abstract && (!b || areaOf(r, d.name) === b))
+      .filter((d) => !mitStand || typeChain(r, d.name).includes('Status'))
       .map((d) => ({ name: d.name, label: d.label ?? d.name }))
       .sort((a, z) => a.label.localeCompare(z.label, 'en'));
   });
+
+  /** Die Ebenen, in die hier angelegt werden kann (T-161): die wählbaren aus der Kopfleiste. */
+  protected readonly wahlEbenen = computed(() => (this.stapel.schreib()?.options ?? []).filter((o) => o.selectable));
+  protected readonly ebeneAusserhalb = computed(() => this.wahlEbenen().some((o) => o.id === this.ebene() && o.inPlay === false));
+  /** Für diesen einen Artikel; vorgewählt die Schreibebene. */
+  protected readonly ebene = linkedSignal(() => this.stapel.schreib()?.layer?.id ?? '');
 
   /** Die gewählte Art; zuerst die vorgeschlagene, wenn sie hier anlegbar ist. */
   protected readonly typ = linkedSignal(() => {
@@ -180,23 +240,33 @@ export class Anlegen {
   protected readonly pflicht = computed<Pflicht[]>(() => {
     const r = this.bestand.registry();
     const typ = this.typ();
-    if (!r || !typ) return [];
-    const raus: Pflicht[] = [];
-    for (const t of typeChain(r, typ)) {
-      const schema = r.interfaces[t]?.schema;
-      for (const k of schema?.required ?? []) {
-        const prop = schema?.properties?.[k];
-        if (!prop || prop.derived || prop.default !== undefined) continue;
-        if (t === 'Identity' && (k === 'name' || k === 'id')) continue;
-        raus.push({
-          ref: `${t}.${k}`,
-          label: fieldTitle(r, typ, { type: t, key: k, prop }),
-          prop,
-          werte: enumOptions(r, prop) ?? [],
-        });
-      }
-    }
-    return raus;
+    return r && typ ? pflichtFelder(r, typ) : [];
+  });
+
+  /**
+   * **Was der Assistent übernimmt** (T-095, Prüfung 20.10.): Name, eine
+   * abweichende Ebene und die Pflichtfelder, die hier schon stehen — als
+   * Adresse, damit nichts doppelt gefragt wird (`name`, `layer`, `f.<Typ.feld>`).
+   */
+  protected readonly mitnehmen = computed(() =>
+    mitnahmeParams(this.name(), this.ebene(), this.stapel.schreib()?.layer?.id, this.pflicht(), this.werte()),
+  );
+
+  /** Die Erfassungsmasken der Art (T-462): „Roleplay“ und „Fight“ an der Kreatur, „Fight“ am Statblock. */
+  protected readonly formen = computed(() => {
+    const r = this.bestand.registry();
+    return r && this.typ() ? createForms(r, this.typ()) : [];
+  });
+  /** Die gewählte Maske; vorgewählt nach dem Bereich der Seite (`defaultIn`), sonst die erste. */
+  protected readonly form = linkedSignal<string | null>(() => {
+    const r = this.bestand.registry();
+    const b = this.bereich();
+    return r && this.typ() ? createFormFor(r, this.typ(), b ? [b] : []) : null;
+  });
+  /** Ob die Maske `create` der Art in den Assistenten führt (Element `builder`, E-169). */
+  protected readonly assistent = computed(() => {
+    const r = this.bestand.registry();
+    return !!r && !!this.typ() && hasBuilder(r, 'create', this.typ());
   });
 
   constructor() {
@@ -216,6 +286,12 @@ export class Anlegen {
     const name = this.name().trim();
     const typ = this.typ();
     if (!name || !typ || this.laeuft()) return;
+    if (this.assistent()) {
+      /* Angelegt wird im Assistenten, mit dem, was hier schon steht. */
+      this.zu.emit();
+      await this.router.navigate(['/characters/new'], { queryParams: this.mitnehmen() });
+      return;
+    }
     this.laeuft.set(true);
     this.problem.set(null);
     try {
@@ -225,9 +301,21 @@ export class Anlegen {
         if (roh === undefined || roh === '') continue;
         felder[p.ref] = p.prop.type === 'number' || p.prop.type === 'integer' ? Number(roh) : roh;
       }
-      const e = await this.api.createEntity(typ, name, felder);
+      /* Nur eine abweichende Ebene wird genannt — sonst nimmt der Server die Schreibebene. */
+      const ebene = this.ebene();
+      const kanten = ebene && ebene !== this.stapel.schreib()?.layer?.id ? [{ type: LAYER_RELATION, to: ebene }] : [];
+      const e = await this.api.createEntity(typ, name, felder, kanten);
+      /* Was eine Spielerin anlegt, darf sie schreiben (REQ-237) — das weiss
+         erst ein neues `/api/me`. Ohne es öffnete der Artikel schreibgeschützt. */
+      if (!this.session.isAdmin()) await this.session.load(true);
       this.zu.emit();
-      await this.router.navigate(['/artikel', e.id], { queryParams: { edit: 1 } });
+      /* Gestaltet die Art ihre ausführliche Maske (`createFull`, REQ-432),
+         öffnet die Seite in ihr; sonst wie bisher die Seite `full`. */
+      const r = this.bestand.registry();
+      const voll = !!r && createLayout(r, 'createFull', e.interfaces?.[0] ?? '').designed;
+      /* Mit gewählter Maske (T-462) öffnet die Seite genau sie (`?form=`). */
+      const form = this.form();
+      await this.router.navigate(['/artikel', e.id], { queryParams: form ? { edit: 'create', form } : { edit: voll ? 'create' : 1 } });
     } catch (error) {
       if (error instanceof ApiError) {
         const issues = Array.isArray(error.issues)

@@ -32,6 +32,12 @@ describe('routes', () => {
     expect(routes.some((r) => r.path === 'artikel/:id')).toBe(true);
   });
 
+  /* Der Druck (T-110): vor der Artikelseite, sonst nähme die ihn als Id. */
+  it('has the print page under the article, behind the guard', () => {
+    const r = routes.find((x) => x.path === 'artikel/:id/print');
+    expect(r?.canActivate?.length).toBe(1);
+  });
+
   it('has the campaign page behind the guard', () => {
     const r = routes.find((x) => x.path === 'campaign');
     expect(r?.canActivate?.length).toBe(1);

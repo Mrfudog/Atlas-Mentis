@@ -80,6 +80,27 @@ function wurfTabelle(wb: Werkbank, ent: Entity, zeilen: unknown[], wuerfel: stri
   );
 }
 
+/** Ein Beiwort eines Kults oder Segens: `{entry: "…"}`, selten `{entries: […]}`. */
+export function beiwort(x: unknown): unknown {
+  const o = x as Knoten | undefined;
+  return o && typeof o === 'object' && !Array.isArray(o) ? (o['entry'] ?? o['entries']) : x;
+}
+
+/**
+ * Die Signaturzauber eines Kults oder Segens (T-084): als Abschnitt im
+ * Text, wie im Buch, und je Zauber eine `casts`-Kante — wer dem Kult
+ * angehört oder den Segen trägt, wirkt sie typischerweise.
+ */
+export function signaturZauber(wb: Werkbank, ent: Entity, roh: unknown): string {
+  if (!roh) return '';
+  const text = beiwort(roh);
+  for (const m of JSON.stringify(text).matchAll(/\{@spell ([^}|]+)(?:\|([^}|]*))?/g)) {
+    const ziel = wb.finde('spell', [m[1]!.trim(), m[2] ?? '']);
+    if (ziel) wb.kante(ent, 'casts', ziel.id);
+  }
+  return `## Signature Spells\n\n${wb.text(text)}`;
+}
+
 const tabelle: Zuordnung = {
   art: 'table',
   tag: 'table',
@@ -193,7 +214,21 @@ export const WELT: Zuordnung[] = [
       wb.feld(ent, D, 'pantheon', e['pantheon']);
       wb.feld(ent, D, 'title', e['title'] ? wb.zeile(e['title']) : undefined);
       wb.feld(ent, D, 'alignment', gesinnung(e['alignment']));
-      wb.feld(ent, D, 'domains', liste(e['domains']).map(String).filter((d) => d !== 'None'));
+      /* Die Domänen zeigen auf die Unterklassen des Klerikers (E-020,
+         T-099): „Knowledge" ist der Kurzname von „Knowledge Domain". Was
+         keine trifft („Unknown"), steht als Notiz. */
+      const domaenen: string[] = [];
+      const ohne: string[] = [];
+      for (const d of liste(e['domains']).map(String).filter((d) => d !== 'None')) {
+        const ziel = wb.finde('subclass', [d, 'Cleric']);
+        if (ziel) domaenen.push(ziel.id);
+        else {
+          ohne.push(d);
+          wb.ctx.insLeere('subclass', `${d}|Cleric`);
+        }
+      }
+      wb.feld(ent, D, 'domains', [...new Set(domaenen)]);
+      if (ohne.length) wb.anmerkung(ent, 'domains', `Domains: ${ohne.join(', ')}`);
       wb.feld(ent, D, 'symbol', e['symbol'] ? wb.zeile(e['symbol']) : undefined);
       wb.feld(ent, D, 'province', e['province'] ? wb.zeile(e['province']) : undefined);
       wb.feld(ent, D, 'plane', e['plane'] ? wb.zeile(e['plane']) : undefined);
@@ -209,17 +244,17 @@ export const WELT: Zuordnung[] = [
     tag: 'cult',
     typ: () => 'Faction',
     name: (e) => String(e['name']),
-    genutzt: ['name', 'type', 'entries', 'goal', 'cultists', 'signaturespells'],
+    genutzt: ['name', 'type', 'entries', 'goal', 'cultists', 'signatureSpells'],
     fuellen(wb, ent, e) {
       wb.feld(ent, 'Faction', 'kind', 'cult');
       if (e['type']) wb.marke(ent, String(e['type']));
-      const g = e['goal'] as Knoten | undefined;
-      if (g) wb.feld(ent, 'Faction', 'goal', wb.text(g['entries']));
+      /* Ziel, Anhänger und Zauber stehen als `{entry: "…"}` (T-084: bis
+         dahin las der Importer `entries` und `signaturespells` — und fand
+         nichts). */
+      if (e['goal']) wb.feld(ent, 'Faction', 'goal', wb.text(beiwort(e['goal'])));
       const teile = [wb.text(e['entries'])];
-      const c = e['cultists'] as Knoten | undefined;
-      if (c) teile.push(`## Typical Cultists\n\n${wb.text(c['entries'])}`);
-      const s = e['signaturespells'] as Knoten | undefined;
-      if (s) teile.push(`## Signature Spells\n\n${wb.text(s['entries'])}`);
+      if (e['cultists']) teile.push(`## Typical Cultists\n\n${wb.text(beiwort(e['cultists']))}`);
+      teile.push(signaturZauber(wb, ent, e['signatureSpells']));
       wb.prosa(ent, teile.filter(Boolean).join('\n\n'));
     },
   },

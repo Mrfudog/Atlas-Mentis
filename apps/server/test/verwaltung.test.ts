@@ -140,7 +140,8 @@ describe('members', () => {
     const basil = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/members')).json();
     const mira = (await rufe('Mira', 'GET', '/api/campaigns/camp_a/members')).json();
     expect(basil.members.map((m: { name: string }) => m.name)).toEqual(['Basil', 'Mira', 'Sela']);
-    const ohneSelbst = (l: { self: boolean }[]) => l.map(({ self: _s, ...m }) => m);
+    /* `self` und `viewAs` hängen am Fragenden (REQ-241), der Rest nicht. */
+    const ohneSelbst = (l: { self: boolean; viewAs?: boolean }[]) => l.map(({ self: _s, viewAs: _v, ...m }) => m);
     expect(ohneSelbst(mira.members)).toEqual(ohneSelbst(basil.members));
     expect(basil.members[2].actors).toEqual([{ id: 'pc_a', name: 'Rook' }]);
     expect(basil.may).toBe('manage');

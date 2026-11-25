@@ -1,5 +1,7 @@
 # Abgleich mit 5e.tools
 
+↑ [Inhalte](Themen/Inhalte.md) · [Einstieg](README.md)
+
 Stand 2026-10-08. Quelle: [`5etools-mirror-3/5etools-src`](https://github.com/5etools-mirror-3/5etools-src),
 Verzeichnis `data/`, Stand b906158 (2026-09-23). Gezählt wurde mit einem
 Skript über alle JSON-Dateien; die Zahlen unten sind gemessen, nicht
@@ -8,6 +10,9 @@ PR #6 (31 Arten, 21 geteilte Typen, 42 Kantenarten).
 
 > **Entschieden am 2026-10-08** (D47): 2014 als Basis, alles ausser
 > 2024, einmaliges Laden als Artikel unserer Typen, alles englisch.
+> **Seit 13.10.2026 (T-087, REQ-243)** kommt auch 2024 und Unearthed
+> Arcana herein, jede Quelle in ihre Ebene, dazu Fahrzeuge, Decks,
+> Bastionen und Waffenmeisterschaften (E2 und E4 abgelöst).
 > Was das an diesem Dokument ändert und in welcher Reihenfolge gebaut
 > wird: [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md). Wo beide
 > widersprechen, gilt der Arbeitsplan.
@@ -137,14 +142,14 @@ auf die Modelländerungen in Abschnitt 3.
 
 | 5e.tools | n | Gegenstück | Stand | Was dazu nötig ist |
 |---|---:|---|---|---|
-| `monster` | 4 559 | `Statblock` (Vorlage; eine `Creature` ist bei uns die *Figur* mit Namen — ein Monster aus dem Buch ist der Zahlenblock, aus dem Instanzen entstehen, D82) | **anpassen** | Sprachen, Zustandsimmunitäten, Übungen mit Bonus, Legendäre Aktionen (Anzahl), Zauberwirken, Token, Lore — **M5**; `size` abbilden; `type.tags` → Marken; `environment` → Marken; `trait/action/bonus/reaction/legendary/mythic/lair` → `Rule` über `composedOf` (steht, bis auf `mythic` — **M1**); `attachedItems` → Kante `equips` (**M5**); `_copy` auflösen, `variantOf` auf das Original; `reprintedAs` → `overrides` (**M9**) |
+| `monster` | 4 559 | `Statblock` (Vorlage; eine `Creature` ist bei uns die *Figur* mit Namen — ein Monster aus dem Buch ist der Zahlenblock, aus dem Instanzen entstehen, D82) | **anpassen** | Sprachen, Zustandsimmunitäten, Übungen mit Bonus, Legendäre Aktionen (Anzahl), Zauberwirken, Token, Lore — **M5**; `size` abbilden; `type.tags` → Marken; `environment` → Marken; `trait/action/bonus/reaction/legendary/mythic/lair` → `Rule` über `composedOf` (steht, bis auf `mythic` — **M1**); `attachedItems` → Kante `equips` (**M5**); `_copy` auflösen, `variantOf` auf das Original; `reprintedAs` → `overrides` (**M9**); **benannte Kreaturen** (`isNamedCreature`) bekommen dazu eine `Creature` (`kind: npc`, gleiche Ebene und Quelle, Name ohne Klammer), der der Statblock über `belongsTo` gehört, und die Marke `named` — Spielarten keine eigene (T-169) |
 | `monsterFluff` | 4 170 | `Statblock.lore` + Bilder | **anpassen** | `Statblock` nimmt `Lore` und `Image` dazu (**M5**) |
 | `legendaryGroup` | 188 | `Rule` mit `kind: lair` (steht) und `regional` (**M1**), `composedOf` vom Statblock | **anpassen** | Aufzählungswert `regional`, `mythicEncounter` → `mythic` |
-| `monsterTemplate` | 66 | — | **weglassen** | Eine Schablone (`apply`), die ein anderes Monster umbaut (Halbdrache, Skelett-von). Der Text dazu wird eine `Rule kind: rule`; die Anwendung ist eine Handlung am Tisch, kein Artikel |
+| `monsterTemplate` | 66 | — | **weglassen** | Eine Schablone (`apply`), die ein anderes Monster umbaut (Halbdrache, Skelett-von). Der Text dazu wird eine `Rule kind: rule`; die Anwendung ist eine Handlung am Tisch, kein Artikel. Keine Schablone hat `entries` — der Text wird aus `apply` geschrieben (Voraussetzung, Grösse, Sinne, Resistenzen, hinzugefügte Merkmale und Aktionen; T-089) |
 | `monsterfeatures` | 25 | `Table` | **steht** | DMG-Tabelle „Monster Features"; eine Tabelle |
 | `object` | 37 | `Statblock` mit `creatureType: object` | **anpassen** | nur `size` (**M5**) und `actionEntries` → `composedOf` |
-| `vehicle` | 39 | — | **fehlt** | Schiffe, Höllenmaschinen, Spelljammer: Rumpf, Steuerung, Antrieb, Waffen als *Bauteile* mit eigener AC/HP, Besatzung, Fracht, Tempo. Ein eigener Typ `Vehicle` mit Bauteilen als `Rule` oder Unterartikeln — **nicht jetzt** (Nebelwacht ist eine Stadt; E4) |
-| `vehicleUpgrade` | 31 | — | **weglassen** | mit `vehicle` |
+| `vehicle` | 39 | `Statblock` mit `creatureType` „vehicle (ship)" | **steht** (T-087) | RK und TP aus dem Rumpf, Attribute, Immunitäten als Felder; Rumpf, Steuerung, Antrieb, Waffen, Besatzung, Fracht, Tempo als Text — eine eigene Art `Vehicle` mit Bauteilen kommt, wenn etwas damit rechnet (Datenmodell R11). `vehicleFluff` → `Lore` |
+| `vehicleUpgrade` | 31 | `Rule kind: upgrade` | **steht** (T-087) | Marken für Fahrzeug und Bauteil (`ship upgrade`, `hull` …) |
 
 ### 2.2 Zauber
 
@@ -180,10 +185,10 @@ auf die Modelländerungen in Abschnitt 3.
 | `item` | 2 512 | `Item` / `Weapon` / `Armor` | **anpassen** | **M4**: `tier`, Einstimmung (ja/nein + Bedingung), Ladungen und Aufladung, Boni (Waffe, RK, Zauberangriff, Rettungswurf), `itemType` als Aufzählungszeile aus `itemType`, `rarity` um `none`/`varies` ergänzt und englisch (E3), `weight` als Mass mit `unit: lb`, `attachedSpells` → `casts` vom Gegenstand; `baseItem` → `variantOf`; `containerCapacity` → der Gegenstand `carries` ein `Inventory` |
 | `baseitem` | 230 | `Weapon` / `Armor` / `Item` | **anpassen** | Waffe: `damage2` (vielseitig), Kategorie einfach/Kriegs-, Munitionsart, Eigenschaften über `hasProperty` → `Rule kind: property` (steht als Kante, fehlt als Aufzählungswert, **M1**); Rüstung: Stärkevoraussetzung, Heimlichkeit-Nachteil, `armorType` als Aufzählung (**M4**) |
 | `itemGroup` | 119 | `Item` + `variantOf` von den Mitgliedern | **steht** | „Armor of Resistance" mit sieben Ausprägungen: der Gruppenartikel und je Mitglied `variantOf` |
-| `magicvariant` | 230 | `Item` als Vorlage | **anpassen** | „+1 Weapon" gilt für *jede* Waffe; 5e.tools erzeugt „+1 Longsword" beim Lesen. Bei uns: die Variante ist ein Artikel mit `appliesTo` (Marken: weapon, armor, ammunition), und das konkrete Stück entsteht am Tisch als Instanz des Grundgegenstands (`instanceOf`, D82) — **M4** erweitert `instanceOf` auf `Item` |
+| `magicvariant` | 230 | `Item` als Vorlage | **anpassen** | „+1 Weapon" gilt für *jede* Waffe; 5e.tools erzeugt „+1 Longsword" beim Lesen. Bei uns: die Variante ist ein Artikel mit `appliesTo` (Marken: weapon, armor, ammunition), und das konkrete Stück entsteht am Tisch als Instanz des Grundgegenstands (`instanceOf`, D82) — **M4** erweitert `instanceOf` auf `Item`. Seit T-084 steht das Stück, das ein Text nennt („+1 shield"), als eigener Artikel da (`variantOf` auf den Grundgegenstand); alle Paare nicht |
 | `itemType` | 67 | Aufzählungszeile `ItemType` | **anpassen** | Kürzel → Name (`M` martial weapon, `HA` heavy armor, `WD` wand, `$` treasure …) (**M4**) |
 | `itemProperty` | 27 | `Rule kind: property` | **anpassen** | Aufzählungswert (**M1**); Vielseitig, Finesse, Leicht … stehen heute schon als Regeln im Bestand, nur mit `kind: feature` |
-| `itemMastery` | 8 | `Rule kind: mastery` | **anpassen** | 2024: Waffenmeisterschaft; Aufzählungswert (**M1**), Kante `hasProperty` reicht |
+| `itemMastery` | 8 | `ItemProperty` mit der Marke `mastery` | **steht** (T-087) | 2024: Waffenmeisterschaft; die Waffe zeigt mit `hasProperty` darauf wie auf eine Eigenschaft |
 | `itemEntry`, `itemTypeAdditionalEntries` | 15 | — | **weglassen** | Textschablonen, die der Importer beim Lesen einsetzt |
 | `itemFluff` | 980 | Bilder | **weglassen** | nur Bilder (829 von 980 ohne Text) |
 
@@ -203,21 +208,21 @@ auf die Modelländerungen in Abschnitt 3.
 | `table` | 2 381 | `Table` | **anpassen** | **M8**: Spaltenbeschriftungen und Zeilen aus Zellen; heute hat `Table` nur `rows` als Einträge mit Gewicht. 2 368 davon kommen aus den Büchern (`generated/`), 13 stehen für sich |
 | `tableGroup` | 22 | `Table` + `partOf` | **steht** | mehrere Tabellen unter einem Titel |
 | `encounter` | 42 | `Table kind: encounter` | **steht** | Zufallsbegegnungen je Gelände und Stufe; `entry`-Kanten mit Gewicht |
-| `hoard`, `individual`, `magicItems`, `gems`, `artObjects`, `dragon`, `dragonMundaneItems` | 100 | `Table kind: loot`, geschachtelt | **steht** | `entry` erlaubt Tabelle → Tabelle (REQ-186); Münzen als Zeile mit Würfelausdruck |
+| `hoard`, `individual`, `magicItems`, `gems`, `artObjects`, `dragon`, `dragonMundaneItems` | 100 | `Table kind: loot`, geschachtelt | **steht** | Seit T-084: der verschachtelte Wurf als Verweis in der Zeile (`{{2d6}} × [[…\|10 gp Gemstones]]`), nicht als `entry` — eine Zeile nennt oft zwei Tabellen; Münzen im Text |
 | `name` | 10 | `Table kind: name` | **steht** | Namenstabellen je Volk |
 | `reward` | 278 | `Rule kind: reward` | **anpassen** | Segen, Charms, Epische Gaben, Frömmigkeit; Aufzählungswert und `rewardType` (**M1**) |
-| `cult` | 30 | `Faction kind: cult` | **anpassen** | `goal` fehlt an `Faction`; Kultisten → `features`, Signaturzauber → `casts` (**M7**) |
+| `cult` | 30 | `Faction kind: cult` | **steht** | `Faction.goal`; Kultisten im Text, Signaturzauber → `casts` (T-084) |
 | `boon` | 12 | `Rule kind: boon` | **anpassen** | Aufzählungwert (**M1**) |
 | `trap` | 37 | — | **fehlt** | Neue Art `Hazard` (**M7**): `kind` trap/hazard, `category` MECH/MAG/WTH/ENV/WLD, `rating` (Stufe und Gefahrgrad), Auslöser, Dauer, Wirkung, Gegenmassnahmen, Initiative. Auf der Karte über `marker` (steht) |
 | `hazard` | 73 | `Hazard` | **fehlt** | mit `trap` |
 | `trapFluff`, `hazardFluff` | 8 | Bilder | **weglassen** | nur Bilder |
 | `deity` | 563 | — | **fehlt** | Neue Art `Deity` (**M7**): Pantheon, Titel, Gesinnung, Domänen, Symbol, Provinz, Anhänger, Ebene; `altNames` → `aliases`; Kante `worships` von Creature und Faction |
-| `facility` | 70 | — | **weglassen (vorerst)** | Bastionen (2024): Einrichtungen mit Stufe, Platz, Angestellten, Befehlen. Ein Gebäude ist bei uns ein `Place`; Bastionen kommen, wenn die Gruppe eine hat (E4) |
-| `facilityFluff` | 16 | — | **weglassen** | mit `facility` |
-| `deck`, `card` | 800 | — | **weglassen (vorerst)** | Deck der vielen Dinge, Tarokka: ein Stapel mit Kartenbild je Karte. Entweder `Table kind: deck` mit Bild je Zeile oder ein eigener Typ; braucht die Bilder (E5) |
+| `facility` | 70 | `Rule kind: facility` | **steht** (T-087) | Bastionsräume (2024): Stufe, Voraussetzung, Platz, Bedienstete, Befehle als Kopfzeile des Texts, Befehle und Art als Marken |
+| `facilityFluff` | 16 | Text unter der Regel | **steht** (T-087) | eine `Rule` trägt kein `Lore` |
+| `deck`, `card` | 800 | `Table kind: deck`, `Rule kind: card` | **steht** (T-087) | je Karte eine Kante `entry`, ihre Anzahl als Gewicht; ohne Kartenbild (E5). Das Rezept-Deck *Deck of Many Morsels* bleibt mit den Kochrezepten weg |
 | `encounterShape` | 5 | — | **weglassen** | Schablonen des Begegnungsbauers |
-| `recipe` | 241 | — | **weglassen** | *Heroes' Feast*: echte Kochrezepte. Unser `Recipe` ist Handwerk |
-| `recipeFluff`, `crochetPattern`, `crochetPatternFluff` | 281 | — | **weglassen** | Kochbuch und Häkelmuster |
+| `recipe` | 241 | — | **weglassen** | *Heroes' Feast*: echte Kochrezepte. Unser `Recipe` ist Handwerk. Seit T-087 bleiben auch die Bücher selbst weg, die nach 2024 erschienen (`HFLotT`, `HFDoMM`) |
+| `recipeFluff`, `crochetPattern`, `crochetPatternFluff` | 281 | — | **weglassen** | Kochbuch und Häkelmuster, mit dem Häkelbuch (`CaBoMP`, T-087) |
 
 ### 2.6 Bücher und Abenteuer
 
@@ -225,7 +230,54 @@ auf die Modelländerungen in Abschnitt 3.
 |---|---:|---|---|---|
 | `book` | 65 | `Layer` | **anpassen** | **M9**: **eine Ebene je Quelle** (`PHB`, `MM`, `DMG`, `XPHB` …), `kind: system`; jeder importierte Artikel `inLayer` seiner Quelle; `Source.publication` trägt das Kürzel, `page` die Seite. Die Kampagne `activates` dann 2014 *oder* 2024 — und `reprintedAs` wird `overrides` |
 | `adventure` | 100 | `Layer kind: pack` | **anpassen** | wie `book`; nur die Metadaten |
-| `data` (Buch- und Abenteuertext) | 1 259 Abschnitte | — | **weglassen** | Der Fliesstext der Bücher und Abenteuer. Die Regeln daraus stehen schon in `variantrule`, die Tabellen in `table`. Abenteuertext als `Article` zu übernehmen wäre Lizenz und Umfang zugleich (E1) |
+| `data` (Buch- und Abenteuertext) | 1 259 Abschnitte | `Chapter` und Teile | **übernommen** (T-082, T-108) | Bis 14.10. weggelassen (E1). Seit E-028/E-029: je Kapitel ein `Chapter`, darin `Heading`, `Paragraph`, `ReadAloudText` und `Embed` auf Artikel, die schon da sind (Regeln aus `variantrule`, Tabellen aus `table`) — nichts verdoppelt |
+
+#### Herausgeber und Blocklist-Kategorien (T-094)
+
+Neben der Kategorie (T-088: Core rules, Supplements, Settings, Adventures,
+Unearthed Arcana, 2024 rules, Screens & other) steht jedes Buch in einer
+**Herausgeber-Gruppe** (`Layer.groupBy: 'publisher'`, Datenmodell E10) und
+gegebenenfalls in weiteren Kategorien aus 5e.tools › Utilities › Content
+Blocklist. Woher die Zuordnung kommt — gelesen in `5etools-src`, nicht
+geraten:
+
+| Gruppe | Regel | Quelle in 5etools-src |
+|---|---|---|
+| **Official** | jedes Buch aus `data/books.json` / `data/adventures.json`, seit 28.10.2026 auch die Partner-Bücher (E-193) | `SourceUtil.isSiteSource`: was die Seite selbst führt, ist kein Homebrew |
+| Partnered (Kategorie, seit E-193 kein Herausgeber) | RMBRE, RMR, EGW, ToR, DD, FS, US, CRCotN, HftT, LRDT, TD | `Parser.SOURCES_PARTNERED_WOTC` in `js/parser.js` — seit Dez. 2025 leer und auskommentiert, weil D&D Beyond diese Bücher als „Official" führt; die alte Liste gilt hier, damit Partner-Inhalte erkennbar bleiben. Die Gruppe behält ihre Id `e5_publisher_partnered`, ordnet aber nicht mehr nach Herausgeber (Migration 155), und kommt nicht in „D&D 5e (2014)" |
+| **Third party** | legt der Importer nie an | `5etools-src` enthält kein Buch eines fremden Verlags; Drittanbieter kämen über Homebrew (`partnered`-Kennzeichen an der Quelle in `homebrew/`), das wir nicht einlesen |
+| **Homebrew** | jede hier angelegte Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen; eine eingelesene ohne Gruppe heisst **Unknown** (T-109; bis 28.10. „Unassigned“, das Wort trägt seither die Parkplatz-Ebene) | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
+| Non-standard | `SOURCES_NON_STANDARD_WOTC` und Kürzel mit `PS…` (Plane Shift) oder `MCV…` | „UA/Etc. Sources" der Blocklist, `SourceUtil.isNonstandardSourceWotc` ohne UA (UA kommt nicht herein) |
+| Comedy | `SOURCES_COMEDY` | „Comedy Sources" |
+| Outside the Forgotten Realms | `SOURCES_NON_FR` | „Non-*Forgotten Realms*" |
+
+„5e ('14)" und „5.5e ('24)" der Blocklist brauchen keine eigene Gruppe:
+2024-Bücher kommen nicht herein, und „2024 rules" gibt es schon. Die
+„Category" der Blocklist (Spell, Creature …) ordnet Einträge, nicht Bücher,
+und ist unsere Artikelart.
+
+**Nicht eindeutig** — so eingeordnet, die Leitung kann umhängen (die
+Ebene an eine andere Herausgeber-Gruppe):
+
+- *EGW mit ToR, DD, FS, US; CRCotN* (Darrington Press / Critical Role),
+  *RMR, RMBRE, HftT* (Rick and Morty), *LRDT* (LEGO), *TD* (Tarot Deck,
+  Clarkson Potter): seit 28.10.2026 **Official** wie bei 5e.tools und D&D
+  Beyond (E-193), dazu in der Kategorie Partnered.
+- *HF, HFFotM, HFLotT* (Kyle Newman), *PaF* (Andrew Wheeler), *CaBoMP*
+  (Stacy King): lizenzierte Koch- und Bastelbücher fremder Verlage, die
+  5e.tools nie als Partner führte — **Official**. Rezepte kommen ohnehin
+  nicht herein (§2.5), die Ebene entsteht nur, wenn sonst etwas daraus
+  kommt.
+- *OGA* (Christopher Lindsay), *AWM, MGELFT* (Emi Tanji), *TLK* (Shawn
+  Wood), *LLK, RtG* (Extra Life): ein Autor ausserhalb des Wizards-Teams,
+  aber von Wizards veröffentlicht (DMs Guild, Wohltätigkeit) — **Official**,
+  dazu **Non-standard**.
+- *VNotEE*: ohne Autor in den Daten — **Official**.
+
+Die Listen stehen wörtlich in `packages/import-5etools/src/lauf.ts`
+(Stand 10/2026). Ein neues Buch, das 5e.tools später einer Liste
+hinzufügt, steht bis zum Nachziehen nur in seiner Kategorie und unter
+Official.
 
 ### 2.7 Nicht übernommen, weil keine Daten
 
@@ -468,7 +520,7 @@ danach.
 | **E1** | **Umfang:** nur SRD (`--srd`), die Kernbücher (`PHB MM DMG` oder `XPHB XMM XDMG`), oder alles? | **Kernbücher beider Ausgaben** für den Tisch, mit `audience: campaign` an allem, was nicht SRD ist — dann sieht es nur, wer eine Rolle hat, und `public` bleibt sauber. Abenteuer nicht |
 | **E2** | **Ausgabe:** 2014, 2024, oder beide als Ebenen? | **Beide**, als Ebenen; die Kampagne aktiviert eine. Das kostet nichts extra, weil `overrides` aus `reprintedAs` kommt, und es ist der Prüfstein für den Stapel |
 | **E3** | **Sprache der Aufzählungen:** `rarity`, `size`, `Rule.kind` sind heute deutsch (`gewöhnlich`, `mittel`). 5e.tools ist englisch, und der Importer schriebe `uncommon`. | **Englisch als Wert, deutsch als Beschriftung** — die Werte sind dann Schlüssel wie die Feldnamen (CLAUDE.md: Code englisch), und die Oberfläche zeigt, was `label` sagt. Eine Migration für die heutigen Werte, bevor gelöscht wird, ist damit überflüssig |
-| **E4** | **Vehikel, Bastionen, Decks:** jetzt mitnehmen oder später? | **Später.** Kein Nutzer in Nebelwacht; je eine eigene Art mit eigener Ansicht |
+| **E4** | **Vehikel, Bastionen, Decks:** jetzt mitnehmen oder später? | **Später.** Kein Nutzer in Nebelwacht; je eine eigene Art mit eigener Ansicht. *Abgelöst durch T-087: herein, jede mit der kleinsten passenden Art (Datenmodell R11).* |
 | **E5** | **Bilder:** Tokens und Illustrationen aus `5etools-img`? | **Nicht im ersten Durchgang.** Die Statblocks bekommen das Feld `token` (M5), gefüllt wird es aus eigenen Assets. Wenn doch: nur SRD-Monster, als externe Assets (`backend: external`) |
 | **E6** | **Reihenfolge:** erst M10–M12 und M1–M2 (Regeln, Zauber, Monster), oder das ganze Modell vor dem ersten Import? | **Erst die Hälfte.** Nach M1, M2, M4, M5, M10–M12 laufen Schritte 1–8 und 11 — Zustände, Zauber, Gegenstände, Monster —, und das ist, was am Tisch gesucht wird. Klassen und Abstammungen (M3, M6) kommen mit dem Bogen |
 

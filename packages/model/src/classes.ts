@@ -26,6 +26,7 @@ import {
   primaryInterface,
   tagsOf,
 } from "./entity.js";
+import { proficiencyBonus } from "./calc.js";
 import type { Entity } from "./types.js";
 
 /** Wie tief Merkmale ineinander stecken dürfen (Battle Master › Maneuver Options › Manöver). */
@@ -34,10 +35,6 @@ export const EMBED_DEPTH = 2;
 /** Die Marke, die ein optionales oder Varianten-Merkmal trägt (`isClassFeatureVariant`). */
 export const OPTIONAL_TAG = "optional";
 
-/** Übungsbonus nach Gesamtstufe — die Regel, nicht eine Spalte der Tabelle. */
-export function proficiencyBonus(level: number): number {
-  return Math.ceil(level / 4) + 1;
-}
 
 export function isOptionalFeature(feature: Entity | undefined): boolean {
   return tagsOf(feature).includes(OPTIONAL_TAG);
@@ -280,7 +277,8 @@ export function classTable(
   for (let level = 1; level <= 20; level++) {
     rows.push({
       level,
-      proficiencyBonus: proficiencyBonus(level),
+      /* Die Regel, nicht eine Spalte der Tabelle; sie steht einmal (`calc.ts`, T-275). */
+      proficiencyBonus: proficiencyBonus(level) ?? 2,
       features: features
         .filter((f) => f.level === level)
         .flatMap((f) => f.names),
@@ -288,4 +286,77 @@ export function classTable(
     });
   }
   return { columns, rows };
+}
+
+/** Die Arten, die die Herkunftsansicht zeigt (T-166). */
+export const ORIGIN_TYPES = ["Ancestry", "Background"] as const;
+
+/**
+ * **Eine Herkunft oder ein Hintergrund samt allem, was die Ansicht braucht**
+ * (T-166) — dieselbe Sammlung wie `classParts`, nur ohne Stufen: der
+ * Artikel, seine Spielarten (`subraceOf` auf ihn, die Unterarten einer
+ * Herkunft), die Tabellen (`tableFor`, die Persönlichkeitstabellen eines
+ * Hintergrunds) und jedes Merkmal, das einer davon gewährt oder einbettet.
+ *
+ * Eine Spielart, die selbst Spielarten hat, zählt nicht weiter: die Leiste
+ * steht einen Schritt tief wie die der Unterklassen.
+ */
+export function originParts(
+  all: Iterable<Entity>,
+  originId: string,
+): {
+  origin: string;
+  variants: string[];
+  tables: string[];
+  features: string[];
+} | null {
+  const liste = [...all];
+  const byId = new Map(liste.map((e) => [e.id, e]));
+  const haupt = byId.get(originId);
+  const art = haupt ? primaryInterface(haupt) : "";
+  if (!haupt || !(ORIGIN_TYPES as readonly string[]).includes(art)) return null;
+  const variants = liste
+    .filter(
+      (e) =>
+        primaryInterface(e) === art &&
+        (e.relations ?? []).some(
+          (r) => r.type === "subraceOf" && r.to === originId,
+        ),
+    )
+    .map((e) => e.id);
+  const tables: string[] = [];
+  const features = new Set<string>();
+  const index = linkIndex(liste);
+  const einbetten = (f: Entity, tiefe: number) => {
+    if (tiefe >= EMBED_DEPTH) return;
+    for (const k of embeddedFeatures(f, index)) {
+      if (features.has(k.id)) continue;
+      features.add(k.id);
+      einbetten(k, tiefe + 1);
+    }
+  };
+  for (const id of [originId, ...variants]) {
+    const g = byId.get(id);
+    if (!g) continue;
+    for (const r of g.relations ?? []) {
+      if (r.type === "tableFor" && byId.has(r.to) && !tables.includes(r.to)) tables.push(r.to);
+      if (r.type !== "grants") continue;
+      const f = byId.get(r.to);
+      if (!f) continue;
+      features.add(r.to);
+      einbetten(f, 0);
+    }
+  }
+  return { origin: originId, variants, tables, features: [...features] };
+}
+
+/** Was ein Artikel gewährt, in der Reihenfolge seiner Kanten — wie im Buch. */
+export function grantedFeatures(
+  giver: Entity,
+  index: Map<string, Entity>,
+): Entity[] {
+  return (giver.relations ?? [])
+    .filter((r) => r.type === "grants")
+    .map((r) => index.get(r.to))
+    .filter((e): e is Entity => !!e);
 }

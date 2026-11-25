@@ -1,5 +1,7 @@
 # 5e.tools übernehmen — Arbeitsplan
 
+↑ [Inhalte](Themen/Inhalte.md) · [Einstieg](README.md) · Plan: P1–P7 sind gebaut; offen ist, was das Projektbrett nennt.
+
 Stand 2026-10-08, überarbeitet nach Mikes Rückmeldung am selben Tag. Baut auf [5etools-Abgleich.md](5etools-Abgleich.md) auf:
 dort steht, *was* fehlt; hier steht, *in welcher Reihenfolge* es gebaut
 wird, mit welchem Modell, und wie man dabei nicht das ganze Kontingent
@@ -12,18 +14,28 @@ verbraucht.
 | # | Frage | Entscheidung |
 |---|---|---|
 | E1 | Umfang | **Alles**, was auf 2014 aufbaut — nicht nur das SRD. Die Seite ist **nicht öffentlich**: jede Route ausser Anmeldung verlangt ein Konto, Konten gibt es nur auf Einladung. Eine spätere Demo zeigt nur SRD-Inhalt; dafür trägt jeder Artikel die Lizenzflagge (`Source.srd`) |
-| E2 | Ausgabe | **2014 als Basis.** Die 2024-Kernbücher (`XPHB`, `XMM`, `XDMG`) kommen nicht herein, ebenso die Bücher seit September 2024, die auf den 2024-Regeln stehen (Heroes of Faerûn, Forge of the Artificer …), und Unearthed Arcana. Der Importer zählt sie auf; einschalten ist eine Zeile |
+| E2 | Ausgabe | ~~**2014 als Basis.**~~ **Abgelöst am 13.10.2026 (T-087, REQ-243):** alles kommt herein — 2014, 2024 (`XPHB`, `XMM`, `XDMG` und die Bücher seit September 2024) und Unearthed Arcana —, jede Quelle in ihre Ebene mit dem Regelstand an `Layer.version`, keine neue aufgeschaltet. Was vorher hereinkam, heisst der **Grundstand** und bleibt Zeichen für Zeichen, wie es war; die 2024-Fassung einer Sache ist eine Variante der von 2014 (E-021 d). `--only-2014` nimmt nur den Grundstand
 | E3 | Sprache | **Alles englisch, wie im Original** — Namen, Text, Aufzählungswerte und ihre Beschriftungen. Übersetzt wird danach von Mike, Begriff für Begriff (Paket P8). Der Importer übernimmt keine fremde Übersetzung |
-| E4 | Vehikel, Bastionen, Decks | später |
+| E4 | Vehikel, Bastionen, Decks | ~~später~~ **Herein seit T-087**, jede mit der kleinsten Art, die passt: Fahrzeug als `Statblock`, Aufrüstung, Bastionsraum und Karte als `Rule` (`upgrade`, `facility`, `card`), Deck als `Table` (`deck`), Waffenmeisterschaft als `ItemProperty` (Datenmodell R11). Kochrezepte und Häkelmuster bleiben weg, mit ihren Büchern |
 | E5 | Bilder | nicht im ersten Durchgang |
 | E6 | Reihenfolge | Regeln, Zustände, Zauber, Gegenstände, Monster zuerst; Klassen und Abstammungen mit dem Bogen |
 | E7 | Laden | **Einmal**, kein laufender Abgleich. Danach gehören die Artikel uns und werden direkt bearbeitet |
 
 Was daraus folgt, gegenüber dem Abgleich:
 
-- **Eine Systemebene statt einer je Buch.** „D&D 5e (2014)", `kind: system`;
-  welches Buch, sagt `Source.publication` mit Seite. Hundert Ebenen für
-  hundert Bücher wären ein Stapel, den niemand umschaltet.
+- ~~**Eine Systemebene statt einer je Buch.**~~ Überholt am 13.10.2026
+  (E-017, T-081): **je Buch eine Ebene** (`kind: book`), die Systemebene
+  „D&D 5e (2014)" hält nur, was kein Buch nennt. Die Sorge war ein Stapel
+  aus hundert Ebenen, den niemand umschaltet; die Kampagnenseite zeigt die
+  Bücher darum getrennt vom Stapel, gruppiert, mit Häkchen und ohne
+  Reihenfolge. Welche Seite, sagt weiter `Source.publication` mit `page`.
+- **Buchtext für die Leseansicht** (T-091, REQ-247; T-108, E-028,
+  E-029): der Text jedes Buchs (`book/`) kommt herein — auch eines
+  Regelbuchs — als `Chapter` je Kapitel, darin Teil-Artikel in der
+  Reihenfolge von `partOf.rank` (`arten/buch.ts`, `teile.ts`). Was schon
+  ein Artikel ist (ein eingebetteter Zauber, ein Monster, eine Tabelle, ein
+  Abschnitt mit dem Namen eines Artikels aus demselben Buch), wird ein
+  `Embed` darauf und nicht verdoppelt. Bilder bleiben weg (E5).
 - **Kein `overrides` aus `reprintedAs`**, weil 2024 nicht hereinkommt.
   Innerhalb von 2014 sagt `reprintedAs` aber, welche **Fassung gilt**
   (unten, Doppel).
@@ -354,7 +366,8 @@ sechs Zeilen und `skills` sind weg. Zeilen `Size` und `DamageType`.
 Entscheidung D50, Regeln S1–S3, C1–C4, Ü1–Ü3 in
 [Datenmodell.md](Datenmodell.md) §5.7. Offen: der Bogen in `apps/web`
 zeichnet Klasse und Stufe noch nicht; die Wahl aus `ProficiencyChoice`
-trifft niemand für die Figur; eine umbenannte Fertigkeit nimmt die
+trifft niemand für die Figur (seit T-079: `Choices.choices` am Artikel,
+die Antwort als Kante `chose`; die Maske dafür ist T-080); eine umbenannte Fertigkeit nimmt die
 gespeicherten Übungen nicht mit.
 
 ### P5 — Importer (Opus 5.5 für den Kern, danach Sonnet)
@@ -381,10 +394,11 @@ nur noch bei leerem Bestand. Betrieb: [Betrieb.md › 5e.tools
 laden](Betrieb.md#5etools-laden).
 Abweichend vom Abgleich: keine `ids.json` (§1: keine stabile Zuordnung
 über Läufe), keine Ebene je Buch, `overrides` entfällt (kein 2024).
-Offen: die Klassenlisten der Zauber (keine Kante von `Class` zu `Spell`),
-Schatztabellen (`hoard`, `individual`, `dragon`) und „This Is Your Life",
-Behälter (`containerCapacity` → `carries` ein Inventar), Spielarten in
-`_versions`, `entry`-Kanten aus Tabellenzeilen; die Ablage speichert
+Offen (die Klassenlisten der Zauber kamen mit T-212, Kante `spellList`):
+Behälter (`containerCapacity` → `carries` ein Inventar),
+`entry`-Kanten aus Tabellenzeilen; Schatztabellen, „This Is Your Life",
+die Spielarten in `_versions` (ohne die der Unterarten) und die genannten
++N-Gegenstände kamen mit T-084 (Datenmodell R12); die Ablage speichert
 `enums` nicht (Prüfung am Server ohne Aufzählungszeilen); `listEntities`
 am Server lädt Artikel einzeln — bei 28 000 vor P6 ansehen; der
 Prüfaufbau des Prototyps (`pruefe.mjs`) erwartet den alten Bestand (M14).

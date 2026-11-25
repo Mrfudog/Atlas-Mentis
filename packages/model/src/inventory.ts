@@ -4,13 +4,11 @@
  * Drei Rechnungen, alle beim Lesen (D8) und keine davon gespeichert:
  *
  *  - **Das Tragraster** einer Kreatur, deren Inventar keine eigene Form
- *    hat: links ein Grundquadrat nach Grösse (Tiny 3 … Large 6), rechts ein
- *    Zusatzquadrat 0 … 5, das der Statblock rechnet (`Statblock.carryExtra`,
- *    eine Rechnung wie der Zauber-SG). Wie gross welche Grösse ist und
- *    welche Spalte welche Zone hat, steht als Einstellung — eine Kampagne
- *    mit einem anderen Blatt ist eine andere Zeile, kein Codewechsel.
- *  - **Die Zonen nach Spalten** (`0-1:bonus action, 2-4:action`): dieselbe
- *    Schreibweise für das Tragraster und für die Vorlagen der Behälter.
+ *    hat: seit REQ-356 aus den Bausteinen des Tragblatts, die für sie
+ *    gelten, aneinandergefügt (`carrySheet.ts`) — Grösse, Stärke oder was
+ *    eine Bedingung sonst nennt. Das Blatt steht als Einstellung; eine
+ *    Kampagne mit einem anderen Blatt ist eine andere Zeile, kein
+ *    Codewechsel. Die älteren Einstellungen nach Spalten liest es weiter.
  *  - **Die Ziehstufe die Kette hinauf**: ein Stück in einem Behälter
  *    braucht das Langsamere aus seiner Zone und der Stufe des Behälters
  *    + 1. Ein Behälter an einem Körperplatz nimmt die Stufe des Platzes
@@ -18,7 +16,15 @@
  *
  * Kein Framework, keine Entitäten: wer die Kette baut (Server, Prototyp),
  * reicht die Plätze herein. So bleibt die Regel an einer Stelle.
+ *
+ * Dazu (T-127) das **Raster** selbst — Form drehen, passt es, erster
+ * freier Platz, Zone eines Stücks —, das **Regelset** der Kampagne
+ * (Raster, Gewicht oder Slots), Gewicht und Tragestufen, Slots, das
+ * **Verschieben** zwischen zwei Inventaren und die Reservierung eines
+ * Stücks (`holds.props.reservedFor`, für den Handwerksauftrag T-128).
  */
+import type { Entity, EntityId, Relation } from './types.js';
+
 
 /** Ein Zeichen, das kein Feld ist — wie in `Item.rows` und `Inventory.grid`. */
 const EMPTY = new Set(['0', '.', ' ', '_']);
@@ -50,68 +56,8 @@ export function parseCarrySquares(spec: string | undefined | null): Record<strin
   return out;
 }
 
-/** Eine Zahl auf eine Spanne klemmen; keine Zahl heisst die Untergrenze. */
-export function clampExtra(n: unknown, min = 0, max = 5): number {
-  const z = Number(n);
-  if (!Number.isFinite(z)) return min;
-  return Math.max(min, Math.min(max, Math.trunc(z)));
-}
-
-export interface CarryGrid {
-  /** Die Form, wie `Inventory.grid` sie schreibt: `#` ist ein Feld. */
-  rows: string[];
-  /** Seitenlänge des Grundquadrats (aus der Grösse). */
-  base: number;
-  /** Seitenlänge des Zusatzquadrats (aus dem Statblock). */
-  extra: number;
-  /** Ab welcher Spalte das Zusatzquadrat steht. */
-  extraAt: number;
-}
-
-/**
- * **Das Tragraster aus Grösse und Statblock** (REQ-215).
- *
- * Wie auf dem Blatt: das Grundquadrat links oben, so breit wie das grösste
- * Grundquadrat der Einstellung (also 6), daneben das Zusatzquadrat, so
- * breit wie sein Höchstwert (5) — 11 × 6. Was ausserhalb der beiden
- * Quadrate liegt, ist gesperrt (`.`), damit die Spalten und damit die
- * Zonen bei jeder Grösse dieselben bleiben.
- *
- * Eine Grösse, die die Einstellung nicht kennt (huge, gargantuan, oder gar
- * keine), gibt **kein** Raster — dann gilt das Rechteck wie bisher.
- */
-export function carryGrid(
-  size: string | undefined | null,
-  extra: unknown,
-  squares: Record<string, number>,
-  extraMax = 5,
-): CarryGrid | null {
-  const base = squares[String(size ?? '').toLowerCase()];
-  if (!base) return null;
-  const links = Math.max(...Object.values(squares));
-  const rechtsMax = Math.max(0, Math.trunc(extraMax));
-  const zusatz = clampExtra(extra, 0, rechtsMax);
-  const breite = links + rechtsMax;
-  const hoehe = Math.max(links, rechtsMax);
-  const rows: string[] = [];
-  for (let y = 0; y < hoehe; y++) {
-    let r = '';
-    for (let x = 0; x < breite; x++) {
-      const inBasis = x < base && y < base;
-      const inZusatz = x >= links && x - links < zusatz && y < zusatz;
-      r += inBasis || inZusatz ? '#' : '.';
-    }
-    rows.push(r);
-  }
-  return { rows, base, extra: zusatz, extraAt: links };
-}
-
-/**
- * **Zonen nach Spalten** (`0-1:bonus action, 2-4:action`) für eine Form.
- * Gesperrte Felder bekommen keine Zone: ein Feld, auf dem nichts liegen
- * kann, kostet nichts.
- */
-export function columnZones(spec: string | undefined | null, rows: readonly string[]): Record<string, string> {
+/** Die Zonen nach Spalten als Spalte → Stufe: `0-1:action` → `{0: 'action', 1: 'action'}`. */
+export function zonesByColumn(spec: string | undefined | null): Record<number, string> {
   const spalte: Record<number, string> = {};
   for (const [k, v] of Object.entries(parsePairs(spec))) {
     const m = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(k);
@@ -120,27 +66,15 @@ export function columnZones(spec: string | undefined | null, rows: readonly stri
     const bis = m[2] === undefined ? von : Number(m[2]);
     for (let x = Math.min(von, bis); x <= Math.max(von, bis); x++) spalte[x] = v;
   }
-  const out: Record<string, string> = {};
-  rows.forEach((r, y) => {
-    for (let x = 0; x < r.length; x++) {
-      if (EMPTY.has(r.charAt(x))) continue;
-      const z = spalte[x];
-      if (z) out[`${x},${y}`] = z;
-    }
-  });
-  return out;
+  return spalte;
 }
 
-/**
- * Eine Behältervorlage aus einer Einstellung `container:<Name>`:
- * `.###../######/.###.. | 0-1:action, 2-3:turn`. Zeilen mit `/`, nach dem
- * Strich die Zonen nach Spalten (darf fehlen).
- */
-export function parseContainerPreset(spec: string | undefined | null): { grid: string[]; zones: Record<string, string> } | null {
-  const [form, zonen] = String(spec ?? '').split('|');
-  const grid = String(form ?? '').split('/').map((r) => r.trim()).filter((r) => r !== '');
-  if (!grid.length) return null;
-  return { grid, zones: columnZones(zonen, grid) };
+/** Schlüssel und Wert wieder als Einstellung (`tiny:3, small:4`); leere Werte fallen weg. */
+export function formatPairs(paare: Readonly<Record<string, string | number>>): string {
+  return Object.entries(paare)
+    .filter(([k, v]) => k.trim() !== '' && String(v).trim() !== '')
+    .map(([k, v]) => `${k.trim()}:${String(v).trim()}`)
+    .join(', ');
 }
 
 /** Das Langsamere zweier Stufen auf der Leiter; eine unbekannte zählt nicht. */
@@ -233,4 +167,519 @@ export function handActions(
   const p = parsePairs(spec);
   const auf = (v: string | undefined): string | null => (v && ladder.includes(v) ? v : null);
   return { drop: auf(p['drop']), stow: auf(p['stow']) };
+}
+
+// ------------------------------------------------------------ Regelset (T-127)
+
+/**
+ * **Wie diese Kampagne Inventar zählt** (T-127): nach Basils Blatt im
+ * Raster, nach Gewicht (5e, mit Tragestufen) oder nach Slots. Ein Wort an
+ * der Kampagne (`Campaign.inventory`) und keine Einstellung des Registers:
+ * zwei Runden derselben Installation spielen verschieden. Bis T-132
+ * (Regelsysteme als Behälter) steht es dort; wandert es in ein Modul,
+ * ändert sich nur, **wo** diese eine Funktion nachsieht.
+ */
+export const INVENTORY_RULES = ['grid', 'weight', 'slots'] as const;
+export type InventoryRules = (typeof INVENTORY_RULES)[number];
+
+export function inventoryRulesOf(campaign: Entity | null | undefined): InventoryRules {
+  const roh = campaign?.components?.['Campaign']?.['inventory'];
+  return (INVENTORY_RULES as readonly unknown[]).includes(roh) ? (roh as InventoryRules) : 'grid';
+}
+
+// ------------------------------------------------------------ Formen im Raster
+
+export interface Shape {
+  /** Ein Zeichen je Feld, wie `Item.rows` und `Inventory.grid`. */
+  rows: string[];
+  w: number;
+  h: number;
+}
+
+/** Zeilen lesen, wie sie in einer Karte stehen: Liste oder Text mit Zeilenumbruch/Komma. */
+export function shapeRows(roh: unknown): string[] {
+  const zeilen = Array.isArray(roh) ? roh.map(String) : typeof roh === 'string' && roh !== '' ? roh.split(/[,\n]/) : [];
+  return zeilen.filter((r) => r.trim() !== '');
+}
+
+function alsForm(rows: string[]): Shape {
+  return { rows, w: rows.reduce((m, r) => Math.max(m, r.length), 0), h: rows.length };
+}
+
+/**
+ * Eine Form `n` Vierteldrehungen im Uhrzeigersinn. Gedreht wird die Form
+ * und nicht der Gegenstand: die Drehung steht an der Kante
+ * (`holds.props.rot`), denn derselbe Bogen liegt quer oder längs.
+ */
+export function turnGrid(rows: readonly string[], n: number): string[] {
+  const w = rows.reduce((m, r) => Math.max(m, r.length), 1);
+  let netz = rows.map((r) => r.padEnd(w, '.').split(''));
+  const mal = ((Math.round(Number(n) || 0) % 4) + 4) % 4;
+  for (let i = 0; i < mal; i++) {
+    const h = netz.length;
+    const br = netz[0]?.length ?? 0;
+    const neu: string[][] = [];
+    for (let x = 0; x < br; x++) {
+      const zeile: string[] = [];
+      for (let y = h - 1; y >= 0; y--) zeile.push(netz[y]![x]!);
+      neu.push(zeile);
+    }
+    netz = neu;
+  }
+  return netz.map((r) => r.join(''));
+}
+
+/**
+ * **Gespiegelt** (T-142): links und rechts vertauscht. Gespiegelt wird
+ * vor dem Drehen — ein L, gespiegelt und dann gedreht, ist jedes der acht
+ * möglichen L. Wie die Drehung steht es an der Kante (`holds.props.flip`).
+ */
+export function flipGrid(rows: readonly string[]): string[] {
+  const w = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  return rows.map((r) => r.padEnd(w, '.').split('').reverse().join(''));
+}
+
+/** Die Form eines Gegenstands, gespiegelt und gedreht. Ohne `rows` ein Feld — der Normalfall, kein Sonderfall. */
+export function itemShape(rows: unknown, rot = 0, flip = false): Shape {
+  const r0 = shapeRows(rows);
+  if (!r0.length) return { rows: ['#'], w: 1, h: 1 };
+  const r = flip ? flipGrid(r0) : r0;
+  return alsForm(rot ? turnGrid(r, Number(rot) / 90) : r);
+}
+
+/** Belegt heisst: ein Zeichen, das kein freies ist (`#`, `X`, eine Zonenfarbe …). */
+function belegtZeichen(c: string): boolean {
+  return c !== '' && !EMPTY.has(c);
+}
+
+/**
+ * **Leere Ränder weg** (T-142): die Form, wie sie gespeichert wird — ohne
+ * leere Zeilen oben und unten und ohne leere Spalten links und rechts, `#`
+ * belegt und `.` frei. Gemalt wird auf einem 5×5-Raster, das wächst;
+ * gespeichert werden soll aber die Form und nicht das Raster, sonst
+ * belegte jede Fackel im Inventar ein Feld oben links in einem leeren
+ * Fünfer. Ohne ein belegtes Feld bleibt nichts — das heisst ein Feld.
+ */
+export function trimShape(rows: unknown): string[] {
+  const r = shapeRows(rows).map((z) => z.split('').map((c) => (belegtZeichen(c) ? '#' : '.')).join(''));
+  const w = r.reduce((m, z) => Math.max(m, z.length), 0);
+  const netz = r.map((z) => z.padEnd(w, '.'));
+  const zeilen = netz.map((z, i) => (z.includes('#') ? i : -1)).filter((i) => i >= 0);
+  if (!zeilen.length) return [];
+  let links = w;
+  let rechts = -1;
+  for (const z of netz) {
+    const a = z.indexOf('#');
+    if (a < 0) continue;
+    links = Math.min(links, a);
+    rechts = Math.max(rechts, z.lastIndexOf('#'));
+  }
+  return netz.slice(zeilen[0], zeilen[zeilen.length - 1]! + 1).map((z) => z.slice(links, rechts + 1));
+}
+
+/**
+ * **Die Form aus dem Vault** (T-142): `Formfaktor` ist eine Liste von
+ * Zeilen mit `X` belegt und `0` frei (`0X0`). Gelesen wird jedes Zeichen,
+ * das kein freies ist, als belegt — auch ein kleines `x` —, und die Ränder
+ * gehen weg. Was keine Zeilen sind, gibt keine Form.
+ */
+export function shapeFromVault(raw: unknown): string[] {
+  const zeilen = Array.isArray(raw) ? raw.map((z) => String(z ?? '').trim()) : typeof raw === 'string' ? raw.split(/[,\n]/).map((z) => z.trim()) : [];
+  return trimShape(zeilen.filter(Boolean));
+}
+
+/**
+ * **Lohnt Spiegeln?** (T-142) Nur wenn die gespiegelte Form keine Drehung
+ * der ursprünglichen ist — ein Stab, ein Quadrat, ein T sind gespiegelt
+ * dieselben, ein L oder S nicht. Wo es nichts ändert, bietet das Inventar
+ * es nicht an.
+ */
+export function shapeChiral(rows: unknown): boolean {
+  const r = trimShape(rows);
+  if (!r.length) return false;
+  const gespiegelt = trimShape(flipGrid(r)).join('/');
+  for (let n = 0; n < 4; n++) if (trimShape(turnGrid(r, n)).join('/') === gespiegelt) return false;
+  return true;
+}
+
+/** Zwei Formen sind dieselbe, wenn sie ohne Ränder Zeichen für Zeichen gleich belegen. */
+export function sameShape(a: unknown, b: unknown): boolean {
+  return trimShape(a).join('/') === trimShape(b).join('/');
+}
+
+/**
+ * **Wie das Bild in der Form liegt** (T-142): Ausschnitt (`x`, `y` in
+ * Prozent der Form, von der Mitte), Vergrösserung, Drehung zur Form in
+ * Vierteln und ob es die Form ausfüllt (`cover`) oder ganz darin steht
+ * (`contain`). Gespeichert am Gegenstand (`Item.inventoryFrame`), denn
+ * dasselbe Schwert sieht in jedem Rucksack gleich aus — die Lage im
+ * Raster steht an der Kante.
+ */
+export interface InventoryFrame {
+  zoom: number;
+  x: number;
+  y: number;
+  rot: number;
+  fit: 'contain' | 'cover';
+}
+
+export const INVENTORY_ZOOM_MAX = 4;
+
+/**
+ * Ein Ausschnitt in seinen Grenzen; Unlesbares fällt auf die Vorgabe:
+ * füllend, mittig, 1× — eingepasst stünde ein Querformat in einem langen
+ * Bogen als schmales Band da.
+ */
+export function inventoryFrame(raw: unknown): InventoryFrame {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const zahl = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+  const klemm = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const rot = ((Math.round(zahl(o['rot'], 0) / 90) % 4) + 4) % 4;
+  return {
+    zoom: klemm(zahl(o['zoom'], 1), 0.25, INVENTORY_ZOOM_MAX),
+    x: klemm(zahl(o['x'], 0), -100, 100),
+    y: klemm(zahl(o['y'], 0), -100, 100),
+    rot: rot * 90,
+    fit: o['fit'] === 'contain' ? 'contain' : 'cover',
+  };
+}
+
+/**
+ * **Das Bild im Inventar** (T-142): das eigene Inventarbild
+ * (`Item.inventoryImage`), sonst das Bild des Gegenstands (`Image.image`).
+ * Ohne Bild keines — gezeichnet wird dann die Farbe des Stücks.
+ */
+export function inventoryImageOf(item: Entity | null | undefined): { asset: string; frame: InventoryFrame; own: boolean } | null {
+  const karte = (item?.components?.['Item'] ?? {}) as Record<string, unknown>;
+  const eigen = typeof karte['inventoryImage'] === 'string' && karte['inventoryImage'] ? (karte['inventoryImage'] as string) : '';
+  const bild = item?.components?.['Image']?.['image'];
+  const asset = eigen || (typeof bild === 'string' ? bild : '');
+  return asset ? { asset, frame: inventoryFrame(karte['inventoryFrame']), own: !!eigen } : null;
+}
+
+export function filled(shape: Shape, x: number, y: number): boolean {
+  return belegtZeichen(shape.rows[y]?.charAt(x) ?? '');
+}
+
+/**
+ * **Die Form des Behälters:** seine eigene (`Inventory.grid`), sonst das
+ * Tragraster nach dem Blatt, sonst das Rechteck aus den Einstellungen
+ * (`inventoryCols` × `inventoryRows`). Wer seine Form selbst sagt, gewinnt.
+ */
+export function containerShape(grid: unknown, carry: readonly string[] | null, cols = 10, rows = 6): Shape {
+  const eigen = shapeRows(grid);
+  if (eigen.length) return alsForm(eigen);
+  if (carry?.length) return alsForm([...carry]);
+  const c = Math.max(1, Math.trunc(cols) || 10);
+  return alsForm(Array.from({ length: Math.max(1, Math.trunc(rows) || 6) }, () => '#'.repeat(c)));
+}
+
+/** Ein Stück im Raster: welche Kante, welche Form, wo, wie gedreht und ob gespiegelt. */
+export interface GridPiece {
+  key: string;
+  rows: unknown;
+  gx?: number | null;
+  gy?: number | null;
+  rot?: number | null;
+  flip?: boolean | null;
+}
+
+function liegt(p: GridPiece): p is GridPiece & { gx: number; gy: number } {
+  return typeof p.gx === 'number' && typeof p.gy === 'number';
+}
+
+/** Die Felder, die ein Stück belegt, als `x,y`. */
+export function cellsOf(p: GridPiece, rot = p.rot ?? 0, gx = p.gx ?? 0, gy = p.gy ?? 0, flip = !!p.flip): string[] {
+  const f = itemShape(p.rows, rot, flip);
+  const out: string[] = [];
+  for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (filled(f, x, y)) out.push(`${gx + x},${gy + y}`);
+  return out;
+}
+
+/**
+ * **Passt das Stück dorthin?** Der Rand, gesperrte Felder und belegte
+ * Felder sind die einzigen Gründe für nein — Gewicht zählt im Raster nicht.
+ */
+export function fitsAt(box: Shape, pieces: readonly GridPiece[], piece: GridPiece, gx: number, gy: number, rot = piece.rot ?? 0, flip = !!piece.flip): boolean {
+  const f = itemShape(piece.rows, rot, flip);
+  if (gx < 0 || gy < 0 || gx + f.w > box.w || gy + f.h > box.h) return false;
+  const belegt = new Set<string>();
+  for (const p of pieces) if (p.key !== piece.key && liegt(p)) for (const c of cellsOf(p)) belegt.add(c);
+  for (const c of cellsOf(piece, rot, gx, gy, flip)) {
+    const [x, y] = c.split(',').map(Number) as [number, number];
+    if (!filled(box, x, y) || belegt.has(c)) return false;
+  }
+  return true;
+}
+
+/** Der erste freie Platz, zeilenweise von oben links — erst wie es liegt, dann gedreht. */
+export function firstFreeSpot(box: Shape, pieces: readonly GridPiece[], piece: GridPiece): { gx: number; gy: number; rot: number } | null {
+  const r0 = piece.rot ?? 0;
+  for (const rot of [r0, (r0 + 90) % 360]) {
+    for (let gy = 0; gy < box.h; gy++) for (let gx = 0; gx < box.w; gx++) if (fitsAt(box, pieces, piece, gx, gy, rot)) return { gx, gy, rot };
+  }
+  return null;
+}
+
+/**
+ * Liegt ein Stück noch ganz in der Form? Das Tragraster wächst und
+ * schrumpft mit dem Statblock; was gestern passte, liegt heute vielleicht
+ * im gesperrten Teil. Seine Lage bleibt gespeichert, gezeigt wird es im Fach.
+ */
+export function pieceInShape(box: Shape, piece: GridPiece): boolean {
+  if (!liegt(piece)) return false;
+  const f = itemShape(piece.rows, piece.rot ?? 0, !!piece.flip);
+  if (piece.gx < 0 || piece.gy < 0 || piece.gx + f.w > box.w || piece.gy + f.h > box.h) return false;
+  return cellsOf(piece).every((c) => {
+    const [x, y] = c.split(',').map(Number) as [number, number];
+    return filled(box, x, y);
+  });
+}
+
+/** Die **langsamste** Zone, die ein Stück bedeckt — man muss das Ganze herausbekommen. */
+export function pieceZone(zones: Record<string, string>, piece: GridPiece, ladder: readonly string[]): string | null {
+  if (!liegt(piece)) return null;
+  let best: string | null = null;
+  for (const c of cellsOf(piece)) best = slowerDraw(best, zones[c], ladder);
+  return best;
+}
+
+// ------------------------------------------------------------ Gewicht und Slots
+
+/** Ein Posten, wie Gewicht und Slots ihn brauchen. */
+export interface Load {
+  qty: number;
+  weight?: number | null;
+  stackSize?: number | null;
+}
+
+/** Das Gesamtgewicht (Menge × Gewicht); ein Stück ohne Gewicht wiegt nichts. */
+export function totalWeight(items: readonly Load[]): number {
+  const s = items.reduce((m, i) => m + (Number(i.weight) || 0) * (Number(i.qty) || 0), 0);
+  return Math.round(s * 100) / 100;
+}
+
+/** Slots: je Stapel einer, ein Stapel fasst `stackSize` (ohne Angabe 1). */
+export function slotsUsed(items: readonly Load[]): number {
+  return items.reduce((m, i) => m + Math.ceil(Math.max(0, Number(i.qty) || 0) / Math.max(1, Math.trunc(Number(i.stackSize) || 1))), 0);
+}
+
+/** Wie viel mehr eine Grösse trägt (5e: Tiny ½, Large 2, Huge 4, Gargantuan 8). */
+export function sizeFactor(size: string | null | undefined): number {
+  const f: Record<string, number> = { tiny: 0.5, large: 2, huge: 4, gargantuan: 8 };
+  return f[String(size ?? '').toLowerCase()] ?? 1;
+}
+
+export type LoadStage = 'light' | 'encumbered' | 'heavy' | 'over';
+
+/**
+ * **Tragestufen** nach der Variante aus dem Spielerhandbuch: bis 5 × STÄ
+ * leicht, bis 10 × belastet, bis 15 × schwer belastet (zugleich die
+ * Tragfähigkeit), darüber zu viel. Ohne Stärke keine Stufe — eine
+ * geschätzte sähe aus wie eine, die stimmt.
+ */
+export function loadStage(total: number, str: number | null | undefined, factor = 1): { stage: LoadStage; encumbered: number; heavy: number; max: number } | null {
+  const s = Number(str);
+  if (str === null || str === undefined || !Number.isFinite(s) || s <= 0) return null;
+  const encumbered = 5 * s * factor;
+  const heavy = 10 * s * factor;
+  const max = 15 * s * factor;
+  const stage: LoadStage = total > max ? 'over' : total > heavy ? 'heavy' : total > encumbered ? 'encumbered' : 'light';
+  return { stage, encumbered, heavy, max };
+}
+
+/** Kupfer als Münzen (pp, gp, sp, cp), die grösste zuerst — nur zur Anzeige; gespeichert bleibt Kupfer. */
+export function coins(copper: unknown): { pp: number; gp: number; sp: number; cp: number } {
+  let c = Math.max(0, Math.trunc(Number(copper) || 0));
+  const pp = Math.floor(c / 1000);
+  c -= pp * 1000;
+  const gp = Math.floor(c / 100);
+  c -= gp * 100;
+  const sp = Math.floor(c / 10);
+  return { pp, gp, sp, cp: c - sp * 10 };
+}
+
+// ------------------------------------------------------------ Reservierung (T-128)
+
+/**
+ * **Ein Stück ist reserviert für …** (T-127, Schnittstelle für T-128): die
+ * Kante `holds` nennt in `props.reservedFor` den Artikel, der das Stück
+ * gerade braucht — einen Handwerksauftrag. Es bleibt, wo es liegt, und
+ * gehört weiter der Figur; nur verschieben, aufteilen oder ausgeben lässt
+ * es sich nicht, bis die Reservierung fällt. An der Kante und nicht am
+ * Gegenstand, wie die Drehung: reserviert ist *dieser* Stapel hier.
+ */
+export const RESERVED_FOR = 'reservedFor';
+
+/** Die Lage im Raster und am Körper: sie gilt nur im Behälter, in dem das Stück liegt. */
+const LAGE = ['gx', 'gy', 'rot', 'flip', 'slot'];
+
+export function reservedFor(edge: Pick<Relation, 'props'> | null | undefined): EntityId | null {
+  const v = edge?.props?.[RESERVED_FOR];
+  return typeof v === 'string' && v ? v : null;
+}
+
+/** Eine Kante mit gesetzter oder gelöster Reservierung (neu, die alte bleibt unberührt). */
+export function reserve<R extends Pick<Relation, 'props'>>(edge: R, forId: EntityId | null): R {
+  const props = { ...(edge.props ?? {}) };
+  if (forId) props[RESERVED_FOR] = forId;
+  else delete props[RESERVED_FOR];
+  return { ...edge, props };
+}
+
+/** Was eine Schreibung an einem reservierten Stück täte: es wegnehmen, es ändern, eins erfinden. */
+export interface ReservationBreach {
+  edge: string;
+  item: EntityId;
+  order: EntityId;
+  change: 'removed' | 'changed' | 'added';
+}
+
+/**
+ * **Die Sperre** (T-134): was `after` gegenüber `before` an reservierten
+ * Stücken anrührt. Ein reserviertes Stück bleibt, wie es ist — nicht weg
+ * (verkauft, verbraucht, verschoben, gelöscht), nicht anders (Menge,
+ * Gegenstand, Reservierung) —, solange sein Auftrag läuft (`live`). Nur
+ * die Lage im selben Behälter (Raster, Platz, Drehung, Griffweite `tier`)
+ * darf sich ändern: umräumen gibt nichts frei. Eine Reservierung **setzt** keine
+ * Schreibung; das tut der Auftrag (T-128). Ein Stück, dessen Auftrag
+ * nicht mehr läuft, ist frei — eine Reservierung ohne Auftrag sperrt nicht
+ * für immer.
+ */
+export function reservationBreaches(
+  before: Pick<Entity, 'relations'> | null | undefined,
+  after: Pick<Entity, 'relations'> | null | undefined,
+  live: (order: EntityId) => boolean,
+): ReservationBreach[] {
+  const vorher = new Map((before?.relations ?? []).filter((r) => r.type === 'holds').map((r) => [r.id, r]));
+  const nachher = new Map((after?.relations ?? []).filter((r) => r.type === 'holds').map((r) => [r.id, r]));
+  const ohneLage = (r: Relation) => {
+    const p: Record<string, unknown> = { ...(r.props ?? {}) };
+    /* Verstauen (T-140) ist umräumen: `unstowed` darf fallen. */
+    for (const k of [...LAGE, 'tier', 'unstowed']) delete p[k];
+    return JSON.stringify(Object.keys(p).sort().map((k) => [k, p[k]]));
+  };
+  const raus: ReservationBreach[] = [];
+  for (const [id, r] of vorher) {
+    const order = reservedFor(r);
+    if (!order || !live(order)) continue;
+    const n = nachher.get(id);
+    if (!n) raus.push({ edge: id, item: r.to, order, change: 'removed' });
+    else if (n.to !== r.to || ohneLage(n) !== ohneLage(r)) raus.push({ edge: id, item: r.to, order, change: 'changed' });
+  }
+  for (const [id, n] of nachher) {
+    const order = reservedFor(n);
+    if (order && order !== reservedFor(vorher.get(id))) raus.push({ edge: id, item: n.to, order, change: 'added' });
+  }
+  return raus;
+}
+
+// ------------------------------------------------------------ Verschieben
+
+export type MoveRefusal = 'missing' | 'reserved' | 'same' | 'cycle';
+
+/**
+ * **Ein Stück von einem Inventar in ein anderes** (T-127): Figur → Gruppe,
+ * in einen Behälter, zurück. Gibt beide Inventare neu zurück; die alten
+ * bleiben unberührt. `qty` weniger als der Stapel teilt ihn. Die Lage
+ * (Raster, Platz, Drehung) bleibt zurück — sie war die im alten Behälter;
+ * im neuen liegt es im Fach, bis jemand es hinlegt. Liegt dort schon
+ * derselbe Gegenstand lose im Fach, wächst dessen Stapel.
+ *
+ * Nein sagt es, wenn das Stück reserviert ist, das Ziel dasselbe ist, oder
+ * wenn das Ziel in dem Stück selbst steckt (`inside`: die Inventare, die
+ * dieser Gegenstand trägt, und was darin liegt) — ein Rucksack in sich selbst.
+ *
+ * Unverstautes (T-140, `holds.props.unstowed`) bleibt unverstaut, wenn es
+ * nur den Träger wechselt — der Gruppe gegeben, ist es noch nicht
+ * eingepackt. In einen **Behälter** gelegt ist es verstaut (`stow`), und
+ * gestapelt wird nur auf einen Stapel im selben Zustand.
+ */
+export function moveHeld(
+  from: Entity,
+  to: Entity,
+  edgeId: string,
+  opts: { qty?: number; newId: string; inside?: ReadonlySet<EntityId>; stow?: boolean },
+): { from: Entity; to: Entity } | { refused: MoveRefusal } {
+  if (from.id === to.id) return { refused: 'same' };
+  const kante = (from.relations ?? []).find((r) => r.id === edgeId && r.type === 'holds');
+  if (!kante) return { refused: 'missing' };
+  if (reservedFor(kante)) return { refused: 'reserved' };
+  if (opts.inside?.has(to.id)) return { refused: 'cycle' };
+  const alle = Math.max(1, Number(kante.props?.['qty']) || 1);
+  const n = Math.min(alle, Math.max(1, Math.trunc(opts.qty ?? alle)));
+  const rest = (from.relations ?? []).flatMap((r) => {
+    if (r.id !== edgeId) return [r];
+    return n < alle ? [{ ...r, props: { ...(r.props ?? {}), qty: alle - n } }] : [];
+  });
+  const props: Record<string, unknown> = { ...(kante.props ?? {}), qty: n };
+  for (const k of LAGE) delete props[k];
+  if (props['tier'] !== 'stored') props['tier'] = 'pack';
+  if (opts.stow) delete props['unstowed'];
+  const offen = props['unstowed'] === true;
+  const lose = (r: Relation) =>
+    r.type === 'holds' && r.to === kante.to && !reservedFor(r) && (r.props?.['unstowed'] === true) === offen &&
+    LAGE.every((k) => r.props?.[k] === undefined || r.props?.[k] === null);
+  const ziel = to.relations ?? [];
+  const da = ziel.find(lose);
+  const neu = da
+    ? ziel.map((r) => (r === da ? { ...r, props: { ...(r.props ?? {}), qty: (Number(r.props?.['qty']) || 1) + n } } : r))
+    : [...ziel, { id: opts.newId, type: 'holds', to: kante.to, props }];
+  return { from: { ...from, relations: rest }, to: { ...to, relations: neu } };
+}
+
+/**
+ * Was in einem Gegenstand steckt: die Inventare, die er trägt (`carries`),
+ * und rekursiv die der Gegenstände darin. Für die Frage, ob ein Ziel ein
+ * Rucksack in sich selbst wäre.
+ */
+export function insideOf(item: EntityId, byId: ReadonlyMap<EntityId, Entity>): Set<EntityId> {
+  const raus = new Set<EntityId>();
+  const offen = [item];
+  while (offen.length) {
+    const e = byId.get(offen.pop()!);
+    for (const r of e?.relations ?? []) {
+      if (r.type !== 'carries' || raus.has(r.to)) continue;
+      raus.add(r.to);
+      for (const h of byId.get(r.to)?.relations ?? []) if (h.type === 'holds') offen.push(h.to);
+    }
+  }
+  return raus;
+}
+
+// ------------------------------------------------------------ Ankerzelle (REQ-402)
+
+/** Eine Zelle in der Form eines Stücks, so wie es liegt (gedreht, gespiegelt). */
+export interface GrabAnchor {
+  x: number;
+  y: number;
+}
+
+/**
+ * **Die Ankerzelle, wenn keine gewählt ist** (REQ-402): das erste belegte
+ * Feld der obersten Zeile. Wer ein Stück aus der Liste auf eine Zelle
+ * legt, meint diese Zelle für das Stück — bei `.#.` über `###` wäre die
+ * Ecke oben links ein leeres Feld, und das Stück läge um eins versetzt.
+ */
+export function defaultAnchor(rows: unknown, rot = 0, flip = false): GrabAnchor {
+  const f = itemShape(rows, rot, flip);
+  for (let y = 0; y < f.h; y += 1) for (let x = 0; x < f.w; x += 1) if (filled(f, x, y)) return { x, y };
+  return { x: 0, y: 0 };
+}
+
+/**
+ * **Die Zelle, an der ein liegendes Stück angefasst wurde**, in seiner Form
+ * (REQ-402): die Rasterzelle minus seine Lage. `null`, wenn die Zelle
+ * nicht zum Stück gehört.
+ */
+export function grabAnchor(rows: unknown, rot: number, flip: boolean, gx: number, gy: number, cellX: number, cellY: number): GrabAnchor | null {
+  const f = itemShape(rows, rot, flip);
+  const x = cellX - gx;
+  const y = cellY - gy;
+  return x >= 0 && y >= 0 && x < f.w && y < f.h && filled(f, x, y) ? { x, y } : null;
+}
+
+/** **Wohin das Stück kommt**, wenn seine Ankerzelle auf dieser Zelle landen soll (REQ-402). */
+export function placeByAnchor(cellX: number, cellY: number, anchor: GrabAnchor): { gx: number; gy: number } {
+  return { gx: cellX - anchor.x, gy: cellY - anchor.y };
 }

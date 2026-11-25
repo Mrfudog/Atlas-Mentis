@@ -2,13 +2,13 @@ import js from '@eslint/js';
 import ts from 'typescript-eslint';
 
 export default ts.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/.angular/**', 'legacy/**', 'prototype/**', 'docs/design/**', 'apps/server/public/**', '.obsidian/**', '.trash/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/.angular/**', 'legacy/**', 'prototype/**', 'docs/design/**', 'apps/server/public/**', 'apps/web/e2e/.ergebnis/**', 'apps/web/e2e/.bericht/**', '.obsidian/**', '.trash/**'] },
   js.configs.recommended,
   ...ts.configs.recommended,
   {
     /* Node-Skripte im Repo (Erzeuger, Prüfaufbau) laufen nicht im Browser.
        Ohne diese Zeile hält eslint `process` und `console` für Tippfehler. */
-    files: ['**/scripts/**/*.mjs', '**/*.config.{js,mjs,ts}'],
+    files: ['**/scripts/**/*.mjs', '**/*.config.{js,mjs,ts}', 'apps/web/e2e/**'],
     languageOptions: { globals: {
       process: 'readonly', console: 'readonly', fetch: 'readonly', setTimeout: 'readonly',
     } },

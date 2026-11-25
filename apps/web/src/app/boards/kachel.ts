@@ -1,18 +1,28 @@
 import { Component, computed, inject, input } from '@angular/core';
 import {
+  elementTakes,
   entriesOf,
+  drawnByTree,
+  entityName,
+  fieldText,
   fieldTitle,
-  layoutFor,
+  forArticle,
+  pickView,
   primaryInterface,
   proseFields,
   typeChain,
+  unitsFor,
 } from '@nw/model';
-import type { Entity, LayoutElement, Registry, VarScopes } from '@nw/model';
+import type { Entity, IncomingEdge, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
 import { Statblock } from '../artikel/statblock';
 import { Zauber } from '../artikel/zauber';
 import { Gegenstand } from '../artikel/gegenstand';
+import { Kennzahlen } from '../artikel/kennzahlen';
+import { TokenBild } from '../artikel/token-bild';
+import { Ansichtsbaum } from '../ansichten/baum';
+import { Bild, bildDes } from '../artikel/bild';
 
 /** Was die Kachel aus einem Element des Layouts macht. */
 type Stueck =
@@ -21,7 +31,14 @@ type Stueck =
   | { art: 'prosa'; id: string; absaetze: { ref: string; label: string; text: string }[] }
   | { art: 'teile'; id: string; gruppen: { label: string; namen: string[] }[] }
   /* Wie im Buch (W2): der Baustein der Artikelseite, derselbe Satz. */
-  | { art: 'statblock' | 'spell' | 'item'; id: string };
+  | { art: 'statblock' | 'spell' | 'item'; id: string }
+  /* Die Kennzahlen (T-206): AC, HP, Bewegung … als Kacheln. */
+  | { art: 'stats'; id: string }
+  | { art: 'token'; id: string }
+  /* Das Bild (T-346): in `quick` zuletzt, und die Kachel schneidet es unten ab. */
+  | { art: 'bild'; id: string; bild: { wert: string; caption: string; alt: string; version?: string } }
+  /* Was nur der Baum zeichnet (T-310): Behälter, Tabellen — oder eine ganze gestaltete Ansicht. */
+  | { art: 'baum'; id: string; layout: LayoutElement[] };
 
 /* Was die Kachel nicht noch einmal zeigt: der Name steht im Kopf, Nummer,
    Sichtbarkeit und Quelle gehören auf die Artikelseite. */
@@ -31,7 +48,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  * Ein Artikel auf einer Kachel des Boards — in der Ansicht, die die Kachel
  * gewählt hat (`overview` oder `quick`, REQ-161).
  *
- * **Gezeichnet wird die Anordnung der Art** (`layoutFor`, die
+ * **Gezeichnet wird die Anordnung der Art** (`pickView` → `layoutFor`, die
  * `extends`-Kette hoch), nicht eine Vorlage je Artikelart: ein Statblock
  * zeigt auf der Karte seine Zahlen, weil er es an sich sagt, und eine Szene
  * ihren Absatz, weil die Grundanordnung von `quick` es sagt. Was ein
@@ -43,7 +60,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-kachel',
-  imports: [Text, Statblock, Zauber, Gegenstand],
+  imports: [Text, Statblock, Zauber, Gegenstand, Kennzahlen, TokenBild, Ansichtsbaum, Bild],
   template: `
     @for (s of stuecke(); track s.id) {
       @switch (s.art) {
@@ -68,11 +85,25 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
         @case ('statblock') {
           <nw-statblock [artikel]="artikel()" />
         }
+        @case ('stats') {
+          <nw-kennzahlen [artikel]="artikel()" />
+        }
+        @case ('token') {
+          <nw-token [artikel]="artikel()" />
+        }
+        @case ('bild') {
+          <div class="bildfach">
+            <nw-bild [wert]="s.bild.wert" [version]="s.bild.version" groesse="thumb" [caption]="s.bild.caption" [alt]="s.bild.alt" />
+          </div>
+        }
         @case ('spell') {
           <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />
         }
         @case ('item') {
           <nw-gegenstand [artikel]="artikel()" />
+        }
+        @case ('baum') {
+          <nw-ansichtsbaum [artikel]="artikel()" [layout]="s.layout" [register]="register()" [rueck]="rueck()" />
         }
         @case ('teile') {
           @for (g of s.gruppen; track g.label) {
@@ -85,10 +116,24 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
     }
   `,
   styles: `
+    /* Eine Spalte so hoch wie die Kachel, in der nur das Bildfach
+       nachgibt (T-346): reicht der Platz nicht, wird das Bild unten
+       abgeschnitten, nicht verkleinert. Reicht er schon für den Text nicht,
+       scrollt die Kachel wie bisher. */
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
       font-size: 0.9rem;
       line-height: 1.35;
+    }
+    :host > * {
+      flex: none;
+    }
+    :host > .bildfach {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow: hidden;
     }
     .satz,
     .prosa {
@@ -129,30 +174,54 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
 export class Kachel {
   readonly artikel = input.required<Entity>();
   readonly ansicht = input.required<string>();
+  /** Ein anderes Register als das geladene — der Entwurf in der Vorschau des Registers (T-110). */
+  readonly register = input<Registry | null>(null);
+  /** Was auf den Artikel zeigt — für Geltungen und Pfade über eingehende Kanten (T-268). */
+  readonly rueck = input<readonly IncomingEdge[]>([]);
+  /** Genau diese Ansicht (die Vorschau im Register), nicht die genaueste ihrer Gruppe. */
+  readonly genau = input(false);
 
   private readonly bestand = inject(Bestand);
+  private readonly reg = computed(() => this.register() ?? this.bestand.registry());
 
   protected readonly scopes = computed<VarScopes>(() => {
     const vars = this.artikel().components?.['Vars'] as
       | { bindings?: Record<string, string> }
       | undefined;
-    return { entity: vars?.bindings, campaign: this.bestand.registry()?.vars };
+    return { entity: vars?.bindings, campaign: this.reg()?.vars };
   });
 
   protected readonly stuecke = computed<Stueck[]>(() => {
-    const r = this.bestand.registry();
+    const r = this.reg();
     const e = this.artikel();
     if (!r) return [];
     const typ = primaryInterface(e);
+    /* Die Ansicht der Kachel ist ein Ort: es gilt die genaueste ihrer Gruppe (T-310). */
+    const wahl = pickView(e, r, this.ansicht(), { incoming: this.rueck(), exact: this.genau(), fallback: 'quick' });
+    /* Eine gestaltete zeichnet ihr Baum ganz — Felder über Kanten kennt nur er. */
+    if (wahl.designed) return [{ art: 'baum', id: wahl.key, layout: wahl.layout }];
+    const view = r.views[wahl.key];
+    /* Was die Ansicht sagt (T-110): leere Felder zeigen, Ungenanntes am Ende. */
+    const opt = { leer: view?.empty === 'show', genommen: new Set<string>() };
     const out: Stueck[] = [];
-    for (const el of layoutFor(r, this.ansicht(), typ).layout) {
-      const s = this.stueck(r, e, typ, el);
+    for (const el of forArticle(wahl.layout, e, this.rueck())) {
+      const s: Stueck | null = drawnByTree(el) ? { art: 'baum', id: el.id, layout: [el] } : this.stueck(r, e, typ, el, opt);
+      if (s) out.push(s);
+    }
+    if (view?.rest) {
+      const s = this.stueck(r, e, typ, { id: 'rest-f', el: 'fields', fields: 'all' }, opt);
       if (s) out.push(s);
     }
     return out;
   });
 
-  private stueck(r: Registry, e: Entity, typ: string, el: LayoutElement): Stueck | null {
+  private stueck(
+    r: Registry,
+    e: Entity,
+    typ: string,
+    el: LayoutElement,
+    opt: { leer: boolean; genommen: Set<string> },
+  ): Stueck | null {
     switch (el.el) {
       case 'description': {
         const d = (e.components?.['Description'] as { description?: string } | undefined)
@@ -160,12 +229,12 @@ export class Kachel {
         return d ? { art: 'text', id: el.id, text: d } : null;
       }
       case 'fields': {
-        const zellen = this.zellen(r, e, typ, el);
+        const zellen = this.zellen(r, e, typ, el, opt);
         return zellen.length ? { art: 'felder', id: el.id, zellen } : null;
       }
       case 'prose': {
         const absaetze = proseFields(r, typ)
-          .filter((f) => waehlt(el, f.type, f.key))
+          .filter((f) => el.fields !== undefined && elementTakes(el, f.type, f.key))
           .flatMap((f) =>
             entriesOf((e.components?.[f.type] as Record<string, unknown> | undefined)?.[f.key]).map(
               (x) => ({
@@ -193,9 +262,15 @@ export class Kachel {
           ? { art: 'teile', id: el.id, gruppen: [...gruppen].map(([label, namen]) => ({ label, namen })) }
           : null;
       }
+      case 'image': {
+        const bild = bildDes(e, r, this.bestand.bild().get(e.id));
+        return bild ? { art: 'bild', id: el.id, bild: { ...bild, alt: bild.alt || entityName(e) } } : null;
+      }
       case 'statblock':
       case 'spell':
       case 'item':
+      case 'stats':
+      case 'token':
         return { art: el.el, id: el.id };
       default:
         return null;
@@ -208,19 +283,23 @@ export class Kachel {
     e: Entity,
     typ: string,
     el: LayoutElement,
+    opt: { leer: boolean; genommen: Set<string> },
   ): { ref: string; label: string; wert: string }[] {
     const out: { ref: string; label: string; wert: string }[] = [];
     for (const comp of typeChain(r, typ)) {
       if (NICHT_AUF_DER_KACHEL.includes(comp)) continue;
-      const karte = e.components?.[comp] as Record<string, unknown> | undefined;
+      const karte = (e.components?.[comp] as Record<string, unknown> | undefined) ?? (opt.leer ? {} : undefined);
       if (!karte) continue;
       for (const [prop, schema] of Object.entries(r.interfaces[comp]?.schema?.properties ?? {})) {
-        if (!waehlt(el, comp, prop)) continue;
+        if (el.fields === undefined || !elementTakes(el, comp, prop) || opt.genommen.has(`${comp}.${prop}`)) continue;
         /* Die Beschreibung steht als Satz, ein Prosafeld als Absatz — nicht
            noch einmal als Wert. */
         if (comp === 'Description' || (schema.many && schema.format === 'long')) continue;
-        const wert = alsText(karte[prop]);
-        if (!wert) continue;
+        /* Ein Mass in Einheiten wie auf der Seite (T-346): „60 ft", nicht „60". */
+        const roh = typeof karte[prop] === 'number' ? fieldText(r, schema, karte[prop], unitsFor(r, typ)) : alsText(karte[prop]);
+        if (!roh && (!opt.leer || schema.derived)) continue;
+        const wert = roh || '—';
+        opt.genommen.add(`${comp}.${prop}`);
         out.push({
           ref: `${comp}.${prop}`,
           label: fieldTitle(r, typ, { type: comp, key: prop, prop: schema }),
@@ -230,15 +309,6 @@ export class Kachel {
     }
     return out;
   }
-}
-
-/** Nimmt dieses Element (`fields`/`prose`) das Feld `typ.feld`? */
-function waehlt(el: LayoutElement, typ: string, feld: string): boolean {
-  const weg = el.except ?? [];
-  if (weg.includes(typ) || weg.includes(`${typ}.${feld}`)) return false;
-  if (el.fields === 'all') return true;
-  if (!Array.isArray(el.fields)) return false;
-  return el.fields.includes(typ) || el.fields.includes(`${typ}.${feld}`);
 }
 
 function alsText(wert: unknown): string {

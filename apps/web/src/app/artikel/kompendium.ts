@@ -1,12 +1,30 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { BASE_COLUMNS, columnChoices, plainText, typeIcon, type ColumnChoice } from '@nw/model';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
+import { Stapel } from '../kern/stapel';
+import { QuelleText } from '../kern/quellen';
 import { Bestand } from '../kern/bestand';
+import { Klappstand } from '../kern/klappstand';
 import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
-import { ListenFilter } from '../kern/filter';
+import { ListenFilter, feldfilterAlsF, feldfilterAusF } from '../kern/filter';
+import { AusgeblendetHinweis } from '../kern/ausgeblendet';
+import { NichtImSpiel } from '../kern/nicht-im-spiel';
+import { KurzLink } from '../kern/kurzansicht';
+import { ALLE, Filtergruppen } from '../kern/filtergruppen';
+import type { Filtergruppe, GespeicherterFilter } from '../kern/api';
+import { FiltergruppeMaske } from './filtergruppe';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
+import { Bild } from './bild';
+import { ansichtWeg } from '../klassen/ansicht-weg';
+import { Spalten } from '../kern/spalten';
+import { Spaltenwahl } from './spaltenwahl';
+import { Klappleiste } from '../muster/klappleiste';
+import { Icon } from '../muster/icon';
+import { Zeitfilter } from './zeitfilter';
+import { Beziehungsfilter } from './beziehungsfilter';
 
 interface TypGruppe {
   label: string;
@@ -23,21 +41,28 @@ const OFFEN = 8;
  * (`Compendium.dc.html`, Vorschau nach `Main.dc.html`): links die Filter,
  * in der Mitte die Tabelle, rechts die Vorschau der angeklickten Zeile.
  *
+ * **Fassungen derselben Sache stehen als eine Zeile** (T-092, E-021 d):
+ * Kopf ist die aus der obersten Spielebene, die übrigen klappen darunter
+ * auf, je mit Ebene und Quelle.
+ *
  * **Gerechnet wird am Server** (`GET /api/list`, W7): Suche, Arten mit
- * Zahl, Ebenen, Feldfilter und das Blatt. Bis zum 13.10. lud diese Seite
+ * Zahl, Feldfilter und das Blatt. **Welche Ebenen** gelten, sagt der
+ * globale Stand der Kampagne (Kopfleiste); einen eigenen Ebenenfilter hat
+ * die Seite seit T-186 nicht mehr, nur den Weg dorthin. Bis zum 13.10. lud diese Seite
  * die Kurzfassung aller 24 157 Artikel und rechnete hier — jetzt kommt ein
  * Blatt mit 50 Zeilen und den Facetten, rund ein bis zwei Kilobyte gepackt.
  *
  * Ein Bereich (`world`, `story`, `rules`) ist das Kompendium, eingeschränkt
  * auf die Arten, deren `area` dorthin zeigt — das sagt der Server
- * (`areaOf`). Welche Spalten eine Art zeigt und wonach sie sich filtern
- * lässt, sagt ihre `overview` (`listColumns`); im Code steht nichts davon.
+ * (`areaOf`). Welche Spalten eine Art zeigt, sagt ihre `overview`
+ * (`listColumns`); wonach sie sich filtern lässt, sagen ihre Felder und
+ * Kanten (`facetsFor`, T-174). Im Code steht nichts davon.
  *
  * Der Server hat schon gesiebt; hier wird nichts zurückgehalten.
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske, NichtImSpiel, Spaltenwahl, Zeitfilter, Beziehungsfilter, Klappleiste, Icon],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -50,6 +75,20 @@ const OFFEN = 8;
             (input)="suchen($any($event.target).value)"
           />
         </label>
+
+        <!-- Die Klappleiste (T-359): alle Facetten auf und zu, von einer zur
+             nächsten. Nicht fest — die Filter sind am Telefon selbst ein Blatt. -->
+        <nw-klappleiste class="facettenleiste" beschriftung="Filter sections" [fest]="false" />
+
+        <!-- Die Ansichten des Bereichs Rules (W6, T-166): wie im Buch statt als Zeile. -->
+        @if (bereich() === 'rules') {
+          <fieldset>
+            <legend class="leg">Views</legend>
+            <a routerLink="/classes" class="typ">Classes</a>
+            <a routerLink="/ancestries" class="typ">Ancestries</a>
+            <a routerLink="/backgrounds" class="typ">Backgrounds</a>
+          </fieldset>
+        }
 
         <fieldset>
           <legend class="leg">Type</legend>
@@ -79,9 +118,16 @@ const OFFEN = 8;
           }
         </fieldset>
 
-        @for (f of liste()?.facets?.fields ?? []; track f.ref) {
-          <fieldset>
-            <legend class="leg">{{ f.label }}</legend>
+        <!-- Facetten aus dem Register (T-174): jedes Feld und jede Kante der
+             Art, die etwas unterscheidet — aufklappbar, gewählte offen. -->
+        @for (f of liste()?.facets?.fields ?? []; track f.ref; let i = $index) {
+          <details class="facette" data-bereich [open]="facetteOffen(f.ref, i)" (toggle)="facetteUmschalten(f.ref, $any($event.target).open, i)">
+            <summary class="leg">
+              {{ f.label }}
+              @if (filter.felder()[f.ref]; as w) {
+                <span class="gewaehlt">{{ w.values?.length ?? '·' }}</span>
+              }
+            </summary>
             @if (f.kind === 'enum') {
               @for (o of offeneWerte(f.ref, f.options); track o.value) {
                 <label class="haken">
@@ -90,13 +136,21 @@ const OFFEN = 8;
                     [checked]="gewaehlt(f.ref, o.value)"
                     (change)="wertUmschalten(f.ref, o.value)"
                   />
-                  {{ o.value }} <span class="zahl">{{ o.count }}</span>
+                  <span class="wert">{{ o.label ?? o.value }}
+                    @if (o.group && f.of === 'link') {
+                      <span class="art">{{ o.group }}</span>
+                    }
+                  </span>
+                  <span class="zahl">{{ o.count }}</span>
                 </label>
               }
               @if (f.options.length > OFFEN) {
                 <button type="button" class="mehr" (click)="aufklappen(f.ref)">
                   {{ aufgeklappt().has(f.ref) ? 'Fewer' : f.options.length - OFFEN + ' more' }}
                 </button>
+              }
+              @if (f.more && (aufgeklappt().has(f.ref) || f.options.length <= OFFEN)) {
+                <span class="leer">and {{ f.more }} more with fewer matches</span>
               }
             } @else {
               <div class="spanne">
@@ -119,23 +173,59 @@ const OFFEN = 8;
                 />
               </div>
             }
-          </fieldset>
+          </details>
         }
 
-        @if (ebenen().length > 1) {
-          <fieldset>
-            <legend class="leg">Where from</legend>
-            @for (l of ebenen(); track l.id) {
-              <label class="haken">
-                <input
-                  type="checkbox"
-                  [checked]="!filter.ohneEbenen().has(l.id)"
-                  (change)="ebeneUmschalten(l.id)"
-                />
-                {{ l.name }} <span class="zahl">{{ l.count }}</span>
-              </label>
+        <!-- Wann und von wem (T-382): als Facetten @added, @changed, @by in f=. -->
+        <nw-zeitfilter
+          [felder]="filter.felder()"
+          [autoren]="liste()?.facets?.addedBy ?? []"
+          [sortierung]="filter.sortierung()"
+          (setzen)="metaSetzen($event.ref, $event.values)"
+          (sortieren)="filter.sortierung.set($event); filter.blatt.set(0)"
+          [gemerkt]="facettenStand()['@when']"
+          (geklappt)="facetteUmschalten('@when', $event)"
+        />
+
+        <!-- Nach Beziehungen (T-389): als Facette @has in f=. -->
+        <nw-beziehungsfilter
+          [felder]="filter.felder()"
+          [wahlen]="liste()?.facets?.has?.choices ?? []"
+          [ziele]="liste()?.facets?.has?.targets ?? {}"
+          (setzen)="metaSetzen($event.ref, $event.values)"
+          [gemerkt]="facettenStand()['@has']"
+          (geklappt)="facetteUmschalten('@has', $event)"
+        />
+
+        <!-- „Usable by <Figur>" (T-180): neben einer Voraussetzung. Was der
+             Server nicht prüfen kann, bleibt in der Liste und trägt ein „?". -->
+        @if (zeigtBrauchbar()) {
+          <details class="facette" data-bereich open>
+            <summary class="leg">Usable by</summary>
+            <select class="brauchbar" aria-label="Usable by character" (change)="brauchbarSetzen($any($event.target).value)">
+              <option value="" [selected]="!usable()">Anyone</option>
+              @for (c of figuren(); track c.id) {
+                <option [value]="c.id" [selected]="usable() === c.id">{{ c.name }}</option>
+              }
+            </select>
+            @if (liste()?.facets?.usable; as u) {
+              <span class="leer"
+                >{{ u.hidden }} hidden that {{ u.name }} does not meet{{
+                  u.unknown ? '; ' + u.unknown + ' marked “?” could not be checked' : ''
+                }}</span
+              >
+            } @else if (usable()) {
+              <span class="leer">This character is not visible to you.</span>
             }
-          </fieldset>
+          </details>
+        }
+
+        <!-- Ebenen filtert die Seite nicht selbst (T-186): sie folgt dem Stand der Kampagne. -->
+        @if (stapel.laufend(); as k) {
+          <p class="ebenen-hinweis">
+            Showing what {{ k.layers }} {{ k.layers === 1 ? 'layer' : 'layers' }} of {{ k.name }} bring.
+            <button type="button" class="link" (click)="stapel.oeffnen()">Change layers</button>
+          </p>
         }
 
         @if ((liste()?.facets?.partsHidden ?? 0) > 0 || filter.teile()) {
@@ -185,15 +275,64 @@ const OFFEN = 8;
             @if (session.darfAnlegen()) {
               <button type="button" class="pri" (click)="anlegenOffen.set(true)">New article</button>
             }
+            <!-- Welche Spalten die Tabelle zeigt (T-343). -->
+            <button
+              type="button"
+              class="knopf spalten-knopf"
+              [class.an]="!!wahl()"
+              [attr.aria-expanded]="spaltenOffen()"
+              (click)="spaltenOffen.set(!spaltenOffen())"
+            >
+              Columns
+            </button>
             <button type="button" class="nurklein" (click)="filterOffen.set(!filterOffen())">
               {{ filterOffen() ? 'Hide filters' : 'Filters' }}
             </button>
           </div>
         </div>
 
+        <!-- Filtergruppen als Unterreiter (T-137): die Vorgabe der Seite
+             zuerst, dann die der Kampagne, dann die eigenen. -->
+        @if (gruppen.stand()) {
+          <nav class="reiter" aria-label="Filter groups">
+            @for (r of reiter(); track r.key) {
+              <a
+                [routerLink]="[]"
+                [queryParams]="{ view: r.view, type: null }"
+                [class.an]="r.an"
+                [attr.aria-current]="r.an ? 'page' : null"
+                [attr.title]="r.titel"
+                >{{ r.label }}
+                @if (r.eigen) {
+                  <span class="marke-eigen" aria-label="only you">·</span>
+                }
+              </a>
+            }
+            @if (gruppe(); as g) {
+              @if (g.canEdit) {
+                <button type="button" class="reiter-knopf" (click)="maske.set(maske() === 'aendern' ? null : 'aendern')">Edit group</button>
+              }
+            }
+            <button type="button" class="reiter-knopf" (click)="maske.set(maske() === 'neu' ? null : 'neu')">+ Save as group</button>
+          </nav>
+        }
+        @if (maske(); as m) {
+          <nw-filtergruppe
+            [seite]="seite()"
+            [bereich]="bereich()"
+            [gruppe]="m === 'aendern' ? gruppe() : null"
+            [vorlage]="vorlage()"
+            [markenDa]="markenDa()"
+            (zu)="maske.set(null)"
+            (gespeichert)="gespeichert($event)"
+          />
+        }
+
         @if (fehler(); as f) {
           <p class="fehler" role="alert">{{ f }}</p>
         }
+
+        <nw-ausgeblendet [info]="liste()?.unactivated" />
 
         @if (!liste()) {
           <p class="leer">Loading…</p>
@@ -205,47 +344,140 @@ const OFFEN = 8;
                   <th [attr.aria-sort]="ariaSort('name')">
                     <button type="button" class="sort" (click)="sortiere('name')">Name{{ pfeil('name') }}</button>
                   </th>
-                  @if (!type()) {
-                    <th [attr.aria-sort]="ariaSort('type')">
-                      <button type="button" class="sort" (click)="sortiere('type')">Type{{ pfeil('type') }}</button>
-                    </th>
+                  @for (c of tabellenSpalten(); track c.ref) {
+                    @if (c.ref === '@source' && !wahl()) {
+                      <th>{{ c.label }}</th>
+                    } @else {
+                      <th [attr.aria-sort]="ariaSort(sortRef(c.ref))" [class.zahlspalte]="c.kind === 'number'">
+                        <button type="button" class="sort" (click)="sortiere(sortRef(c.ref))">{{ c.label }}{{ pfeil(sortRef(c.ref)) }}</button>
+                      </th>
+                    }
                   }
-                  @for (c of liste()!.columns; track c.ref) {
-                    <th [attr.aria-sort]="ariaSort(c.ref)" [class.zahlspalte]="c.kind === 'number'">
-                      <button type="button" class="sort" (click)="sortiere(c.ref)">{{ c.label }}{{ pfeil(c.ref) }}</button>
-                    </th>
-                  }
-                  <th>Source</th>
                 </tr>
               </thead>
               <tbody>
                 @for (z of liste()!.rows; track z.id) {
                   <tr [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
                     <td class="name">
+                      <!-- Das Vorschaubild, wenn die Übersicht der Art eines zeigt (T-114). -->
+                      @if (z.image) {
+                        <nw-bild class="daumen" [wert]="z.image" [version]="z.imageVersion" groesse="thumb" [oeffnen]="false" alt="" />
+                      }
+                      <!-- Das Icon der Art (T-461); das eigene eines Artikels zeigt erst seine Seite. -->
+                      <nw-icon [name]="typIcon(z.type)" />
                       <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
+                      <!-- Am Telefon führt die Zeile gleich zum Artikel; die Karte
+                           zeigt dieser Knopf (T-093). -->
+                      <button type="button" class="quick-info zeilen-info" [nwQuick]="z.id" [attr.aria-label]="'Quick view of ' + z.name">i</button>
                       @if (z.status && z.status !== 'ready') {
                         <span class="stand">{{ z.status }}</span>
+                      }
+                      @if (z.usable === 'unknown') {
+                        <span class="stand" title="The requirement could not be checked against this character">?</span>
                       }
                       @if ((z.users ?? 0) > 1) {
                         <span class="stand" title="Statblocks using this">used by {{ z.users }}</span>
                       } @else if (z.users === 1 && filter.teile()) {
                         <span class="stand">part</span>
                       }
+                      @if (z.versions?.length) {
+                        <button
+                          type="button"
+                          class="fassungen"
+                          [attr.aria-expanded]="fassungenOffen().has(z.id)"
+                          [attr.aria-label]="(fassungenOffen().has(z.id) ? 'Hide' : 'Show') + ' the other versions of ' + z.name"
+                          (click)="fassungenZeigen(z.id, $event)"
+                        >
+                          {{ fassungenOffen().has(z.id) ? '▾' : '▸' }} {{ z.versions!.length + 1 }} versions
+                        </button>
+                      }
                     </td>
-                    @if (!type()) {
-                      <td>{{ typLabel(z.type) }}</td>
+                    @for (c of tabellenSpalten(); track c.ref) {
+                      @if (c.ref === '@type') {
+                        <td>{{ typLabel(z.type) }}</td>
+                      } @else if (c.ref === '@source') {
+                        <td class="dim quelle">
+                          @if (z.source) {
+                            <nw-quelle [text]="z.source" />
+                            <!-- Die Ebene knapp, wenn es nicht die der Kampagne ist (T-251). -->
+                            @if (fremdeEbenen(z.layers); as l) {
+                              <small class="ebene"> · {{ l }}</small>
+                            }
+                          } @else {
+                            {{ z.layers.join(', ') }}
+                          }
+                        </td>
+                      } @else {
+                        <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
+                      }
                     }
-                    @for (c of liste()!.columns; track c.ref) {
-                      <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
-                    }
-                    <td class="dim quelle">{{ z.source || z.layers.join(', ') }}</td>
                   </tr>
+                  @if (fassungenOffen().has(z.id)) {
+                    @for (v of z.versions ?? []; track v.id) {
+                      <tr class="unter" [class.gewaehlt]="filter.vorschau() === v.id" (click)="zeile({ id: v.id, type: z.type }, $event)">
+                        <td class="name">
+                          <a [routerLink]="zielVon({ id: v.id, type: z.type })" (click)="link({ id: v.id, type: z.type }, $event)">{{ v.name }}</a>
+                        </td>
+                        @if (spaltenZahl() > 1) {
+                          <td [attr.colspan]="spaltenZahl() - 1" class="dim quelle">
+                            {{ v.layers.join(', ') }}
+                            @if (v.source) {
+                              · <nw-quelle [text]="v.source" />
+                            }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  }
                 } @empty {
                   <tr>
                     <td [attr.colspan]="spaltenZahl()" class="leer">Nothing here.</td>
                   </tr>
                 }
               </tbody>
+              <!-- Was nur eine Vergleichsebene bringt (T-213): unter dem Blatt, nicht mitgezählt. -->
+              @if (liste()!.compare; as v) {
+                @if (v.total) {
+                  <tbody class="vergleich">
+                    <tr class="vergleich-kopf">
+                      <th [attr.colspan]="spaltenZahl()" scope="rowgroup">
+                        Not in play — from comparison layers ({{ v.total }})
+                      </th>
+                    </tr>
+                    @for (z of v.rows; track z.id) {
+                      <tr class="nicht-im-spiel" [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
+                        <td class="name">
+                          <nw-icon [name]="typIcon(z.type)" />
+                          <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
+                          <nw-nicht-im-spiel [id]="z.id" [name]="z.name" [kampagne]="v.canEnable?.campaign" />
+                        </td>
+                        @for (c of tabellenSpalten(); track c.ref) {
+                          @if (c.ref === '@type') {
+                            <td>{{ typLabel(z.type) }}</td>
+                          } @else if (c.ref === '@source') {
+                            <td class="dim quelle">
+                              @if (z.source) {
+                                <nw-quelle [text]="z.source" />
+                              } @else {
+                                {{ z.layers.join(', ') }}
+                              }
+                            </td>
+                          } @else {
+                            <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
+                          }
+                        }
+                      </tr>
+                    }
+                    @if (v.total > v.rows.length) {
+                      <tr>
+                        <td [attr.colspan]="spaltenZahl()" class="dim">
+                          {{ v.total - v.rows.length }} more — narrow the filters to see them.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                }
+              }
             </table>
             @if (blaetter() > 1) {
               <div class="fuss">
@@ -267,6 +499,20 @@ const OFFEN = 8;
       }
     </div>
 
+    @if (spaltenOffen()) {
+      <nw-spaltenwahl
+        [gewaehlt]="tabellenSpalten().map(spaltenRef)"
+        [angebot]="angebot()"
+        [quelle]="wahl()?.quelle ?? null"
+        [darfVorgabe]="spalten.darfVorgabe()"
+        [hatVorgabe]="hatVorgabe()"
+        (anwenden)="spaltenAnwenden($event)"
+        (zuruecksetzen)="spaltenZurueck()"
+        (vorgabe)="spaltenVorgabe($event)"
+        (zu)="spaltenOffen.set(false)"
+      />
+    }
+
     @if (anlegenOffen()) {
       <nw-anlegen [bereich]="bereich()" [vorgabe]="type()" (zu)="anlegenOffen.set(false)" />
     }
@@ -278,31 +524,72 @@ export class Kompendium {
   readonly bereich = input<string | undefined>(undefined);
   /** Aus der Adresse (`?type=`). */
   readonly type = input<string | undefined>(undefined);
+  /** Die Filtergruppe aus der Adresse (`?view=<id>`, `?view=all`; T-137). */
+  readonly view = input<string | undefined>(undefined);
+  /** Die Facetten aus der Adresse (`?f=Spell.school:evocation`, T-174) — ein geteilter Link zeigt dieselbe Wahl. */
+  readonly f = input<string | string[] | undefined>(undefined);
+  /** „Usable by <Figur>" aus der Adresse (`?usable=<id>`, T-180). */
+  readonly usable = input<string | undefined>(undefined);
+  /** Die gewählten Spalten aus der Adresse (`?cols=Spell.level,@source`, T-343) — ein geteilter Link zeigt dieselbe Tabelle. */
+  readonly cols = input<string | undefined>(undefined);
 
   protected readonly OFFEN = OFFEN;
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
   protected readonly filter = inject(ListenFilter);
+  /**
+   * Die Ebenen einer Zeile ohne die der Kampagne (T-251, REQ-348): steht
+   * dort nur sie, sagt die Zeile nichts dazu — das ist der Normalfall.
+   */
+  protected fremdeEbenen(layers: readonly string[]): string {
+    const k = this.stapel.laufend()?.campaignLayer?.name;
+    return layers.filter((l) => l !== k).join(', ');
+  }
+
+  /** Der globale Ebenenstand (T-143) — die Liste folgt ihm, der Hinweis führt hin (T-186). */
+  protected readonly stapel = inject(Stapel);
+  protected readonly gruppen = inject(Filtergruppen);
+  /** Die Spaltenwahl je Tabelle (T-343): Adresse, eigene Wahl, Vorgabe der Kampagne. */
+  protected readonly spalten = inject(Spalten);
   private readonly api = inject(Api);
   private readonly router = inject(Router);
 
   protected readonly filterOffen = signal(false);
   protected readonly anlegenOffen = signal(false);
+  protected readonly spaltenOffen = signal(false);
   protected readonly aufgeklappt = signal<ReadonlySet<string>>(new Set());
   protected readonly liste = signal<Liste | null>(null);
   protected readonly laedt = signal(false);
   protected readonly fehler = signal<string | null>(null);
+  /** Die Maske für eine Filtergruppe: neu oder die aktive ändern. */
+  protected readonly maske = signal<'neu' | 'aendern' | null>(null);
+
+  /** Die Seite, an der Filter und Gruppen hängen. */
+  protected readonly seite = computed(() => this.bereich() ?? 'compendium');
+  /** Die Gruppe, die gilt — ohne `view` die Vorgabe der Seite (T-137). */
+  protected readonly gruppe = computed(() => this.gruppen.aktiv(this.seite(), this.view()));
 
   private lauf = 0;
   private uhr: ReturnType<typeof setTimeout> | null = null;
   private letzteSuche = '';
+  /** Was diese Seite zuletzt als `f` in die Adresse schrieb — das liest sie nicht als neue Wahl. */
+  private geschrieben = '';
+  private readonly klapp = inject(Klappstand);
+  /** Unter welchem Namen das Konto sich die Facetten dieser Seite und Art merkt (T-441, REQ-361). */
+  private readonly facettenName = computed(() => `facets.${this.seite()}${this.type() ? `.${this.type()}` : ''}`);
+  /** Welche Facetten jemand auf- oder zugeklappt hat; sonst sind die ersten und die gewählten offen. */
+  protected readonly facettenStand = computed<Readonly<Record<string, boolean>>>(() => this.klapp.stand(this.facettenName()));
 
   constructor() {
     /* Das Register braucht die Seite nur für Beschriftungen und den
        Anlegen-Dialog; die Liste wartet nicht darauf. */
     void this.bestand.load();
+    void this.gruppen.laden();
+    void this.spalten.lade();
     effect(() => {
-      this.filter.betrete(this.bereich() ?? 'compendium');
+      /* Ein anderer Reiter ist eine andere Seite: er fängt mit dem an, was
+         seine Gruppe sagt (T-137). */
+      this.filter.betrete(`${this.seite()}|${this.view() ?? ''}`);
       /* Auf einen Typwechsel folgt Blatt 1: auf Blatt 40 der Zauber zu
          landen, nachdem man eben noch durch Gegenstände blätterte, ist keine
          Absicht. Zurück vom Artikel bleibt das Blatt, denn die Art ist
@@ -310,9 +597,49 @@ export class Kompendium {
       this.filter.typ(this.type());
       untracked(() => this.typenOffen.set(false));
     });
-    /* Jede Änderung am Filter fragt den Server. Getippt wird mit einer
-       kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. */
+    /* Womit die Gruppe anfängt — einmal, danach gehört der Filter der Seite. */
     effect(() => {
+      if (!this.gruppen.stand()) return;
+      const g = this.gruppe();
+      untracked(() => this.filter.saeen(g ? `${g.id}|${JSON.stringify(g.filter)}` : '-', g?.filter ?? {}));
+    });
+    /* **Die Facetten in der Adresse** (T-174). Eine Wahl, die in der
+       Adresse steht und nicht von hier kam, gilt — ein geteilter Link.
+       Läuft nach dem Säen der Gruppe, sonst nähme die Gruppe sie wieder. */
+    effect(() => {
+      if (!this.gruppen.stand()) return;
+      this.gruppe();
+      this.type();
+      const roh = this.f();
+      untracked(() => {
+        const aus = feldfilterAusF(roh);
+        const k = feldfilterAlsF(aus).join('\n');
+        if (!k || k === this.geschrieben || k === feldfilterAlsF(this.filter.felder()).join('\n')) return;
+        this.filter.felder.set(aus);
+        this.filter.blatt.set(0);
+      });
+    });
+    /* Und umgekehrt: jede Wahl steht in der Adresse, ohne einen Schritt
+       im Verlauf — zurück führt zur vorigen Seite, nicht zum vorigen Häkchen. */
+    effect(() => {
+      const f = feldfilterAlsF(this.filter.felder());
+      untracked(() => {
+        const k = f.join('\n');
+        if (k === feldfilterAlsF(feldfilterAusF(this.f())).join('\n')) return;
+        this.geschrieben = k;
+        void this.router.navigate([], {
+          queryParams: { f: f.length ? f : null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      });
+    });
+    /* Jede Änderung am Filter fragt den Server. Getippt wird mit einer
+       kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. Erst
+       wenn die Gruppen da sind — sonst käme „World" einmal mit Items. */
+    effect(() => {
+      /* Auch auf die Spaltenwahl: sonst käme die Tabelle einmal mit den Spalten der Art. */
+      if (!this.gruppen.stand() || !this.spalten.geladen()) return;
       const frage = this.frage();
       untracked(() => {
         const getippt = (frage.q ?? '') !== this.letzteSuche;
@@ -322,6 +649,16 @@ export class Kompendium {
         else void this.hole(frage);
       });
     });
+    /* Hat sich der Stapel geändert (T-143, das Popup in der Kopfleiste),
+       dieselbe Frage noch einmal — sonst stünde da, was eben noch galt. */
+    const stapel = this.stapel;
+    let gesehen = stapel.stand();
+    effect(() => {
+      const n = stapel.stand();
+      if (n === gesehen) return;
+      gesehen = n;
+      untracked(() => this.neuFragen());
+    });
     inject(DestroyRef).onDestroy(() => {
       if (this.uhr) clearTimeout(this.uhr);
     });
@@ -329,24 +666,136 @@ export class Kompendium {
 
   /** Was gefragt wird — aus Adresse und Filterzustand. */
   private readonly frage = computed<ListenFrage>(() => {
-    const felder = this.filter.felder();
-    const f: string[] = [];
-    for (const [ref, w] of Object.entries(felder)) {
-      if (w.values?.length) f.push(`${ref}:${w.values.join('|')}`);
-      else if (w.min !== undefined || w.max !== undefined) f.push(`${ref}:${w.min ?? ''}..${w.max ?? ''}`);
-    }
+    const f = feldfilterAlsF(this.filter.felder());
+    const g = this.gruppe()?.filter ?? {};
     return {
       area: this.bereich(),
       type: this.type(),
+      /* Was den Reiter ausmacht, grenzt ein (T-137). */
+      of: g.of,
+      notype: g.notype,
+      tag: g.tag,
+      status: g.status,
       q: this.filter.suche().trim() || undefined,
-      nolayer: [...this.filter.ohneEbenen()],
       parts: this.filter.teile(),
+      /* Fassungen derselben Sache als eine Zeile (T-092, E-021 d). */
+      versions: true,
       sort: this.filter.sortierung() || undefined,
       offset: this.filter.blatt() * BLATT,
       limit: BLATT,
       f,
+      usable: this.usable() || undefined,
+      /* Vergleichsartikel als eigener Block darunter (T-213, Schalter im Popup). */
+      compare: this.stapel.vergleich() || undefined,
+      /* Gewählte Spalten (T-343); ohne Wahl die der `overview`, wie immer. */
+      cols: this.wahl()?.cols,
+      /* „today" beginnt um Mitternacht hier, nicht in UTC (T-382). */
+      tz: new Date().getTimezoneOffset(),
     };
   });
+
+  /** Was für diese Tabelle gilt (T-343) — `null`: die Spalten der Art. */
+  protected readonly wahl = computed(() => this.spalten.wahl(this.seite(), this.type(), this.cols()));
+  protected readonly hatVorgabe = computed(() => {
+    const t = this.type();
+    return !!this.spalten.vorgaben()[t ? `${this.seite()}|${t}` : this.seite()];
+  });
+
+  /**
+   * **Die Spalten der Tabelle**: gewählt die, die der Server zurückgibt;
+   * sonst wie immer — die Art in einer gemischten Liste, die Felder der
+   * `overview`, die Quelle.
+   */
+  protected readonly tabellenSpalten = computed<{ ref: string; label: string; kind: string }[]>(() => {
+    const l = this.liste();
+    if (!l) return [];
+    if (this.wahl()) return l.columns;
+    return [
+      ...(this.type() ? [] : [{ ref: '@type', label: 'Type', kind: 'text' }]),
+      ...l.columns,
+      { ref: '@source', label: 'Source', kind: 'text' },
+    ];
+  });
+  protected readonly spaltenRef = (c: { ref: string }) => c.ref;
+  /** Die Art sortiert der Server als `type`, wie bisher. */
+  protected sortRef(ref: string): string {
+    return ref === '@type' ? 'type' : ref;
+  }
+
+  /**
+   * **Was wählbar ist**: die Angaben jeder Zeile, dann die Felder und
+   * Kanten der gewählten Art — in einer gemischten Liste die aller Arten,
+   * die darin stehen, je Feld einmal (es bleibt bei anderen Arten leer).
+   */
+  protected readonly angebot = computed<ColumnChoice[]>(() => {
+    const reg = this.bestand.registry();
+    const basis: ColumnChoice[] = BASE_COLUMNS.map((b) => ({
+      ref: b.ref,
+      label: b.label,
+      kind: b.ref === '@layers' || b.ref === '@tags' ? 'list' : 'text',
+      group: 'Every row',
+    }));
+    if (!reg) return basis;
+    const t = this.type();
+    const typen = t ? [t] : (this.liste()?.facets.types ?? []).map((x) => x.type);
+    const gesehen = new Set(basis.map((b) => b.ref));
+    const raus = [...basis];
+    for (const typ of typen) {
+      for (const c of columnChoices(reg, typ)) {
+        if (gesehen.has(c.ref)) continue;
+        gesehen.add(c.ref);
+        raus.push(t ? c : c.group === 'Edges' ? { ...c, group: `Edges · ${this.typLabel(typ)}` } : c);
+      }
+    }
+    return raus;
+  });
+
+  protected async spaltenAnwenden(cols: string[]): Promise<void> {
+    this.spaltenOffen.set(false);
+    try {
+      await this.spalten.setzen(this.seite(), this.type(), cols);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+    /* In der Adresse, damit ein geteilter Link dieselbe Tabelle zeigt. */
+    void this.router.navigate([], { queryParams: { cols: cols.join(',') }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected async spaltenZurueck(): Promise<void> {
+    this.spaltenOffen.set(false);
+    try {
+      await this.spalten.setzen(this.seite(), this.type(), null);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+    void this.router.navigate([], { queryParams: { cols: null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected async spaltenVorgabe(cols: string[] | null): Promise<void> {
+    this.spaltenOffen.set(false);
+    try {
+      await this.spalten.alsVorgabe(this.seite(), this.type(), cols);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** Die Figuren für „Usable by" (T-180) — geholt, sobald eine Voraussetzung dasteht. */
+  protected readonly figuren = signal<{ id: string; name: string }[]>([]);
+  private figurenGeholt = false;
+  protected readonly zeigtBrauchbar = computed(
+    () => !!this.usable() || (this.liste()?.facets.fields ?? []).some((f) => f.kind === 'enum' && f.of === 'requirement'),
+  );
+  private readonly figurenLaden = effect(() => {
+    if (!this.zeigtBrauchbar() || this.figurenGeholt) return;
+    this.figurenGeholt = true;
+    void this.api
+      .list({ of: ['PlayerCharacter'], limit: 100 })
+      .then((r) => this.figuren.set(r.rows.map((z) => ({ id: z.id, name: z.name }))))
+      .catch(() => (this.figurenGeholt = false));
+  });
+  protected brauchbarSetzen(id: string): void {
+    this.filter.blatt.set(0);
+    void this.router.navigate([], { queryParams: { usable: id || null }, queryParamsHandling: 'merge' });
+  }
 
   private async hole(frage: ListenFrage): Promise<void> {
     const nr = ++this.lauf;
@@ -364,7 +813,69 @@ export class Kompendium {
     }
   }
 
+  /** Nach dem Aufschalten einer Ebene (T-069): dieselbe Frage noch einmal. */
+  protected neuFragen(): void {
+    void this.hole(this.frage());
+  }
+
   protected readonly titel = computed(() => bereichLabel(this.bereich()) ?? 'Compendium');
+
+  /**
+   * Die Unterreiter (T-137). Ohne Vorgabe steht „All" vorne und ist die
+   * Seite selbst; mit Vorgabe steht sie vorne, und „All" am Ende zeigt
+   * die Seite ohne sie (`?view=all`).
+   */
+  protected readonly reiter = computed(() => {
+    const alle = this.gruppen.jeSeite(this.seite());
+    const vorgabe = alle.find((g) => g.default);
+    const aktiv = this.gruppe();
+    const view = this.view();
+    const zu = (g: Filtergruppe) => ({
+      key: g.id,
+      view: g.default ? null : g.id,
+      label: g.name,
+      titel: g.scope === 'own' ? 'Your own group' : g.default ? 'Default of this page' : 'Group of the campaign',
+      eigen: g.scope === 'own',
+      an: aktiv?.id === g.id,
+    });
+    const allesReiter = {
+      key: ALLE,
+      view: vorgabe ? ALLE : null,
+      label: 'All',
+      titel: 'Everything on this page',
+      eigen: false,
+      an: !aktiv && (vorgabe ? view === ALLE : true),
+    };
+    return [
+      ...(vorgabe ? [zu(vorgabe)] : [allesReiter]),
+      ...alle.filter((g) => !g.default).map(zu),
+      ...(vorgabe ? [allesReiter] : []),
+    ];
+  });
+
+  /** Was „Save as group" vorfüllt: der Blick, den die Seite gerade zeigt. */
+  protected readonly vorlage = computed<GespeicherterFilter>(() => {
+    const { q: _alt, f: _altF, ...g } = this.gruppe()?.filter ?? {};
+    const t = this.type();
+    const q = this.filter.suche().trim();
+    const f = feldfilterAlsF(this.filter.felder());
+    return {
+      ...g,
+      ...(t ? { of: [t] } : {}),
+      ...(q ? { q } : {}),
+      ...(f.length ? { f } : {}),
+    };
+  });
+  protected readonly markenDa = computed(() => (this.liste()?.facets.tags ?? []).map((t) => t.tag));
+
+  /** Nach dem Speichern: zur Gruppe, nach dem Löschen zur Seite. */
+  protected gespeichert(g: Filtergruppe | null): void {
+    this.maske.set(null);
+    void this.router.navigate([], {
+      queryParams: { view: g ? (g.default ? null : g.id) : null, type: null },
+      queryParamsHandling: 'merge',
+    });
+  }
 
   protected readonly unterzeile = computed(() => {
     const l = this.liste();
@@ -379,6 +890,12 @@ export class Kompendium {
     if (s === 'name') return 'name';
     if (s === 'type') return 'type';
     return this.liste()?.columns.find((c) => c.ref === s)?.label.toLowerCase() ?? s;
+  }
+
+  /** Das Icon der Art (T-461), die `extends`-Kette hoch. */
+  protected typIcon(typ: string): string | undefined {
+    const r = this.bestand.registry();
+    return r ? typeIcon(r, typ) : undefined;
   }
 
   protected typLabel(typ: string): string {
@@ -421,21 +938,21 @@ export class Kompendium {
       .filter((g) => g.typen.length);
   });
 
-  protected readonly ebenen = computed(() => this.liste()?.facets.layers ?? []);
-
   protected readonly blatt = computed(() => this.filter.blatt());
   protected readonly blaetter = computed(() => Math.ceil((this.liste()?.total ?? 0) / BLATT));
-  protected readonly spaltenZahl = computed(
-    () => 2 + (this.type() ? 0 : 1) + (this.liste()?.columns.length ?? 0),
-  );
+  protected readonly spaltenZahl = computed(() => 1 + this.tabellenSpalten().length);
 
   /** Die Feldfilter als Chips über der Tabelle. */
   protected readonly feldChips = computed(() => {
     const spalten = this.liste()?.facets.fields ?? [];
     return Object.entries(this.filter.felder()).map(([ref, w]) => {
-      const label = spalten.find((s) => s.ref === ref)?.label ?? ref.split('.')[1] ?? ref;
+      const facette = spalten.find((s) => s.ref === ref);
+      const label = facette?.label ?? ref.split('.')[1] ?? ref;
+      /* Ein Artikel steht mit Namen da, ja/nein als Wort (T-174). */
+      const name = (v: string) =>
+        (facette?.kind === 'enum' ? facette.options.find((o) => o.value === v)?.label : undefined) ?? v;
       const text = w.values?.length
-        ? `${label}: ${w.values.join(', ')}`
+        ? `${label}: ${w.values.map(name).join(', ')}`
         : `${label} ${w.min ?? '…'}–${w.max ?? '…'}`;
       return { ref, text };
     });
@@ -444,11 +961,23 @@ export class Kompendium {
   protected zelle(wert: unknown, art: string): string {
     if (wert === undefined || wert === null) return '';
     if (art === 'bool' || typeof wert === 'boolean') return wert ? '✓' : '';
-    if (Array.isArray(wert)) return wert.join(', ');
+    /* Ein Verweis im Text (`[[feat-0088|Initiate of High Sorcery]]`, M11)
+       steht in der Zelle als sein Name, ein Würfel als Ausdruck — die
+       Spalte ist Text und kein Markdown (T-090). */
+    if (Array.isArray(wert)) return wert.map((w) => (typeof w === 'string' ? plainText(w) : String(w))).join(', ');
     if (typeof wert === 'object') return JSON.stringify(wert);
-    return String(wert);
+    return typeof wert === 'string' ? plainText(wert) : String(wert);
   }
 
+  /** Offen ist eine Facette, die jemand aufklappte, eine gewählte und die ersten vier. */
+  protected facetteOffen(ref: string, i: number): boolean {
+    return this.facettenStand()[ref] ?? (!!this.filter.felder()[ref] || i < 4);
+  }
+  protected facetteUmschalten(ref: string, offen: boolean, i = -1): void {
+    /* Das Öffnen beim Zeichnen meldet sich auch als „toggle" — nur was vom Stand abweicht, wird gemerkt. */
+    if ((this.facettenStand()[ref] ?? (i >= 0 ? this.facetteOffen(ref, i) : undefined)) === offen) return;
+    this.klapp.setze(this.facettenName(), ref, offen);
+  }
   protected offeneWerte<T>(ref: string, werte: T[]): T[] {
     return this.aufgeklappt().has(ref) ? werte : werte.slice(0, OFFEN);
   }
@@ -462,6 +991,15 @@ export class Kompendium {
   }
   protected gewaehlt(ref: string, wert: string): boolean {
     return this.filter.felder()[ref]?.values?.includes(wert) ?? false;
+  }
+
+  /** Eine Facette von T-382 oder T-389 setzen oder wegnehmen (`@added`, `@changed`, `@by`, `@has`). */
+  protected metaSetzen(ref: string, values: string[] | null): void {
+    this.filter.felder.update((f) => {
+      const { [ref]: _weg, ...rest } = f;
+      return values?.length ? { ...rest, [ref]: { values } } : rest;
+    });
+    this.filter.blatt.set(0);
   }
 
   protected wertUmschalten(ref: string, wert: string): void {
@@ -499,15 +1037,6 @@ export class Kompendium {
     this.filter.suche.set(q);
     this.filter.blatt.set(0);
   }
-  protected ebeneUmschalten(id: string): void {
-    this.filter.ohneEbenen.update((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-    this.filter.blatt.set(0);
-  }
   protected teileUmschalten(): void {
     this.filter.teile.update((t) => !t);
     this.filter.blatt.set(0);
@@ -532,12 +1061,22 @@ export class Kompendium {
     return s === nach ? 'ascending' : s === `-${nach}` ? 'descending' : null;
   }
 
+  /** Welche Zeilen ihre Fassungen zeigen (T-092). */
+  protected readonly fassungenOffen = signal(new Set<string>());
+  protected fassungenZeigen(id: string, ev: MouseEvent): void {
+    ev.stopPropagation();
+    const s = new Set(this.fassungenOffen());
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
+    this.fassungenOffen.set(s);
+  }
+
   /**
    * Eine Zeile anklicken zeigt die Vorschau rechts (`quick`); „Open" darin
    * führt zum Artikel. Am Telefon ist neben der Tabelle kein Platz — dort
    * führt die Zeile gleich hin.
    */
-  protected zeile(z: ListenZeile, ev: MouseEvent): void {
+  protected zeile(z: Pick<ListenZeile, 'id' | 'type'>, ev: MouseEvent): void {
     if ((ev.target as HTMLElement | null)?.closest('a')) return;
     if (this.schmal()) {
       void this.router.navigate(this.zielVon(z));
@@ -545,12 +1084,12 @@ export class Kompendium {
     }
     this.filter.vorschau.set(this.filter.vorschau() === z.id ? null : z.id);
   }
-  /** Wohin eine Zeile führt: eine Klasse hat ihre eigene Ansicht (W6). */
+  /** Wohin eine Zeile führt: Klasse, Herkunft und Hintergrund haben ihre eigene Ansicht (W6, T-166). */
   protected zielVon(z: Pick<ListenZeile, 'id' | 'type'>): string[] {
-    return z.type === 'Class' ? ['/classes', z.id] : ['/artikel', z.id];
+    return ansichtWeg(z.type, z.id);
   }
   /** Der Name ist ein echter Link (Mittelklick, neuer Reiter); ein schlichter Klick zeigt die Vorschau. */
-  protected link(z: ListenZeile, ev: MouseEvent): void {
+  protected link(z: Pick<ListenZeile, 'id' | 'type'>, ev: MouseEvent): void {
     if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || this.schmal()) return;
     ev.preventDefault();
     this.filter.vorschau.set(z.id);

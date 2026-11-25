@@ -1,7 +1,17 @@
 # Nebelwacht — Fahrplan
 
+↑ [Produkt](Themen/Produkt.md) · [Einstieg](README.md)
+
 Stand 2026-09-19. Sammelt alles, was seit dem Artikel-Prototyp angefragt wurde,
 und ordnet es. Offene Entscheidungen stehen am Schluss.
+
+> **Herkunft, nicht Stand (2026-10-15, T-156).** Dieser Fahrplan ordnete die
+> Arbeit bis zum Spieltisch im Prototyp; Etappe A, B und D stehen, und die
+> Punkte unter „Als Nächstes“ sind grösstenteils gebaut (Zugang,
+> Live-Kanal, Bereiche, 5e.tools, UI-Runde). Offene Arbeit steht seither im
+> Projektbrett (Aufgaben `T-nnn` an Stories), was gefordert ist und was
+> davon steht in [Anforderungen.md](Anforderungen.md). Die Abschnitte hier
+> bleiben, weil sie erklären, warum die Reihenfolge so war.
 
 ---
 
@@ -63,13 +73,13 @@ Was die Schnittstellen bekommen haben, bekommen Komponenten,
 Verknüpfungsarten, Ansichten und Variablen auch: eine Maske mit Feldern statt
 eines JSON-Textfelds. Das JSON bleibt als Notausgang.
 
-### A4 · Ansichten als Werkzeugkasten
+### A4 · Ansichten als Werkzeugkasten — **steht in der Seite** (T-110)
 Eine Ansicht wird eine **geordnete Liste von Elementen** statt einer Sammlung
 von Schaltern: Zwischentitel, Absatz, Tabelle mit einstellbarer Spaltenzahl,
 Feldgruppe, Bild, Bezüge, Bausteine. Anlegen, anordnen, entfernen.
 Die vorhandenen Ansichten werden umgewandelt.
 
-### A5 · Ansichten pro Typ
+### A5 · Ansichten pro Typ — **steht in der Seite** (T-110: eigene Anordnung oder Anpassung je Art, Registry › Views, Druck)
 `Item: Voll` zeigt andere Felder als `Statblock: Voll`. Die Ansicht definiert
 das Layout, der Typ füllt es. Ohne eigene Festlegung erbt ein Subtyp die
 Ansicht seines Obertyps — dieselbe Vererbung wie bei Komponenten.
@@ -382,3 +392,8 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 7. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.
+8. **Regelsysteme als Behälter** (T-132, Entscheidung E-044 offen): ein
+   System schlägt Module vor (Inventar, Handwerk, Attribute,
+   Startausrüstung …), die Kampagne wählt und wandelt ab. Bestandsaufnahme,
+   drei Wege und Aufwand in [Regelsysteme.md](Regelsysteme.md). Zuerst die
+   Lesefunktionen für die heute globalen Regel-Einstellungen.

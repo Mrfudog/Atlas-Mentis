@@ -10,6 +10,9 @@
  * cards (`derivedValue`), and `modOf(field)` reads the ability a field names.
  * `sum(edge.prop)` adds a number over the article's own forward edges of one
  * type — the level of a character is the sum of its `hasClass` levels (M3).
+ * `profBonus(hasClass.level)` turns that sum into the proficiency bonus, and
+ * `check(wis.Perception)` is the bonus on one check with proficiency and
+ * expertise — the passive perception is `10+check(wis.Perception)` (T-275).
  */
 
 import type { ComponentValue, PropertySchema, Relation } from './types.js';
@@ -17,6 +20,50 @@ import type { ComponentValue, PropertySchema, Relation } from './types.js';
 /** 5e ability modifier. Floors toward negative infinity: 1 → -5, 16 → +3. */
 export function abilityMod(score: number): number {
   return Math.floor((score - 10) / 2);
+}
+
+/**
+ * **Der Übungsbonus nach Gesamtstufe** (5e: +2 auf Stufe 1–4, +3 auf 5–8 …),
+ * die eine Rechnung dafür (T-275, Punkt 4): Register (`profBonus`),
+ * Klassenseite und `characterStats` fragen hier. Ohne Stufe kein Bonus.
+ */
+export function proficiencyBonus(level: number): number | null {
+  if (!Number.isFinite(level) || level < 1) return null;
+  return Math.ceil(Math.floor(level) / 4) + 1;
+}
+
+/** Ein Name in einer Liste, ohne Rücksicht auf Gross- und Kleinschreibung. */
+function inList(raw: unknown, name: string): string | null {
+  if (!Array.isArray(raw)) return null;
+  const n = name.toLowerCase();
+  const hit = raw.find((x) => typeof x === 'string' && x.toLowerCase() === n);
+  return typeof hit === 'string' ? hit : null;
+}
+
+/**
+ * **Der Bonus auf eine Probe** (T-275, Punkt 5): eine feste Zahl aus
+ * `bonuses` (der Goblin hat Heimlichkeit +6), sonst der Modifikator des
+ * Attributs, dazu der Übungsbonus — doppelt mit Expertise. Gelesen wird,
+ * was der Statblock trägt (`proficient`, `expertise`, `prof`, `bonuses`);
+ * ohne Attributswert gibt es keinen Bonus. Dieselbe Rechnung nimmt die
+ * Registerformel `check(wis.Perception)` und der Bogen (`passivePerception`).
+ */
+export function checkBonus(
+  card: { proficient?: unknown; expertise?: unknown; prof?: unknown; bonuses?: unknown; score?: unknown },
+  skill: string,
+): number | null {
+  const bonuses = card.bonuses && typeof card.bonuses === 'object' ? (card.bonuses as Record<string, unknown>) : {};
+  const exp = inList(card.expertise, skill);
+  const geuebt = exp ?? inList(card.proficient, skill);
+  if (geuebt) {
+    const fest = Object.entries(bonuses).find(([k]) => k.toLowerCase() === skill.toLowerCase())?.[1];
+    if (fest !== undefined && fest !== null && fest !== '' && Number.isFinite(Number(fest))) return Number(fest);
+  }
+  const score = Number(card.score);
+  if (card.score === undefined || card.score === null || card.score === '' || !Number.isFinite(score)) return null;
+  const prof = Number(card.prof);
+  const p = Number.isFinite(prof) && card.prof !== undefined && card.prof !== null && card.prof !== '' ? prof : 0;
+  return abilityMod(score) + (geuebt ? p * (exp ? 2 : 1) : 0);
 }
 
 /** `u` is unary negation — it must bind tighter than any binary operator,
@@ -185,6 +232,36 @@ const FUNCTIONS: Record<string, (raw: unknown, look: Lookup, ctx: FnContext) => 
       treffer++;
     }
     return treffer ? summe : null;
+  },
+  /**
+   * **Der Übungsbonus aus einer Summe über Kanten** (T-275, Punkt 4):
+   * `profBonus(hasClass.level)` — dieselbe Regel wie `proficiencyBonus`,
+   * statt sie als `2+(…-1)/4` ein zweites Mal hinzuschreiben.
+   */
+  profBonus: (raw, look, ctx) => {
+    const stufe = FUNCTIONS['sum']!(raw, look, ctx);
+    return stufe === null ? null : proficiencyBonus(stufe);
+  },
+  /**
+   * **Der Bonus auf eine Probe** (T-275, Punkt 5): `check(wis.Perception)`
+   * — Attribut vor dem Punkt, Fertigkeit danach. Liest `proficient`,
+   * `expertise`, `prof` und `bonuses` aus den Karten des Artikels
+   * (`checkBonus`).
+   */
+  check: (_raw, look, ctx) => {
+    const punkt = ctx.key.indexOf('.');
+    if (punkt <= 0) return null;
+    const attr = ctx.key.slice(0, punkt);
+    const skill = ctx.key.slice(punkt + 1);
+    if (!ABILITY_KEYS.has(attr) || !skill) return null;
+    const lies = (k: string) => {
+      const v = look(k);
+      return v === AMBIGUOUS ? undefined : v;
+    };
+    return checkBonus(
+      { proficient: lies('proficient'), expertise: lies('expertise'), prof: lies('prof'), bonuses: lies('bonuses'), score: lies(attr) },
+      skill,
+    );
   },
   /** Row count of a grid. */
   rowCount: (raw) => asRows(raw).length,

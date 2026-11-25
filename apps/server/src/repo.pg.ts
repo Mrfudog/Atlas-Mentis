@@ -9,7 +9,8 @@
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
-import type { EventFilter, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import { RelationIdTaken, RevisionConflict } from './repo.js';
+import type { EventFilter, LayerGrant, ListFilterRow, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
 import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
@@ -18,7 +19,7 @@ export class PgRepository implements Repository {
   constructor(private readonly pool: Pool) {}
 
   async getRegistry(): Promise<Registry> {
-    const [interfaces, relations, views, units, vars, enums, settings] = await Promise.all([
+    const [interfaces, relations, views, units, vars, enums, settings, tokens] = await Promise.all([
       this.pool.query<Row>('select * from interface_def'),
       this.pool.query<Row>('select * from relation_def'),
       this.pool.query<Row>('select * from view_def order by ord'),
@@ -26,6 +27,7 @@ export class PgRepository implements Repository {
       this.pool.query<Row>('select * from var_def'),
       this.pool.query<Row>('select * from enum_def'),
       this.pool.query<Row>('select * from setting_def'),
+      this.pool.query<Row>('select * from token_def'),
     ]);
 
     const registry: Registry = { interfaces: {}, relations: {}, views: {}, units: {}, vars: {} };
@@ -44,6 +46,14 @@ export class PgRepository implements Repository {
         views: (r['views'] as InterfaceDef['views']) ?? undefined,
         /* Wie ein geerbtes Feld an dieser Art heisst. */
         titles: (r['titles'] as InterfaceDef['titles']) ?? undefined,
+        /* Wohin ein geerbtes Feld an dieser Art zeigt (T-119). */
+        targets: (r['targets'] as InterfaceDef['targets']) ?? undefined,
+        /* Wie Artikel dieser Art als Marker stehen (T-214, Migration 133). */
+        markerView: (r['marker_view'] as InterfaceDef['markerView']) ?? undefined,
+        /* Das Icon der Art (T-461, Migration 168). */
+        ...(r['icon'] ? { icon: r['icon'] as string } : {}),
+        /* Pflicht je Stand für diese Art (T-425, E-177, Migration 151). */
+        ...(r['required_for'] ? { requiredFor: r['required_for'] as InterfaceDef['requiredFor'] } : {}),
       };
     }
     for (const r of relations.rows) {
@@ -58,6 +68,13 @@ export class PgRepository implements Repository {
         section: (r['section'] as string) ?? undefined,
         /* An welchem Ende sie sich wie ein Feld liest (Migration 022). */
         asField: (r['as_field'] as RelationDef['asField']) ?? undefined,
+        /* Was sie bedeutet und bewirken soll (T-111, Migration 045). */
+        means: (r['means'] as string | null) ?? undefined,
+        intended: (r['intended'] as string | null) ?? undefined,
+        /* Pflicht für einen Stand am Anfang der Kante (T-425, E-180, Migration 151). */
+        ...(r['required_for'] ? { requiredFor: r['required_for'] as RelationDef['requiredFor'] } : {}),
+        /* Als Filter in der Liste (T-174): `false` oder `{label, order}`. */
+        ...(r['facet'] !== null && r['facet'] !== undefined ? { facet: r['facet'] as RelationDef['facet'] } : {}),
         /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
            bis zur Migration 022 nie. Ein leeres Schema ist keines. */
         props: Object.keys((r['props'] as { properties?: object } | null)?.properties ?? {}).length
@@ -98,6 +115,11 @@ export class PgRepository implements Repository {
       registry.settings = {};
       for (const r of settings.rows) registry.settings[r['key'] as string] = r['value'] as string;
     }
+    /* Design-Tokens (Migration 148, T-425): eine Zeile je Token, ganz als JSON. */
+    if (tokens.rows.length) {
+      registry.tokens = {};
+      for (const r of tokens.rows) registry.tokens[r['name'] as string] = r['config'] as NonNullable<Registry['tokens']>[string];
+    }
 
     return registry;
   }
@@ -110,25 +132,47 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,schema,area,views,units,titles)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            `insert into interface_def(name,label,abstract,extends,schema,area,views,units,titles,targets)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
             [name, def.label ?? null, def.abstract ?? false,
              def.extends ?? [],
              def.schema ? JSON.stringify(def.schema) : null,
              def.area ?? null, def.views ? JSON.stringify(def.views) : null,
-             def.units ?? null, def.titles ? JSON.stringify(def.titles) : null],
+             def.units ?? null, def.titles ? JSON.stringify(def.titles) : null,
+             def.targets ? JSON.stringify(def.targets) : null],
           );
+          /* `marker_view` (T-214, Migration 133) nur, wo eine Art es sagt —
+             so schreibt dieselbe Zeile auch in eine Datenbank davor. */
+          if (def.markerView) {
+            await client.query('update interface_def set marker_view = $2 where name = $1', [name, def.markerView]);
+          }
+          /* `icon` (T-461, Migration 168) ebenso nur, wo die Art eines trägt. */
+          if (def.icon) {
+            await client.query('update interface_def set icon = $2 where name = $1', [name, def.icon]);
+          }
+          /* `required_for` (T-425, Migration 151) ebenso nur, wo die Art es sagt. */
+          if (def.requiredFor && Object.keys(def.requiredFor).length) {
+            await client.query('update interface_def set required_for = $2 where name = $1', [name, JSON.stringify(def.requiredFor)]);
+          }
         }
       } else if (part === 'relations') {
         await client.query('delete from relation_def');
         for (const [type, def] of Object.entries(value as Registry['relations'])) {
           await client.query(
-            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field,means,intended)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
             [type, def.label, def.inverseLabel, def.from ?? ['*'], def.to ?? ['*'],
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
-             JSON.stringify(def.props ?? {}), def.asField ?? null],
+             JSON.stringify(def.props ?? {}), def.asField ?? null, def.means ?? null, def.intended ?? null],
           );
+          /* `facet` (T-174, Migration 074) nur, wo eine Kante es sagt — so
+             schreibt dieselbe Zeile auch in eine Datenbank vor 073. */
+          if (def.facet !== undefined) {
+            await client.query('update relation_def set facet = $2 where type = $1', [type, JSON.stringify(def.facet)]);
+          }
+          if (def.requiredFor) {
+            await client.query('update relation_def set required_for = $2 where type = $1', [type, def.requiredFor]);
+          }
         }
       } else if (part === 'views') {
         await client.query('delete from view_def');
@@ -157,6 +201,11 @@ export class PgRepository implements Repository {
         for (const [name, def] of Object.entries((value ?? {}) as NonNullable<Registry['enums']>)) {
           await client.query('insert into enum_def(name,config) values ($1,$2)', [name, JSON.stringify(def)]);
         }
+      } else if (part === 'tokens') {
+        await client.query('delete from token_def');
+        for (const [name, def] of Object.entries((value ?? {}) as NonNullable<Registry['tokens']>)) {
+          await client.query('insert into token_def(name,config) values ($1,$2)', [name, JSON.stringify(def)]);
+        }
       } else if (part === 'settings') {
         await client.query('delete from setting_def');
         for (const [key, v] of Object.entries((value ?? {}) as NonNullable<Registry['settings']>)) {
@@ -182,6 +231,15 @@ export class PgRepository implements Repository {
    * drei Abfragen denselben Stand sehen: ein Artikel, der dazwischen
    * geschrieben wird, stünde sonst ohne seine Karten da.
    */
+  /** Die Nachschlagetafel zum gehaltenen Bestand (T-398, P4) — je Stempel einmal gebaut. */
+  async entityMap(): Promise<ReadonlyMap<string, Entity>> {
+    /* Erst den Bestand zum heutigen Stempel sicherstellen — die Tafel hängt an ihm. */
+    const liste = await this.listEntities();
+    const b = this.bestand;
+    if (!b) return new Map(liste.map((e) => [e.id, e]));
+    return (b.karte ??= new Map(b.liste.map((e) => [e.id, e])));
+  }
+
   async listEntities(): Promise<Entity[]> {
     const stempel = await this.stempel();
     if (this.bestand?.stempel === stempel) return [...this.bestand.liste];
@@ -211,10 +269,10 @@ export class PgRepository implements Repository {
     return this.stempel();
   }
 
+  private static readonly STEMPEL = `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`;
+
   private async stempel(): Promise<string> {
-    const { rows } = await this.pool.query<Row>(
-      `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`,
-    );
+    const { rows } = await this.pool.query<Row>(PgRepository.STEMPEL);
     return String(rows[0]?.['s'] ?? '');
   }
 
@@ -230,7 +288,7 @@ export class PgRepository implements Repository {
    * `redactEntity`, `detachInstance` tun das schon). Das Feld ist eine
    * Kopie, damit niemand die Liste selbst umstellt.
    */
-  private bestand: { stempel: string; liste: Entity[] } | null = null;
+  private bestand: { stempel: string; liste: Entity[]; karte?: ReadonlyMap<string, Entity> } | null = null;
   /** Ein Lesen, das gerade läuft — zwei gleichzeitige Anfragen lesen einmal. */
   private laedt: { stempel: string; lauf: Promise<Entity[]> } | null = null;
 
@@ -285,15 +343,57 @@ export class PgRepository implements Repository {
     return zusammensetzen(base.rows[0]!, components.rows, relations.rows);
   }
 
-  async putEntity(entity: Entity): Promise<Entity> {
+  async putEntity(entity: Entity, options: PutOptions = {}): Promise<Entity> {
+    const gehalten = this.bestand;
     this.bestand = null;
+    /* **Nachführen statt neu lesen** (T-143): wer einen Artikel schreibt,
+       weiss, was sich geändert hat. Bis hierher warf jedes Schreiben den
+       gehaltenen Bestand weg, und die nächste Anfrage las ihn ganz neu —
+       nach einem Häkchen an der Ebenenliste mehrere Sekunden, bei gut
+       150 000 Artikeln. Nachgeführt wird nur, wenn der Bestand **genau**
+       auf dem Stand vor diesem Schreiben war: die Tabelle ist dafür für
+       andere Schreiber gesperrt (Lesen geht weiter), und der Stempel wird
+       vorher und nachher in derselben Transaktion gelesen. Stimmt etwas
+       nicht, bleibt es beim Neulesen. */
+    let nachher: string | null = null;
     const client = await this.pool.connect();
     try {
       await client.query('begin');
+      /* **Die Tabelle zuerst, für jedes Schreiben** (REQ-192): sperrte nur,
+         wer den Bestand hält, nahm ein zweites Schreiben derselben Zeile
+         erst die Zeile (`for update`) und wartete dann beim Einfügen auf
+         die Tabelle, während das erste die Tabelle hielt und auf die Zeile
+         wartete — Postgres brach eines ab (40P01), und es kam als 500
+         statt 409 an. Dieselbe Reihenfolge überall hat keinen Kreis;
+         Lesen geht weiter. */
+      await client.query('lock table entity in share row exclusive mode');
+      if (gehalten) {
+        const { rows } = await client.query<Row>(PgRepository.STEMPEL);
+        nachher = String(rows[0]?.['s'] ?? '') === gehalten.stempel ? '' : null;
+      }
+      /* Die Zeile gesperrt gelesen (REQ-192): zwei gleichzeitige Schreiben
+         mit derselben Revision kommen sonst beide durch die Prüfung. Ein
+         Artikel, der noch nicht steht, hat nichts zu sperren — zwei, die
+         ihn gleichzeitig anlegen, trennt der Primärschlüssel. */
+      if (options.expectRevision !== undefined) {
+        const { rows } = await client.query<Row>(
+          'select revision from entity where id = $1 for update',
+          [entity.id],
+        );
+        const steht = rows.length ? Number(rows[0]!['revision']) : null;
+        if (steht !== options.expectRevision) {
+          throw new RevisionConflict(entity.id, options.expectRevision, steht);
+        }
+      }
+      /* `created_at` nur beim ersten Schreiben: ein zurückgeholter Artikel
+         (Undo, Übernahme) bringt seinen mit und steht nicht als „neu" da (T-382). */
+      const erstellt = typeof entity.createdAt === 'string' && !Number.isNaN(Date.parse(entity.createdAt)) ? entity.createdAt : null;
       await client.query(
-        `insert into entity(id) values ($1)
-         on conflict (id) do update set updated_at = now()`,
-        [entity.id],
+        options.expectRevision === null
+          ? 'insert into entity(id, created_at) values ($1, coalesce($2::timestamptz, now()))'
+          : `insert into entity(id, created_at) values ($1, coalesce($2::timestamptz, now()))
+             on conflict (id) do update set updated_at = now(), revision = entity.revision + 1`,
+        [entity.id, erstellt],
       );
 
       await client.query('delete from component where entity_id = $1', [entity.id]);
@@ -323,15 +423,40 @@ export class PgRepository implements Repository {
         );
       }
 
+      if (nachher !== null) {
+        const { rows } = await client.query<Row>(PgRepository.STEMPEL);
+        nachher = String(rows[0]?.['s'] ?? '');
+      }
       await client.query('commit');
     } catch (error) {
       await client.query('rollback');
+      /* Zwei legen denselben Artikel gleichzeitig an: der zweite ist zu spät. */
+      if (options.expectRevision === null && (error as { code?: string }).code === '23505') {
+        throw new RevisionConflict(entity.id, null, 1);
+      }
+      /* Eine Kanten-Id, die ein anderer Artikel schon trägt (T-410). */
+      const pg = error as { code?: string; constraint?: string; table?: string; detail?: string };
+      if (pg.code === '23505' && (pg.constraint === 'relation_pkey' || pg.table === 'relation')) {
+        const id = /\(id\)=\((.*)\)/.exec(pg.detail ?? '')?.[1] ?? '';
+        const bei = id ? await this.pool.query<Row>('select from_id from relation where id = $1', [id]).catch(() => null) : null;
+        throw new RelationIdTaken(id, String(bei?.rows[0]?.['from_id'] ?? ''));
+      }
       throw error;
     } finally {
       client.release();
     }
 
-    return (await this.getEntity(entity.id)) as Entity;
+    const gespeichert = (await this.getEntity(entity.id)) as Entity;
+    /* Nur, wenn seither niemand anders den Bestand gesetzt hat: ein
+       gleichzeitiges Lesen oder Schreiben in diesem Prozess gewinnt. */
+    if (gehalten && nachher && gespeichert && this.bestand === null) {
+      const liste = [...gehalten.liste];
+      const i = liste.findIndex((e) => e.id === entity.id);
+      if (i >= 0) liste[i] = gespeichert;
+      else liste.push(gespeichert);
+      this.bestand = { stempel: nachher, liste };
+    }
+    return gespeichert;
   }
 
   async deleteEntity(id: string): Promise<boolean> {
@@ -365,13 +490,24 @@ export class PgRepository implements Repository {
 
   async listEvents(filter: EventFilter): Promise<StoredEvent[]> {
     /* `payload - 'changes'` am Server: die alten Fassungen einer
-       Massenänderung sind Megabytes, und eine Liste braucht sie nicht. */
+       Massenänderung sind Megabytes, und eine Liste braucht sie nicht.
+       `id` hinter `at`: gleichzeitige Einträge stehen auf jeder Seite
+       gleich, sonst fiele beim Blättern einer heraus (T-181). */
     const { rows } = await this.pool.query<Row>(
       `select id, name, subject, at, ${filter.light ? "payload - 'changes' as payload" : 'payload'}
          from event_log
         where ($1::text is null or name = $1) and ($2::text is null or subject = $2)
-        order by at desc limit $3`,
-      [filter.name ?? null, filter.subject ?? null, filter.limit ?? 50],
+          and ($4::text[] is null or subject = any($4) or ($5::text is not null and payload->>$5 = $6))
+        order by at desc, id desc limit $3 offset $7`,
+      [
+        filter.name ?? null,
+        filter.subject ?? null,
+        filter.limit ?? 50,
+        filter.subjects ?? null,
+        filter.orPayload?.key ?? null,
+        filter.orPayload?.value ?? null,
+        filter.offset ?? 0,
+      ],
     );
     return rows.map((r) => PgRepository.toEvent(r));
   }
@@ -381,6 +517,13 @@ export class PgRepository implements Repository {
   /* Die Figuren kommen aus der Verbundtabelle und werden hier
      hineingelegt. `array_agg` liefert `{null}` für ein Konto ohne Figur —
      das eine Element ist dann null und kein Name. */
+  /** Figur → Kampagne (T-412); nur Zeichenketten zählen. */
+  private static figurenKampagnen(roh: unknown): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (roh && typeof roh === 'object') for (const [a, c] of Object.entries(roh)) if (typeof c === 'string' && c) out[a] = c;
+    return out;
+  }
+
   private static toUser(row: Row): StoredUser {
     const raw = (row['actor_ids'] as (string | null)[] | null) ?? [];
     return {
@@ -389,8 +532,19 @@ export class PgRepository implements Repository {
       passwordHash: String(row['password_hash']),
       isAdmin: row['is_admin'] === true,
       actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+      actorCampaigns: PgRepository.figurenKampagnen(row['actor_campaigns']),
       roles: PgRepository.rollen(row['roles']),
+      authoredIds: ((row['authored_ids'] as (string | null)[] | null) ?? []).filter(
+        (x): x is string => typeof x === 'string' && x.length > 0,
+      ),
+      layerIds: ((row['layer_ids'] as (string | null)[] | null) ?? []).filter(
+        (x): x is string => typeof x === 'string' && x.length > 0,
+      ),
+      ownedLayerIds: ((row['owned_layer_ids'] as (string | null)[] | null) ?? []).filter(
+        (x): x is string => typeof x === 'string' && x.length > 0,
+      ),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
+      createdAt: row['created_at'] ? new Date(row['created_at'] as string).toISOString() : undefined,
     };
   }
 
@@ -415,8 +569,15 @@ export class PgRepository implements Repository {
    *  Konto Kampagnen hat. */
   private static readonly USER_SELECT = `
     select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids,
+           coalesce(jsonb_object_agg(a.actor_id, a.campaign_id) filter (where a.campaign_id is not null), '{}'::jsonb) as actor_campaigns,
            (select coalesce(jsonb_object_agg(m.campaign_id, m.role), '{}'::jsonb)
-              from campaign_member m where m.user_id = u.id) as roles
+              from campaign_member m where m.user_id = u.id) as roles,
+           array(select w.entity_id from app_user_article w
+                  where w.user_id = u.id order by w.added_at) as authored_ids,
+           array(select g.layer_id from app_user_layer g
+                  where g.user_id = u.id order by g.added_at) as layer_ids,
+           array(select g.layer_id from app_user_layer g
+                  where g.user_id = u.id and g.owner order by g.added_at) as owned_layer_ids
       from app_user u
       left join app_user_actor a on a.user_id = u.id`;
 
@@ -456,6 +617,15 @@ export class PgRepository implements Repository {
     return rows[0] ? PgRepository.toUser(rows[0]) : undefined;
   }
 
+  releaseHeld(): void {
+    this.bestand = null;
+  }
+
+  async databaseBytes(): Promise<number> {
+    const { rows } = await this.pool.query<{ n: string }>('select pg_database_size(current_database())::text as n');
+    return Number(rows[0]?.n ?? 0);
+  }
+
   async listUsers(): Promise<User[]> {
     const { rows } = await this.pool.query<Row>(
       `${PgRepository.USER_SELECT} group by u.id order by u.name`,
@@ -479,6 +649,225 @@ export class PgRepository implements Repository {
     });
   }
 
+  /* Was jemand angelegt hat (REQ-237). Eine Zeile je Konto und Artikel;
+     ein zweites Anlegen derselben Zeile ändert nichts. */
+  async addAuthored(userId: string, entityId: string): Promise<void> {
+    await this.pool.query(
+      `insert into app_user_article(user_id, entity_id) values ($1, $2) on conflict do nothing`,
+      [userId, entityId],
+    );
+  }
+
+  async authorsOf(entityId: string): Promise<string[]> {
+    const { rows } = await this.pool.query<Row>(
+      'select user_id from app_user_article where entity_id = $1 order by added_at',
+      [entityId],
+    );
+    return rows.map((r) => String(r['user_id']));
+  }
+
+  async authoredArticles(): Promise<string[]> {
+    const { rows } = await this.pool.query<Row>('select distinct entity_id from app_user_article');
+    return rows.map((r) => String(r['entity_id']));
+  }
+
+  /* Wer hinzugefügt hat (T-382): die erste Zeile gilt, ein zweites Setzen ändert nichts. */
+  async addCreator(userId: string, entityId: string): Promise<void> {
+    await this.pool.query(
+      `insert into entity_creator(entity_id, user_id) select $2, $1 where exists (select 1 from app_user where id = $1)
+       on conflict (entity_id) do nothing`,
+      [userId, entityId],
+    );
+  }
+
+  async creators(): Promise<Map<string, string>> {
+    const { rows } = await this.pool.query<Row>('select entity_id, user_id from entity_creator');
+    return new Map(rows.map((r) => [String(r['entity_id']), String(r['user_id'])]));
+  }
+
+  /* Wer in einer Ebene schreibt (T-098). Ein zweites Setzen ändert nur
+     `owner`. */
+  async grantLayer(userId: string, layerId: string, owner = false, campaign?: string): Promise<void> {
+    await this.pool.query(
+      `insert into app_user_layer(user_id, layer_id, owner, campaign_id) values ($1, $2, $3, $4)
+       on conflict (user_id, layer_id) do update
+         set owner = excluded.owner,
+             campaign_id = coalesce(excluded.campaign_id, app_user_layer.campaign_id)`,
+      [userId, layerId, owner, campaign ?? null],
+    );
+  }
+
+  async revokeLayer(userId: string, layerId: string): Promise<boolean> {
+    const res = await this.pool.query('delete from app_user_layer where user_id = $1 and layer_id = $2', [userId, layerId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async layerGrants(): Promise<LayerGrant[]> {
+    const { rows } = await this.pool.query<Row>('select user_id, layer_id, owner, campaign_id from app_user_layer order by added_at');
+    return rows.map((r) => ({
+      userId: String(r['user_id']),
+      layerId: String(r['layer_id']),
+      owner: r['owner'] === true,
+      ...(r['campaign_id'] ? { campaign: String(r['campaign_id']) } : {}),
+    }));
+  }
+
+  /* Der letzte fertige Stand (REQ-237, E-012), als JSON-Kopie. Wenige
+     Zeilen; gelesen wird alles auf einmal. */
+  async readyStands(): Promise<Map<string, ReadyStand>> {
+    const { rows } = await this.pool.query<Row>('select entity_id, data, ready_at from entity_ready');
+    return new Map(
+      rows.map((r) => [
+        String(r['entity_id']),
+        { entity: r['data'] as Entity, at: new Date(r['ready_at'] as string).toISOString() },
+      ]),
+    );
+  }
+
+  async keepReadyStand(stand: ReadyStand): Promise<void> {
+    await this.pool.query(
+      `insert into entity_ready(entity_id, data, ready_at) values ($1, $2, $3) on conflict do nothing`,
+      [stand.entity.id, JSON.stringify(stand.entity), stand.at],
+    );
+  }
+
+  async dropReadyStand(entityId: string): Promise<void> {
+    await this.pool.query('delete from entity_ready where entity_id = $1', [entityId]);
+  }
+
+  async transferBase(peer: string, keys?: Iterable<string>): Promise<Map<string, unknown>> {
+    const liste = keys ? [...keys] : null;
+    const { rows } = liste
+      ? await this.pool.query<Row>('select key, value from transfer_base where peer = $1 and key = any($2)', [peer, liste])
+      : await this.pool.query<Row>('select key, value from transfer_base where peer = $1', [peer]);
+    return new Map(rows.map((r) => [String(r['key']), r['value']]));
+  }
+
+  async keepTransferBase(peer: string, rows: { key: string; value: unknown }[]): Promise<void> {
+    if (!rows.length) return;
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      for (const r of rows) {
+        if (r.value === null || r.value === undefined) {
+          await client.query('delete from transfer_base where peer = $1 and key = $2', [peer, r.key]);
+        } else {
+          await client.query(
+            `insert into transfer_base(peer, key, value, at) values ($1, $2, $3, now())
+             on conflict (peer, key) do update set value = excluded.value, at = excluded.at`,
+            [peer, r.key, JSON.stringify(r.value)],
+          );
+        }
+      }
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async clearTransferBase(peer: string): Promise<void> {
+    await this.pool.query('delete from transfer_base where peer = $1', [peer]);
+  }
+
+  async readingPosition(userId: string, layerId: string): Promise<string | undefined> {
+    const { rows } = await this.pool.query<Row>(
+      'select entity_id from reading_position where user_id = $1 and layer_id = $2',
+      [userId, layerId],
+    );
+    return rows[0] ? String(rows[0]['entity_id']) : undefined;
+  }
+
+  async keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void> {
+    await this.pool.query(
+      `insert into reading_position(user_id, layer_id, entity_id) values ($1, $2, $3)
+       on conflict (user_id, layer_id) do update set entity_id = excluded.entity_id, updated_at = now()`,
+      [userId, layerId, entityId],
+    );
+  }
+
+  async listFilters(campaignId: string | null, userId: string): Promise<ListFilterRow[]> {
+    const { rows } = await this.pool.query<Row>(
+      `select * from list_filter where ($1::text is not null and campaign_id = $1) or user_id = $2
+        order by page, (user_id is not null), rank, name`,
+      [campaignId, userId],
+    );
+    return rows.map(filterZeile);
+  }
+
+  async getListFilter(id: string): Promise<ListFilterRow | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from list_filter where id = $1', [id]);
+    return rows[0] ? filterZeile(rows[0]) : undefined;
+  }
+
+  async putListFilter(row: ListFilterRow): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      if (row.isDefault) {
+        await client.query(
+          'update list_filter set is_default = false where campaign_id = $1 and page = $2 and id <> $3',
+          [row.campaignId, row.page, row.id],
+        );
+      }
+      await client.query(
+        `insert into list_filter(id, page, name, campaign_id, user_id, filter, is_default, rank)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)
+         on conflict (id) do update set page = excluded.page, name = excluded.name,
+           filter = excluded.filter, is_default = excluded.is_default, rank = excluded.rank,
+           updated_at = now()`,
+        [row.id, row.page, row.name, row.campaignId, row.userId, JSON.stringify(row.filter), row.isDefault, row.rank],
+      );
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async dropListFilter(id: string): Promise<boolean> {
+    const r = await this.pool.query('delete from list_filter where id = $1', [id]);
+    return (r.rowCount ?? 0) > 0;
+  }
+
+  async listColumnDefaults(campaignId: string): Promise<Record<string, string[]>> {
+    const { rows } = await this.pool.query<Row>('select key, columns from list_columns where campaign_id = $1', [campaignId]);
+    return Object.fromEntries(rows.map((r) => [String(r['key']), (r['columns'] as string[]) ?? []]));
+  }
+
+  async putListColumnDefault(campaignId: string, key: string, columns: string[] | null): Promise<void> {
+    if (columns === null) {
+      await this.pool.query('delete from list_columns where campaign_id = $1 and key = $2', [campaignId, key]);
+      return;
+    }
+    await this.pool.query(
+      `insert into list_columns(campaign_id, key, columns, updated_at) values ($1, $2, $3, now())
+       on conflict (campaign_id, key) do update set columns = excluded.columns, updated_at = now()`,
+      [campaignId, key, JSON.stringify(columns)],
+    );
+  }
+
+  async getPrefs(userId: string): Promise<Record<string, unknown>> {
+    const { rows } = await this.pool.query<Row>('select key, value from app_user_pref where user_id = $1', [userId]);
+    return Object.fromEntries(rows.map((r) => [String(r['key']), r['value']]));
+  }
+
+  async putPref(userId: string, key: string, value: unknown): Promise<void> {
+    if (value === null || value === undefined) {
+      await this.pool.query('delete from app_user_pref where user_id = $1 and key = $2', [userId, key]);
+      return;
+    }
+    await this.pool.query(
+      `insert into app_user_pref(user_id, key, value, updated_at) values ($1, $2, $3, now())
+       on conflict (user_id, key) do update set value = excluded.value, updated_at = now()`,
+      [userId, key, JSON.stringify(value)],
+    );
+  }
+
   /* Konto und Figuren gehen zusammen hinein. In einer Transaktion, weil
      ein Konto ohne seine Figuren ein Spieler ohne Blatt ist — und wer das
      nach einem halben Schreiben sieht, meldet einen Fehler, den es nicht
@@ -487,13 +876,16 @@ export class PgRepository implements Repository {
     const client = await this.pool.connect();
     try {
       await client.query('begin');
-      await client.query(
+      /* `xmax = 0` heisst: die Zeile ist neu eingefügt, nicht geändert —
+         nur dann kommen die Rollen mit (T-452). */
+      const konto = await client.query<{ neu: boolean }>(
         `insert into app_user(id,name,name_fold,password_hash,is_admin,disabled_at,updated_at)
          values ($1,$2,$3,$4,$5,$6,now())
          on conflict (id) do update set
            name = excluded.name, name_fold = excluded.name_fold,
            password_hash = excluded.password_hash, is_admin = excluded.is_admin,
-           disabled_at = excluded.disabled_at, updated_at = now()`,
+           disabled_at = excluded.disabled_at, updated_at = now()
+         returning (xmax = 0) as neu`,
         [
           user.id,
           user.name,
@@ -512,25 +904,31 @@ export class PgRepository implements Repository {
         [user.id, ids],
       );
       if (ids.length) {
+        /* Die Kampagne je Figur (T-412): gesetzt, wenn sie bekannt ist;
+           eine bekannte wird nie durch „unbekannt" überschrieben. */
+        const k = user.actorCampaigns ?? {};
         await client.query(
-          `insert into app_user_actor(user_id, actor_id)
-             select $1, unnest($2::text[]) on conflict do nothing`,
-          [user.id, ids],
+          `insert into app_user_actor(user_id, actor_id, campaign_id)
+             select $1, a, c from unnest($2::text[], $3::text[]) as x(a, c)
+             on conflict (user_id, actor_id) do update
+               set campaign_id = coalesce(excluded.campaign_id, app_user_actor.campaign_id)`,
+          [user.id, ids, ids.map((a) => k[a] ?? null)],
         );
       }
-      /* Die Rollen ebenso: was nicht mehr dasteht, geht; was dasteht, wird
-         gesetzt. Eine Rolle, die sich nur ändert, behält ihr `added_at`. */
-      const rollen = Object.entries(user.roles ?? {}).filter(([, r]) => isTableRole(r));
-      await client.query(
-        `delete from campaign_member where user_id = $1 and campaign_id <> all($2::text[])`,
-        [user.id, rollen.map(([k]) => k)],
-      );
-      for (const [kampagne, rolle] of rollen) {
-        await client.query(
-          `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
-             on conflict (campaign_id, user_id) do update set role = excluded.role`,
-          [kampagne, user.id, rolle],
-        );
+      /* Die Rollen nur beim Anlegen (T-452): ein Konto, das es schon gibt,
+         behält seine Zeilen in `campaign_member` — die schreibt `setRole`,
+         eine je Kampagne. Bis dahin glich `putUser` die Tabelle auf die
+         gelesenen Rollen ab, und zwei Routen zugleich löschten sich
+         gegenseitig die Rolle. */
+      if (konto.rows[0]?.neu) {
+        const rollen = Object.entries(user.roles ?? {}).filter(([, r]) => isTableRole(r));
+        for (const [kampagne, rolle] of rollen) {
+          await client.query(
+            `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
+               on conflict (campaign_id, user_id) do update set role = excluded.role`,
+            [kampagne, user.id, rolle],
+          );
+        }
       }
       await client.query('commit');
     } catch (err) {
@@ -539,6 +937,23 @@ export class PgRepository implements Repository {
     } finally {
       client.release();
     }
+  }
+
+  /* Eine Zeile je (Konto, Kampagne), ohne die übrigen zu lesen: zwei
+     Kampagnen zugleich treffen zwei Zeilen und nie dieselbe (T-452). */
+  async setRole(userId: string, campaignId: string, role: TableRole | null): Promise<boolean> {
+    const da = await this.pool.query('select 1 from app_user where id = $1', [userId]);
+    if (!da.rowCount) return false;
+    if (role) {
+      await this.pool.query(
+        `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
+           on conflict (campaign_id, user_id) do update set role = excluded.role`,
+        [campaignId, userId, role],
+      );
+    } else {
+      await this.pool.query('delete from campaign_member where campaign_id = $1 and user_id = $2', [campaignId, userId]);
+    }
+    return true;
   }
 
   // ---------------------------------------------------------- Einladungen
@@ -746,5 +1161,19 @@ function zusammensetzen(base: Row, components: Row[], relations: Row[]): Entity 
     })),
     createdAt: (base['created_at'] as Date)?.toISOString(),
     updatedAt: (base['updated_at'] as Date)?.toISOString(),
+    ...(base['revision'] != null ? { revision: Number(base['revision']) } : {}),
+  };
+}
+
+function filterZeile(r: Row): ListFilterRow {
+  return {
+    id: String(r['id']),
+    page: String(r['page']),
+    name: String(r['name']),
+    campaignId: r['campaign_id'] === null ? null : String(r['campaign_id']),
+    userId: r['user_id'] === null ? null : String(r['user_id']),
+    filter: (r['filter'] ?? {}) as Record<string, unknown>,
+    isDefault: r['is_default'] === true,
+    rank: Number(r['rank'] ?? 0),
   };
 }

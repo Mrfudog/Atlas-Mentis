@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
 import {
+  anchorAreaOf,
+  anchorsOf,
   boardCard,
+  isArea,
+  withAnchors,
   nextPlacement,
   placementOf,
   placementsOf,
@@ -81,5 +85,40 @@ describe('a board belongs to a story article (REQ-205)', () => {
     const def = relationDef(seedRegistry, 'partOf');
     expect(relationAccepts(def, 'Board', 'Session', seedRegistry)).toBe(true);
     expect(relationAccepts(def, 'Board', 'Campaign', seedRegistry)).toBe(true);
+  });
+});
+
+describe('Bereiche (T-073)', () => {
+  const b = brett([], {
+    anchors: [
+      { id: 'a1', name: 'Conditions', x: 0, y: 0, w: 600, h: 400, extra: 'bleibt' },
+      { id: 'a2', name: 'Inner', x: 100, y: 100, w: 200, h: 200 },
+      { id: 'a3', name: 'Alley', x: 900, y: 50, zoom: 0.5 },
+      { name: 'ohne Id' },
+    ],
+  });
+
+  it('reads anchors and tells areas from points', () => {
+    const a = anchorsOf(b);
+    expect(a.map((x) => x.id)).toEqual(['a1', 'a2', 'a3']);
+    expect(a.filter(isArea).map((x) => x.id)).toEqual(['a1', 'a2']);
+    expect(a[2]).toEqual({ id: 'a3', name: 'Alley', x: 900, y: 50, zoom: 0.5 });
+  });
+
+  it('puts a card in the smallest area that holds its middle', () => {
+    const a = anchorsOf(b);
+    expect(anchorAreaOf(a, { x: 150, y: 150, w: 100, h: 100, z: 0 })).toBe('a2');
+    expect(anchorAreaOf(a, { x: 400, y: 250, w: 100, h: 100, z: 0 })).toBe('a1');
+    expect(anchorAreaOf(a, { x: 550, y: 350, w: 200, h: 200, z: 0 })).toBeNull();
+  });
+
+  it('writes anchors back and keeps what it does not know', () => {
+    const a = anchorsOf(b).map((x) => (x.id === 'a1' ? { ...x, name: 'Zustände' } : x));
+    const neu = withAnchors(b, a.filter((x) => x.id !== 'a2'));
+    const roh = (neu.components['Board'] as { anchors: Record<string, unknown>[] }).anchors;
+    expect(roh).toEqual([
+      { id: 'a1', name: 'Zustände', x: 0, y: 0, w: 600, h: 400, extra: 'bleibt' },
+      { id: 'a3', name: 'Alley', x: 900, y: 50, zoom: 0.5 },
+    ]);
   });
 });

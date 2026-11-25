@@ -1,6 +1,8 @@
 # Zugang
 
-Stand 2026-10-13. REQ-031 und REQ-032 aus
+↑ [Installation](Themen/Installation.md) · [Einstieg](README.md)
+
+Stand 2026-10-14. REQ-031 und REQ-032 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 Das hier betrifft den **Server** (`apps/server`), nicht den Artefakt-Prototyp.
@@ -105,12 +107,59 @@ Die Regel selbst steht in `packages/model/src/visibility.ts` und ist in
 
 Die Regel ist kurz, weil eine lange niemand mehr nachliest:
 
-- **Die Verwaltung darf alles.**
+- **Die Verwaltung darf alles.** Nur sie übernimmt zwischen dev und prod
+  (T-130, [Betrieb › Übernahme](Betrieb.md#übernahme-dev--prod)) — die
+  Leitung einer Kampagne nicht, denn eine Übernahme schreibt auf einer
+  anderen Installation.
 - **Ein Spieler liest alles** (was die Sichtbarkeit ihn lesen lässt) **und
-  schreibt genau seine Figur und was an ihr hängt.** „Hängt an" heisst: über
+  schreibt genau seine Figur und was an ihr hängt** — und was er selbst
+  angelegt hat (D72). „Hängt an" heisst: über
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
+- **Wer in einer Ebene schreibt, schreibt darin alles** (T-098, E-001):
+  jedes Konto die Ebenen, die es besitzt oder zugeteilt bekam
+  (`app_user_layer`, neben dem Konto), und `gm` wie `co-gm` die **Ebene
+  ihrer Kampagne**. Geschrieben wird ein Artikel nur, wenn er **ganz** in
+  solchen Ebenen liegt — einer, der auch im geteilten Regelwerk liegt, nicht.
+  **Eine eigene Ebene legt jedes Konto an** (Seite „Account" › Layers,
+  `POST /api/layers`); wer sie anlegt, besitzt sie und sagt, wer sonst darin
+  schreibt. Die Verwaltung teilt jedem Konto Ebenen zu (Seite „Campaign" ›
+  Accounts of this installation). Sie wirkt, sobald die Leitung sie aufschaltet. **Was nicht in
+  den eigenen Ebenen liegt — auch was ohne Ebene ist —, ändert man als
+  Fassung:** „Edit" legt sie in eine eigene Ebene im Spiel
+  (`POST /api/entities/:id/adapt`, bei mehreren `{ layer }`).
+- **Spielende legen Artikel an, „ready" setzt die Leitung** (REQ-237, D72).
+  Wer in der laufenden Kampagne `player` ist, legt jede Art an, die einen
+  Stand trägt; sie landet in der Ebene der Kampagne, auf `idea` oder
+  `prepared`. Wer was angelegt hat, steht in `app_user_article` neben dem
+  Konto. **Unfertiges sieht nur die Leitung der Kampagne** — und wer es
+  angelegt hat oder schreiben darf; ein Artikel ohne Status-Karte zählt als
+  fertig.
+- **Ein Bild hochladen heisst einen Artikel anlegen** (T-114): wer anlegt,
+  lädt hoch (`POST /api/assets`), mit denselben Regeln. Aus einem Artikel
+  heraus bekommt das Bild dessen Sichtbarkeit und Stand; **ausgeliefert**
+  wird eine Datei nur, wenn ihr `Asset`-Artikel für das Konto sichtbar ist
+  (`GET /api/assets/:id`, sonst 404).
+- **Die eigene Figur verwaltet der Spieler ganz** (E-014 d, D74): seinen
+  Spielercharakter samt Statblock (`belongsTo`, auch eine Instanz) und
+  Inventar (`carries`) schreibt er und setzt ihren Stand selbst, auch
+  `ready`; nichts fällt zurück, und die Mitspielenden sehen sie nach der
+  gewöhnlichen Sichtbarkeit, nicht nach dem Stand.
+- **Ändert eine Spielerin einen anderen fertigen Artikel, fällt er auf
+  `prepared`** (E-012, D74), und für alle ausser ihr und der Leitung gilt
+  der letzte fertige Stand weiter (`entity_ready`), bis `gm` wieder `ready`
+  setzt. Was wartet, steht in der Werkbank („Not ready, by players",
+  `GET /api/unready`, Knopf `POST /api/entities/:id/ready`).
+
+| | legt an | schreibt | setzt `ready` | sieht Unfertiges | ändert er Fertiges |
+|---|---|---|---|---|---|
+| Verwaltung (`is_admin`) | ja | alles | ja | alles | bleibt fertig |
+| `gm` der Kampagne | in der Ebene der Kampagne | die Ebene der Kampagne, was Spielende angelegt haben; Fremdes als Fassung | ja | ja | bleibt fertig |
+| `co-gm` der Kampagne | in der Ebene der Kampagne, unfertig | die Ebene der Kampagne; Fremdes als Fassung | nein | ja, mit Band | fällt auf `prepared` |
+| `player` der laufenden Kampagne | jede Art mit Stand | eigene Figur samt Statblock und Anhang, eigene Artikel | nur an der eigenen Figur | nur eigenes; die Figuren der anderen ja | fällt auf `prepared`, für die anderen gilt der fertige Stand — ausser an der eigenen Figur |
+| `spectator`, ohne Rolle | nein | nein | nein | nein; die Figuren der Spielenden ja | — |
+| jedes Konto, in **eigenen** Ebenen (T-098) | darin, sobald sie im Spiel ist, unfertig | alles darin; Fremdes als Fassung darin | nein (das tut `gm`) | was darin liegt | fällt auf `prepared` |
 - **Das Register gehört der Verwaltung und der Leitung der laufenden
   Kampagne** (`gm` in der Kampagne, die `currentCampaign` nennt; seit W5).
   Eine Registerzeile zu ändern heisst, die Regeln zu ändern, und die
@@ -118,6 +167,13 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   einer anderen Runde auch nicht — dieselbe Trennung wie bei den
   Mitgliedern. Die Zählung `/api/registry/usage` gehört denselben: sie
   zählt ungesiebt.
+- **Die eigene Kampagne als Datei** (`GET /api/export?campaign=<id>`,
+  T-077) holen die Verwaltung und die Leitung dieser Kampagne (`gm` und
+  `co-gm` — sehen tun beide dasselbe, und Ausführen ist Lesen). Gesiebt
+  wird nach der Sichtbarkeit (`articleVisible`); die Felder der Leitung
+  (`gmFields`) bleiben drin, denn eine Sicherung ohne die Geheimnisse wäre
+  keine. Den ganzen Bestand (`&layers=all`) holt nur die Verwaltung. Was in
+  der Datei steht: [Betrieb.md › Die eigene Ausfuhr](Betrieb.md#die-eigene-ausfuhr).
 
 ### Verwaltung ist keine Rolle am Tisch
 
@@ -136,7 +192,14 @@ campaign_member (campaign_id, user_id, role)   -- gm | co-gm | player | spectato
 ```
 
 Eine Zeile je Konto und Kampagne, neben `app_user_actor` (welche Figuren ein
-Konto führt). Gesetzt wird sie auf der Seite **Campaign** (`/campaign`, W3)
+Konto führt). **Geschrieben wird sie einzeln** (`Repository.setRole`,
+T-452): die Mitgliederrouten und `user role` setzen oder löschen genau die
+eine Zeile und lesen die übrigen nicht — `putUser` nimmt Rollen nur beim
+Anlegen eines Kontos mit. Es war einmal anders: jede Route las das Konto,
+setzte `roles[c]` und schrieb es ganz zurück, und `putUser` glich
+`campaign_member` auf die gelesenen Rollen ab; zwei Runden, die dasselbe
+Konto gleichzeitig aufnahmen, löschten sich so gegenseitig die Rolle.
+Gesetzt wird sie auf der Seite **Campaign** (`/campaign`, W3)
 oder von der Kommandozeile:
 
 ```bash
@@ -157,9 +220,11 @@ Kontoangabe in einem Artikel: der Server las die Karte nie, und sie wäre mit
 jeder Ausfuhr mitgewandert (REQ-199).
 
 Das Sieb bekommt dafür die Rollen des Kontos mit, nicht nur die Figuren:
-eine Leitung hat keine Figur. Das Wissen
-fragt weiter nur nach den Figuren — was jemand erfahren hat, hat eine Figur
-erfahren.
+eine Leitung hat keine Figur. Das Wissen fragt bei Spielenden nur nach den
+Figuren — was jemand erfahren hat, hat eine Figur erfahren. **Die Leitung
+der Kampagne eines Artikels liest ihn ungesiebt** (`leadsArticle`, T-447,
+T-455): ohne Figur galt sie dem Wissen als Konto, das nichts weiss, und
+verlor Geheimnisse, Taktik und die Gegner ihrer eigenen Begegnung.
 
 ---
 
@@ -185,8 +250,8 @@ Drei Grenzen, die man leicht übersieht:
   schreiben (`mayWrite`). Vergeben darf eine Kampagne nur Figuren ohne
   Ebenenkante oder solche, deren Ebenen sie aufschaltet (`campaignsOf`);
   eine fremde Figur, die ein Mitglied schon führt, bleibt, auch wenn die
-  Liste sie nicht nennt. Eine Leitung gibt sich selbst keine Figur — ob die
-  Leitung schreibt, ist eine eigene, offene Entscheidung (unten).
+  Liste sie nicht nennt. Eine Leitung gibt sich selbst keine Figur — sie
+  schreibt die Ebene ihrer Kampagne ohnehin (T-098, oben).
 - **Die Kontoliste sieht nur die Verwaltung.** Eine Leitung nimmt ein
   bestehendes Konto beim Namen dazu oder lädt ein.
 
@@ -269,7 +334,7 @@ Authorization: Bearer atm_…
 |---|---|
 | wirkt wie | die Sitzung **seines Kontos**: dieselben Rollen, dieselben Figuren, dasselbe Sieb, dieselben Schreibrechte (`mayWrite`) |
 | Rechte | `read` oder `write`. `read` darf alles lesen, was das Konto liest, und die zwei POST, die nichts schreiben: `/api/validate` und `/api/bulk` mit `dryRun: true` |
-| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
+| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Die Seite fragt nach einem **Datum** (`expiresAt`, gilt bis zum Ende dieses Tages, UTC; ein vergangenes lehnt der Server ab, ein zu fernes kürzt er auf 365 Tage), Kommandozeile und Skripte nach Tagen (`days`). Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
 | gespeichert | nur der Hash (`app_token.token_hash`), wie bei Sitzung und Einladung; der Klartext steht **genau einmal** in der Antwort auf das Anlegen |
 | Präfix | `atm_` — damit man es erkennt, wo es auftaucht (Log, Umgebung, Chat) |
 
@@ -293,15 +358,25 @@ pnpm --filter @nw/server user token werkbank list
 pnpm --filter @nw/server user token werkbank drop tok_…
 ```
 
-In der Seite: Klick auf den eigenen Namen in der Kopfleiste → **Account** →
-API tokens. Wie die Leitung einer Claude-Sitzung damit Zugang zu dev gibt:
-[Betrieb › Werkzeugzugang](Betrieb.md#werkzeugzugang).
+In der Seite an zwei Orten, derselbe Baustein (`nw-api-tokens`, T-112):
+Klick auf den eigenen Namen in der Kopfleiste → **Account** → API tokens,
+und für Leitung und Verwaltung zuunterst in der **Werkbank** — dort, wo
+man das Token für eine Claude-Sitzung braucht. Es ist auch dort immer das
+**eigene**: Tokens anderer Konten sieht und widerruft niemand in der Seite
+(die Verwaltung tut es von der Kommandozeile). Angelegt wird mit Name,
+Rechten und Ablaufdatum; danach steht der Klartext einmal da, mit
+Kopierknopf und dem, was in die Cloud-Umgebung gehört: Host (der dieser
+Seite), Header `Authorization`, Präfix `Bearer` — und ein Knopf, der
+`Bearer atm_…` als ganzen Wert kopiert. „Done" oder das Verlassen der
+Seite nimmt ihn weg. Die Liste nennt je Token Rechte, Ablauf und letzte
+Nutzung; „Revoke" wirkt sofort. Wie die Leitung einer Claude-Sitzung
+damit Zugang zu dev gibt: [Betrieb › Werkzeugzugang](Betrieb.md#werkzeugzugang).
 
 **Die Werkbank** (Prüfungen `GET /api/checks`, Massenänderungen
 `POST /api/bulk`) ist für Leitung (`gm`/`co-gm` in irgendeiner Kampagne)
 und Verwaltung. Geschrieben wird trotzdem nur, was `mayWrite` dem Konto
-erlaubt — die Leitung schreibt heute noch nicht (unten, „Was noch fehlt").
-Die Vorschau zeigt ihr darum jeden Artikel als „Das gehört dir nicht."
+erlaubt — die Leitung die Ebene ihrer Kampagne (T-098). Alles andere zeigt
+die Vorschau als „Das gehört dir nicht."
 
 ---
 
@@ -309,9 +384,30 @@ Die Vorschau zeigt ihr darum jeden Artikel als „Das gehört dir nicht."
 
 **Zugänge sind keine Artikel.** Ein Artikel gehört der Kampagne und wandert
 mit ihr; ein Zugang gehört der Instanz. `app_user`, `app_session`, `app_token` und
-`login_attempt` sind eigene Tabellen und dürfen beim Spiegeln von prod nach
+`login_attempt` sind eigene Tabellen (dazu `app_user_actor`,
+`campaign_member`, `app_user_article`, wer was angelegt hat, und
+`app_user_layer`, wer in welcher Ebene schreibt) und dürfen beim Spiegeln von prod nach
 preprod ausdrücklich **nicht** mitwandern (REQ-199). In der Artikeltabelle
 steht davon nichts — nur beim Nutzer steht die Id der Figur, die er spielt.
+Darum steht auch in der eigenen Ausfuhr (`/api/export`) keins davon: sie
+liest nur Register und Artikel.
+
+**Figuren je Kampagne** (T-412, Entscheid der Leitung 23.10.):
+`app_user_actor` trägt `campaign_id`. Eine Figur ist die eines Kontos nur
+in ihrer Kampagne — jede Anfrage fragt in der laufenden, die
+Mitgliederliste in ihrer (`figurenzuteilung.ts`). Zugeteilt wird auf der
+Kampagnenseite (Members, dort gilt die Zuteilung für diese Kampagne und
+lässt die anderer Runden stehen), mit der Einladung (ihre Kampagne), beim
+Anlegen einer Spielerfigur (die laufende) oder von der Kommandozeile:
+
+```bash
+pnpm --filter @nw/server user actor sela --actor pc_sela --campaign camp_nebel
+```
+
+Ohne `--campaign` gilt die laufende Kampagne. Leer ist `campaign_id` nur
+bei Zuteilungen, die Migration 159 nicht eindeutig zuordnen konnte (sie
+zählt sie beim Start auf); die gelten wie früher überall, bis sie jemand
+auf der Kampagnenseite zuteilt.
 
 `actor_id` hat bewusst keinen Fremdschlüssel: die Figur kann gelöscht und neu
 eingelesen werden, und ein Zugang, der daran zerbricht, sperrt jemanden mitten
@@ -319,16 +415,51 @@ in der Sitzung aus.
 
 ---
 
+### Die Sicht eines Mitglieds (REQ-241, E-019 a)
+
+Die Leitung sieht die Kampagne **als ein bestimmtes Mitglied**: dieselben
+Artikel, Felder und Entwürfe, dasselbe Wissen über seine Figuren, Gruppe
+und Fraktion samt Rang, dieselbe Statusregel. Gemeint ist die Frage „warum
+sieht Mara das nicht?".
+
+- **Gerechnet am Server, als dieses Konto.** Die Oberfläche schickt je
+  Anfrage den Kopf `X-View-As: <Konto-Id>`; der Server löst ihn dort auf,
+  wo jede Route fragt, wer fragt (`viewerOf`). Liste, Suche, Artikel,
+  Board, Werkbank und `/api/me` rechnen danach mit dem Zielkonto samt
+  seinen Figuren (`app_user_actor`) und dem, was es angelegt hat. Eine
+  eigene Spieleransicht gibt es nicht — es ist dieselbe Rechnung mit einem
+  anderen Konto.
+- **Wer darf:** die Verwaltung und die Leitung (`gm`, `co-gm`) der
+  **laufenden** Kampagne, und nur für ein Mitglied dieser Kampagne
+  (`mayViewAs`). Sonst `403` mit `code: 'view_as_forbidden'`. Die Leitung
+  nimmt keine Verwaltung ein (die sieht alles), und vom Zielkonto zählt für
+  sie nur die Rolle in der laufenden Kampagne — leitet das Ziel anderswo,
+  sähe sie über eine geteilte Ebene sonst, was dort nur dessen Leitung
+  sieht (`viewedAs`).
+- **Nur lesen.** Jeder schreibende Aufruf mit dem Kopf wird abgelehnt
+  (`403`, `code: 'view_as_read_only'`), auch die Tokens des Ziels — die
+  gehören zum Konto, nicht zur Kampagne. `/api/me` sagt in dieser Sicht
+  `viewAs: {id, name, role, by}` und bietet nichts zum Schreiben an.
+- **Protokolliert:** eine Zeile `view_as.start` im Protokoll (`event_log`,
+  `subject` = wer schaut, `payload.target`, `payload.campaign`) je Beginn —
+  die erste Anfrage mit diesem Ziel oder die erste nach einer halben
+  Stunde ohne.
+- **In der Oberfläche:** auf der Kampagnenseite je Mitglied „View as" (der
+  Server sagt je Mitglied, ob, `members[].viewAs`), oben ein fester Balken
+  „Viewing as <Name> — Exit", Bearbeiten ausgeblendet. Der Wert hält je Tab
+  über Seitenwechsel und Neuladen (`sessionStorage`), nicht über
+  Abmelden.
+- **Echtzeit-Ereignisse** gibt es noch nicht; wenn sie kommen, werden sie
+  für das Zielkonto gefiltert wie jede andere Antwort.
+
 ## Was noch fehlt
 
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
-- **Schreiben kennt die Leitung noch nicht.** `mayWrite` ist „Verwaltung oder
-  eigene Figur". Eine Leitung, die nicht Verwaltung ist, darf ihre eigene
-  Kampagne lesen und nichts daran ändern. Die Ableitung dafür steht schon
-  (`campaignOf` im Modellpaket) — die Regel fehlt, und sie ändert, wer
-  Daten anfassen darf. Also eine eigene Entscheidung.
+- **Artikel ohne Ebene** schreibt nur die Verwaltung; die Leitung ändert
+  sie als Fassung in der Ebene ihrer Kampagne (T-098). Ob sie mit der
+  Kampagne wandern sollen, hängt an der offenen Frage unten.
 - **Die laufende Kampagne ist eine globale Einstellung.** `currentCampaign()`
   liest `setting('campaign')` — wer umschaltet, schaltet für alle um.
   Solange das so ist, gibt es faktisch eine Kampagne. Sie muss der

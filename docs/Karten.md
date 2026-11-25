@@ -1,5 +1,7 @@
 # Karten: Zeichenebenen, Sperren, Unterkarten
 
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md)
+
 Stand 2026-09-20. REQ-130 bis 140 und REQ-193 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
@@ -15,6 +17,13 @@ sucht den Fehler an der falschen Stelle:
   Grundregelwerk, Abenteuer, Hausregeln.
 - **Zeichenebene** — ein Blatt auf *einer* Karte. Sie sagt, *was auf dem
   Bild liegt*: Gelände, Beschriftung, Ruinen, Schnee.
+
+Dazu kommt seit T-307 ein drittes:
+
+- **Kartenebene** (Stockwerk, Geschoss) — `Map.floors`. Sie sagt, *in
+  welchem Stock man steht*: Keller, Erdgeschoss, Turmspitze. Jede hat ihr
+  eigenes Bild, Gitter, ihre Sperren und Blätter; in der Leiste heissen sie
+  „Floors“. Siehe [Stockwerke und Portale](#stockwerke-und-portale-t-307).
 
 Im Schema heissen die zweiten deshalb `sheets` (Kartenblätter) und nicht
 `layers`. In der Kartenleiste steht trotzdem „Layers“, weil dort nichts zu
@@ -48,40 +57,515 @@ echten Stapel tut es `redactEntity`, bevor es losgeschickt wird.
 
 ---
 
+### Auf der Karte zeichnen (T-219, REQ-142)
+
+**Eine Zeichnung liegt auf einem Blatt** — einem Blatt ohne Bild, dessen
+Striche in `Map.sheets[].strokes` stehen. So hat sie alles, was ein Blatt
+hat: Deckkraft, Ein- und Ausblenden in der Leiste „Layers“, und `gmOnly`,
+mit dem der Server sie Spielenden gar nicht erst schickt (`redactMap`).
+Ein eigenes Feld `Map.drawings` daneben wäre eine zweite Sorte Ebene, die
+jede dieser Fragen noch einmal stellen müsste. Weil `sheets` im Register
+ein freies Objekt ist, braucht es dafür keine Migration.
+
+- Ein Strich ist `path` (Freihand), `line`, `rect` oder `ellipse` (die
+  beiden aus zwei Ecken), Punkte in Anteilen der Karte, Farbe und Breite
+  (in Anteilen der Breite — er wird beim Zoomen dicker wie das Bild).
+  Gezeichnet in einer `viewBox` 0 0 1 `ar`, damit er rund bleibt.
+- Werkzeuggruppe **Draw** (Taste D, nur wer die Karte schreibt): *Layer*
+  wählt die Zeichenebene (ohne Wahl legt der erste Strich „Drawing n“
+  an), *Pen*, *Line*, *Rectangle*, *Ellipse*, Farbe, Breite, *Erase*
+  (einen Strich antippen — ein Rechteck am Rand), *GM only* für die
+  gewählte Ebene. Sichtbar wo Wände, Unterkarten oder Marker
+  eingeschaltet sind, wie *Zones*.
+- Je Ebene (Stockwerk) eigene Blätter, also eigene Zeichnungen.
+- Live: eine Zeichnung ist eine Änderung der Karte und kommt über den
+  Live-Kanal (T-399) zu den Spielenden.
+- **Text und Stempel**: ein Strich `kind: 'text'` mit einem Punkt (der
+  Mitte), dem Wortlaut `text` (höchstens 200 Zeichen) und der
+  Schriftgrösse in `width`. *Text* nimmt ein getipptes Wort, *Stamp* ein
+  Zeichen aus einer kleinen Auswahl (☠ ⚠ ✕ ★ ⚑ ⚔ ⌂ ?). Gezeichnet als
+  Textknoten im SVG, nie als HTML (M10); radiert, wer in seinen Kasten
+  tippt.
+- Noch nicht: Striche verschieben; eigene Stempelbilder.
+
+---
+
 ## Sperren: Wand, Tür, Fenster, Abgrund
 
-Eine Liste, zwei Fragen. `Map.walls` hiess einmal „Sichtblocker“ und
-war es auch — jede Linie hielt den Blick. Jetzt trägt jede Linie ihre Art:
+Eine Liste, drei Fragen. `Map.walls` hiess einmal „Sichtblocker“ und
+war es auch — jede Linie hielt den Blick. Jetzt trägt jede Linie ihre Art
+(T-118, `packages/model/src/walls.ts`):
 
-| Art | Blick | Schritt |
-|---|---|---|
-| `wall` | hält | hält |
-| `door`, zu | hält | hält |
-| `door`, offen | lässt durch | lässt durch |
-| `window` | lässt durch | hält |
-| `chasm` | lässt durch | hält |
+| Art (`kind`) | in der Leiste | Schritt | Blick | Licht |
+|---|---|---|---|---|
+| `wall` | Wall | hält | hält | hält |
+| `door`, zu oder verschlossen | Door | hält | hält | hält |
+| `door`, offen | Door | — | — | — |
+| `secret` | Secret door | wie eine Tür; für Spielende eine Wand, bis sie offen ist | | |
+| `window` | Window | hält | — | — |
+| `chasm` | Obstacle | hält | — | — |
+| `invisible` | Invisible wall | hält | — | — |
 
-Die Art steht **an der Sperre** (`kind`) und nicht in vier Listen, die
+Die Art steht **an der Sperre** (`kind`) und nicht in Listen, die
 dasselbe meinen: wer eine Tür zur Wand macht, ändert ein Feld und nicht den
-Ort des Eintrags. Eine Linie ohne `kind` ist eine Wand — was vor den Sorten
-gezeichnet wurde, bleibt, was es war.
+Ort des Eintrags. Was eine Art hält, ist eine Zeile in `WALL_KINDS`, und
+jede Rechnung fragt die Zeile (`wallBlocks`). Eine Linie ohne `kind` ist
+eine Wand — was vor den Sorten gezeichnet wurde, bleibt, was es war; der
+alte Schalter `open: true` des Prototyps wird als `state: 'open'` gelesen.
 
-Ausgewertet wird das an zwei Stellen: `mapWalls` gibt, was den Blick hält,
-und füttert damit das Sichtbarkeitspolygon; `mapBarriers` gibt, was den
-Schritt hält. Die Bewegung rechnet noch niemand — es gibt kein Zugsystem.
-Die Abfrage steht trotzdem, weil eine Tür, die man erst beim Bewegungssystem
-als Tür erfasst, bis dahin als Wand gezeichnet wird und die Karte zweimal
-gebaut werden muss.
+```json
+{ "id": "w-1", "kind": "door", "x1": 0.5, "y1": 0.4, "x2": 0.5, "y2": 0.5, "state": "closed", "width": 0.012 }
+```
 
-**Gezeichnet werden die Sperren bei jedem Licht**, nicht nur im Dunkeln.
-Wer eine Battlemap baut, baut sie am hellen Tag; wären die Wände nur im
-Finstern zu sehen, müsste man zum Bauen das Licht ausmachen. Zu sehen sind
-sie nur für die Leitung — für alle anderen sind sie der Grund, warum es
-dahinter dunkel ist, und sonst nichts.
+**Gezeichnet werden die Sperren bei jedem Licht**, nicht nur im Dunkeln —
+für die Leitung, nach Art gefärbt; was nur den Schritt hält, gestrichelt.
+Spielende sehen keine Linien, nur die **Türen** als Knopf an ihrer Mitte.
+Der Server schickt ihnen nur die Sperren am Rand des Aufgedeckten, eine
+geschlossene Geheimtür als Wand und eine verschlossene als zu
+(`redactWalls`) — dass sie klemmt, merkt man beim Versuch.
 
-Am Werkzeug: **ziehen baut, klicken schaltet.** Ein Klick neben eine Tür
-macht sie auf oder zu. Eine Tür, die man nur über ein Menü aufbekommt,
-bleibt am Tisch zu.
+Am Werkzeug (Gruppe *Walls*, W): **Draw** tippt Punkt um Punkt, Enter oder
+derselbe Punkt noch einmal beendet; **Points** zieht eine Ecke, **Set
+kind** macht eine angetippte Sperre zur gewählten Art, **Lock** schliesst
+eine Tür ab oder auf, **Erase** nimmt eine weg. Geöffnet wird in der
+Auswahl: ein Klick auf die Tür. Eine Tür, die man nur über ein Menü
+aufbekommt, bleibt am Tisch zu.
+
+### Zeichnen: Formen, Türen, Einrasten, Schneiden (T-304)
+
+Gerechnet in `packages/model/src/mapdraw.ts`, gezeichnet in
+`apps/web/src/app/karten/karte.ts` (Schalter in `karten/editor.ts`).
+
+- **Eine Form ist eine Folge von Sperren** und kein eigener Eintrag:
+  Linienzug, Linie, Rechteck, Ellipse und Polygon (`DRAW_SHAPES`) werden
+  beim Fertigstellen zu Strecken in `Map.walls` (`shapeOutline`,
+  `outlineWalls`). Sicht, Licht und Zugplan lesen dieselbe Liste wie
+  vorher — eine Form als eigene Sorte Sperre müsste jede Rechnung zweimal
+  fragen. Der Schalter **Closed** schliesst den Linienzug; Rechteck,
+  Ellipse (24 Ecken, `ELLIPSE_STEPS`) und Polygon sind immer geschlossen,
+  die Linie nie.
+- **Eine Tür ist ein Viereck über der Öffnung:** gezogen als Linie (zwei
+  Punkte), die Dicke kommt dazu — `width` am Eintrag, in Anteilen der
+  Breite, beim Zeichnen ein Teil eines Feldes (Vorgabe 25 %), ohne Angabe
+  `DOOR_WIDTH`. Geklickt wird das Viereck (`doorRect`), gerechnet die
+  Mittellinie: die Dicke ist Griff und Bild, keine zweite Sperre.
+- **Einrasten mit Stärke** (`snapPoint`): an einen vorhandenen Punkt, eine
+  Gitterecke (Quadrate; auf Hexkarten die nächste Ecke des Hexfelds,
+  T-219) oder eine Linie, so weit, wie der Regler sagt —
+  in **Bildschirmpunkten**, also beim Zoomen gleich, am Telefon um 1,6
+  weiter. Der Punkt geht vor der Ecke, die Ecke vor der Linie. Alt setzt
+  ohne Einrasten.
+- **Die Lupe** (T-315): in jedem Werkzeug, das einen Punkt setzt (Draw,
+  Points, Set origin, Pick a square, Add marker), öffnet **Halten** eine
+  Lupe über dem Finger — Kartenbild, Gitter und Sperren dreifach, ein
+  Fadenkreuz in der Mitte, der Einrastring dazu. Ziehen zielt, Loslassen
+  setzt dort, wie ein Antippen. Wer vor dem Aufgehen zieht, schiebt die
+  Karte; ein zweiter Finger schliesst sie. Gezeichnet im Browser, nichts
+  davon wird gespeichert.
+- **Schneiden** (Schalter *Cut walls*, Vorgabe an): eine Tür oder ein
+  Fenster über einer Wand teilt die Wand (`cutWalls`); die Teile enden
+  genau an den Rändern der Öffnung. Getroffen ist, was auf der Geraden der
+  Öffnung liegt (ein paar Bildschirmpunkte Spiel) und sich mit ihr
+  überlappt; eine Tür in einer Tür schneidet nicht. Wird die Öffnung
+  gelöscht, **bietet** die Seite an, die Wand wieder zusammenzufügen
+  (`joinAround`) — nicht still: vielleicht war die Lücke gewollt.
+- **Punkte zeigen und ziehen** (`wallPoints`, `moveWallPoint`): jedes Ende
+  an derselben Stelle wandert mit, zwei Wände an einer Ecke bleiben
+  verbunden; wird eine Sperre zum Punkt, fällt sie weg.
+
+Die Schalter gehören dem Werkzeug und nicht der Karte: der Browser merkt
+sie sich (`localStorage`), eine Karte trägt sie nicht.
+
+### Das Gitter auf der Karte setzen (T-304)
+
+Gruppe *Grid* (G): **Set origin** legt zwei Gitterlinien auf einen Punkt
+(`gridOrigin`), **Pick a square** nimmt zwei gegenüberliegende Ecken eines
+Feldes und daraus Grösse (Mittel aus Breite und Höhe) und Versatz
+(`gridFromCell`); Regler und Zahlen stellen fein nach. Geschrieben werden
+die Felder, die es gibt — `gridShape`, `gridSize`, `gridOffsetX`,
+`gridOffsetY` (`setGrid`) —, zuerst als **Vorschau** in der Seite, mit
+*Save grid* an der Karte. Wer die Gruppe mit einer Vorschau verlässt, wird
+gefragt.
+
+**Fein einstellen** (T-314): Pfeile für Grösse (0,05 px) und Versatz
+(0,5 px), mit Umschalt zehnmal so weit; der Grössenregler reicht nur
+±10 % um die Grösse beim Öffnen (Schritt 0,01 px) — über 10 bis 300 px
+war eine Grösse zwischen 15,3 und 15,4 nicht zu treffen. Eine getippte
+oder abgegriffene Grösse wird die neue Mitte.
+
+**Aussehen** (T-314): `gridColor` (`#rrggbb`, Farbton und Sättigung aus
+der Farbwahl; leer das Braun der Vorgabe), `gridOpacity` (0–1, Vorgabe
+0,5) und `gridHidden`. Ausgeblendet fehlt nur das Bild: gemessen,
+eingerastet und geplant wird weiter auf dem Gitter (`gridStroke`).
+
+**Massstab je Feld** (T-321): `Map.scale` ist Text mit Zahl und Einheit —
+„5 ft", „10 ft", „1,5 m", „1 mi", „6 mi" stehen zur Auswahl
+(`SCALE_PRESETS`), frei geschrieben geht weiter („1 day"). Eingestellt in
+*Grid* neben der Form, mit der Vorschau gespeichert; auf einer Ebene
+(T-307) gilt er für sie. Die Leiste sagt „1 hex = 6 mi". Umgerechnet wird
+**beim Lesen** (D8): `scaleFeet` nimmt die Einheit aus dem Register
+(`units.ts`, mit ihren Schreibweisen) und gibt Fuss je Feld; metrisch nach
+der Tischregel (1,5 m ein Feld von 5 ft). Das Gitter trägt die Zahl als
+`GridGeometry.cellFeet`, und damit rechnen Bewegungsraster, Reichweite,
+Gelegenheitsangriffe, Licht und Dunkelsicht; ohne Längeneinheit gilt das
+Feld als 5 ft, das Messen zeigt dann den Text („2 hexes · 2 day").
+Bestehende Karten behalten ihren Massstab, wie er dasteht — ohne Angabe
+die Vorgabe „1,5 m" —, also ändert sich an ihnen nichts.
+
+**Das Hexmuster** (T-321) ist eine Kachel (`HEX_TILE_PATH`, Breite 100,
+Höhe `HEX_TILE_H` = 1,5 Hexhöhen): das Hex der ersten Reihe und die
+senkrechte Kante bei x = 50, wo sich zwei Hexe der versetzten Reihe
+treffen. Bis T-321 standen dort Senkrechten bei x = 0 und 100 — in der
+zweiten Reihe die Mitten der Hexe, also Linien von der Ecke ins Innere.
+Die Senkrechten der ersten Reihe liegen auf dem Kachelrand; jede Kachel
+zeichnet eine Hälfte des Strichs. Der Test `hexmassstab.test.ts` legt die
+Kachel über ein 3×3-Feld: jede Strecke endet an Ecken und ist eine Kante,
+alle 38 Kanten sind gezeichnet, doppelt nur am Kachelrand.
+
+### Tokens am Gitter (T-317)
+
+**Der Platz eines Tokens in Feldern** (`tokenSpan`): was das Token selbst
+sagt (`marker.props.size`, Tokens › Size, auch 0,5 oder 1,5), sonst die
+Grösse seines Statblocks nach der Tabelle der Kampagne
+(`Campaign.tokenSizes`: `rules` — tiny, small, medium ein Feld, large 2,
+huge 3, gargantuan 4 — oder `tinyHalf` mit tiny als halbem Feld), sonst
+ein Feld. Der Server gibt die Grösse je Ziel im Kartenkontext mit
+(`targets[id].size`, gesiebt gelesen). Dieselbe Zahl zeichnet das Token
+und rastet es ein.
+
+**Statblock → Wirkungen → Token** (T-390, REQ-396): ein eingelesenes
+Monster ist selbst ein Statblock — das Token zeigt direkt darauf, und der
+Server liest die Grösse dann an ihm (vorher nur über `belongsTo`, der
+Drache stand auf einem Feld). Danach die **Wirkungen** mit Ziel `size`
+(`add` verschiebt um Stufen — Enlarge +1, Reduce −1 —, `set` setzt ein
+Grössenwort, die grösste gilt; zuerst `set`, dann die Stufen, begrenzt auf
+tiny … gargantuan; ein Quellartikel zählt einmal): aus allem, was an
+der Kreatur wirkt (`creatureSizeEffects`, dieselben Quellen wie
+`creatureStats`), samt ihren Zuständen in der Begegnung auf der Karte.
+Zuletzt die Überschreibung der Leitung am Token. Der Kontext sagt
+`size` (gilt), `baseSize` (Statblock, wenn eine Wirkung sie ändert),
+`sizeFrom` (`statblock` · `effects`) und für die Leitung `sizeVia` (Namen
+der Quellen); `tokenSizeOf` rechnet daraus Platz und Herkunft
+(`token` · `effects` · `statblock` · `default`). Gespeichert wird nur die
+Überschreibung — bestehende Tokens folgen ohne Migration (D8).
+
+**Überlappende Grössen-Zustände** (T-428, E-164): jede Quelle ist ein
+eigener Zustand mit Dauer. In der Initiative zählt sie der Tracker herunter
+(`tickEntries` beim Zugwechsel), und abgelaufen fällt der Eintrag weg — die
+Grösse fällt mit. Die Einträge stehen dort als `{rule, rounds}`; der
+Kartenkontext liest sie über `entryConditions` (vorher nahm er nur blosse
+Ids, und ein Zustand mit Dauer änderte das Token nie). Überlappen sich
+Quellen, wird **nicht summiert**: `sizeEffects(wirkungen, wahl)` nimmt je
+Quelle ihre eigenen Stufen und lässt **eine** gelten — die am Token
+gewählte (`marker.props.sizeSource`), sonst die zuletzt hinzugekommene
+(die letzte in der Reihenfolge von `effectsAt`). Ist die gewählte
+abgelaufen, gilt wieder die zuletzt hinzugekommene. Der Kontext gibt der
+Leitung dazu `sizePassed` (übergangene, Namen) und `sizeChoice`
+(`options`, `chosen` — `null` heisst „ohne Wahl"); Spielende bekommen nur
+die Grösse.
+
+```mermaid
+flowchart LR
+  Q1[Enlarged · 3 Runden] --> W{mehr als eine Quelle?}
+  Q2[Reduced · 1 Runde] --> W
+  W -->|nein| G[gilt]
+  W -->|ja| S{props.sizeSource am Token?}
+  S -->|ja, noch aktiv| G
+  S -->|nein oder abgelaufen| L[zuletzt hinzugekommen] --> G
+```
+
+```mermaid
+flowchart LR
+  SB[Statblock.size] --> W{Wirkungen size}
+  W -->|set, dann ±Stufen| G[geltende Grösse]
+  G --> T{props.size am Token?}
+  T -->|ja| U[Überschreibung der Leitung]
+  T -->|nein| P[Platz nach Campaign.tokenSizes]
+```
+
+**Einrasten** (`Map.snapTokens`, Vorgabe an; `snapTokenCentre`): beim
+Ziehen, Setzen und Platzieren landet der Mittelpunkt so, dass der Platz
+auf dem Gitter liegt — ein Feld in der Feldmitte, zwei Felder auf einer
+Ecke; gebrochene Plätze rasten an halben (oder Viertel-)Feldern. Auf Hex
+in die Feldmitte. Möbel (`scenery`) rasten nicht. Der Zugplan rechnet
+weiter in ganzen Feldern nach Statblock (D58).
+
+### Markeransicht (T-214)
+
+Ein Marker steht als **Symbol** (die Anfangsbuchstaben im Kreis), als
+**Name** (das Symbol, darunter ein Schild mit dem Namen), als **Bild**
+(Tokenbild oder Bild des Artikels, ohne beides das Symbol) oder als
+**Kurzansicht-Karte** (die Ansicht `quick` des Artikels, klein unter dem
+Punkt; antippen öffnet das Popup wie bei jedem Marker). Gewählt wird an
+vier Stellen, die genaueste gilt (`markerViewOf`):
+
+1. am Marker selbst (`marker.props.view`; in Select antippen, die Wahl
+   steht über ihm neben „Remove"),
+2. an der Karte (`Map.markerView`; Tokens › Markers show as),
+3. an der Kartenart (`Campaign.markerViews`, Rules & options › Marker view
+   by map kind),
+4. an der Art des Ziels (`InterfaceDef.markerView`, Registry › On a map,
+   die `extends`-Kette hoch geerbt).
+
+Sagt niemand etwas, gilt das Bild — wie vor T-214. Assets und freie
+Lichter liegen, wie sie sind. Am Telefon ist die Karte schmaler (10 rem
+statt 14) und unten weich abgeschnitten.
+
+### Notizen (T-214, E-070 a)
+
+Eine Notiz ist ein Artikel der Art `Note`; auf der Karte steht ein
+Marker, der auf sie zeigt. **Notes (N) › Add note**: auf die Karte
+tippen, den Text schreiben, „GM only" oder „Players too" wählen,
+speichern. Angelegt wird mit der ersten Zeile als Namen (`noteName`), der
+Sichtbarkeit `gm` bzw. `players` und dem Stand `ready` — in der
+Schreibebene, wie jeder neue Artikel. Danach ist sie ein Marker wie
+jeder: ziehen, antippen für die Kurzansicht (dort „Open article" zum
+Bearbeiten), wegnehmen. Sie steht als Kurzansicht-Karte da
+(`Note.markerView`), solange Marker, Karte oder Kartenart nichts anderes
+sagen. Zurückgehalten wird am Server: eine Notiz nur für die Leitung
+kommt bei Spielenden weder als Artikel noch als Marker an.
+
+### Gespielte Stände an der Karte (T-316)
+
+„Played“ an der Vorlage (T-289) steht offen; jeder Stand hat **Open in
+Play** (`/play?map=<stand>&session=<sitzung>`), ebenso der Hinweis „Map in
+play“ auf der Seite eines Standes.
+
+### Türen am Tisch
+
+`POST /api/maps/:id/door` `{wall, state, nat}` schaltet eine Tür. Die
+Leitung schaltet jede in jeden Zustand. Spielende öffnen und schliessen,
+wenn die Kampagne es sagt (`Campaign.doors: 'players'`, Vorgabe), eine Tür,
+die ihre Karte als Tür trägt, mit einer eigenen Figur höchstens
+anderthalb Felder davon.
+
+### Sichtlinie
+
+Das **Sichtpolygon** (`visionPolygon`) rechnet von einem Punkt aus, bis die
+nächste Sperre den Blick hält — mit Strahlen auf jede Ecke einer Strecke
+(knapp davor, genau, knapp dahinter) in einem Raum mit gleichen Achsen.
+Danach fallen Punkte auf einer Geraden weg (`ausduennen`), **nachdem** die
+fast gleichen Punkte einer Ecke zusammengefasst sind. Bis 22.10. verglich
+das Ausdünnen jeden Punkt mit seinem rohen Vorgänger, solange noch keiner
+behalten war, und warf so ganze Wände weg: bei einer Schiessscharte schnitt
+das Polygon quer von der Tür zur Lücke, und was dahinter lag, war sichtbar.
+Formen, die so schon in `Map.reveal` stehen, bleiben aufgedeckt, bis die
+Leitung sie mit *Hide* wieder zudeckt.
+Aufgedeckt wird damit:
+
+- **beim Zug** (wenn `revealOnMove` gilt): von den Punkten des Weges aus,
+  höchstens sechs, der letzte immer (`revealAlong`) — als Form `poly` mit
+  `for` auf die Figur. Ohne Sperren auf der Karte bleibt es der
+  Pinselstrich zwei Felder breit: ohne Wand reichte der Blick über die
+  ganze Karte.
+- **beim Öffnen einer Tür**: für jede Figur der Gruppe, die die Tür sieht,
+  was sie jetzt dahinter sieht (`tuerAufdecken`).
+
+Ohne Token, das zieht, deckt nichts von selbst auf — dann deckt die
+Leitung von Hand auf. Wie weit der Blick im Dunkeln reicht, sagt der
+nächste Abschnitt.
+
+### Licht und Dunkelsicht (T-216)
+
+`packages/model/src/lighting.ts`, REQ-140.
+
+- **Die Karte sagt, wie hell es ist** (`Map.lighting`: `bright`, `dim`,
+  `dark`; ohne Angabe hell). Gesetzt unter Light › Lighting.
+- **Ein Licht ist ein Marker mit Radius** (`marker.props.light` hell,
+  `dim` der ganze Radius, beides in Feldern; `mapLights`). Kein eigener
+  Artikel: dieselbe Laterne leuchtet auf einer Stadtkarte anders weit als
+  auf einer Kampfkarte. Gesetzt mit Light › Light source (ein Token,
+  Asset oder Marker antippen; 0 und 0 nimmt das Licht weg).
+  **Ein Licht ohne Artikel** (T-320) — eine Fackel an der Wand, ein
+  Lichtschacht — ist ein Marker `kind: 'light'`, der wie ein Übergang auf
+  seine eigene Karte zeigt (`addLight`): Light source und auf eine freie
+  Stelle tippen. Spielende sehen nur seinen Schein, keinen Marker; ziehen
+  tut es nur die Leitung. Solange „Light" offen ist, zeigt die Karte der
+  Leitung die Reichweite jedes Lichts als Kreis — auf einer hellen Karte
+  sähe man sonst nicht, ob ein Licht gesetzt ist. Was ein Licht erreicht, ist das
+  Sichtpolygon gegen die Sperren, die **Licht** halten (`lightPolygon`,
+  `litAreas`).
+- **Die Dunkelsicht steht am Statblock** (`senses`, „darkvision 60 ft.")
+  und wird beim Lesen gezogen (`darkvisionFor`, D8), durch eine Instanz
+  hindurch auf ihre Vorlage. Das Gruppen-Token sieht so weit wie die Figur
+  der Gruppe, die am weitesten sieht. Fuss werden über den Massstab der
+  Karte in Felder umgerechnet (`feetPerSquare`: „1,5 m" sind 5 ft).
+- **Was eine Figur sieht** (`figureView`): auf einer hellen oder
+  dämmrigen Karte bis zur nächsten Sperre; im **Dunkeln** so weit wie ihre
+  Dunkelsicht, dazu von jedem Licht der Teil, in den sie hineinsieht —
+  auch durch eine Tür in einen Raum, dessen Laterne hinter der Wand
+  steht. **Die Schnittmenge wird nicht ausgerechnet:** gespeichert wird
+  das Lichtpolygon mit dem Sichtpolygon als Klammer (Form `poly` mit
+  `within`); `inShape` fragt beide, die Leinwand zeichnet mit `clip()`.
+  Zwei beliebige Polygone zu schneiden wäre eine Rechnung mit vielen
+  Sonderfällen.
+- **Aufgedeckt** wird beim Zug und beim Öffnen einer Tür genau das
+  (`revealSeenAlong`, `revealView`): im Dunkeln ohne Dunkelsicht und ohne
+  Licht nichts. Ein Polygon, das für dieselbe Figur schon dasteht, kommt
+  nicht noch einmal dazu.
+
+**Gezeichnet** wird in zwei Leinwänden unter dem Nebel (`schichtMalen`,
+nebel.ts):
+
+1. **Dunkelheit** auf einer dämmrigen oder dunklen Karte; helles Licht
+   schneidet sie ganz heraus, Dämmerlicht und die Dunkelsicht der eigenen
+   Figur zur Hälfte. Alle Polygone eines Schnitts in einem Pfad — zwei
+   überlappende Dämmerlichter bleiben Dämmerung. Die Leitung sieht durch.
+2. **Die laufende Sicht** (wie Owlbears „Dynamic Fog"): auf einer Karte mit
+   Nebel ist hell, was die eigene Figur **gerade** sieht, das einmal
+   Aufgedeckte gedämpft; der Nebel darüber deckt den Rest. Gerechnet im
+   Browser aus der Karte, die er bekommt — also gegen die Sperren am
+   Aufgedeckten (`redactWalls`); was dahinter fehlt, liegt ohnehin unter
+   dem Nebel. Die Dunkelsicht dafür schickt der Kartenkontext
+   (`darkvision`, je eigener Figur und Gruppen-Token; für die Leitung je
+   Spiel-Token). In der Spielersicht der Leitung gilt die gewählte Figur,
+   sonst das Gruppen-Token. **Die Sicht gilt den Spielertokens**
+   (T-305, die Leitung 20.10.): das Gruppen-Token zählt nur, solange keine
+   Figur der Spielenden auf der Karte steht — für die laufende Sicht wie
+   fürs Aufdecken an einer geöffneten Tür. Die Spielersicht ist die
+   Vereinigung der eigenen Figuren.
+   **Auch ohne Nebel endet die Sicht an der Wand** (T-305): hält auf der
+   Karte etwas den Blick, oder ist sie dunkel, deckt die Schicht für
+   Spielende fast ganz zu, was ihre Figuren gerade nicht sehen — ein
+   Licht hinter einer geschlossenen Tür bleibt dunkel. Mit Nebel bleibt es
+   beim Gedämpften (das Gedächtnis).
+3. **Dunkelsicht in Graustufen** (T-305): auf einer dunklen Karte nimmt
+   eine dritte Leinwand (`grauMalen`, `mix-blend-mode: saturation`) dem
+   Bild die Farbe, wo nur die Dunkelsicht hinreicht; was ein Licht
+   erhellt, bleibt farbig. Die Leitung sieht die Karte, wie sie ist; in der
+   Spielersicht und mit „View as" (T-269) wie die Spielenden.
+
+### Tokens im Dunkeln (T-219)
+
+Auf einer **dunklen** Karte bekommt eine Spielerin ein Spiel-Token nur,
+wenn eine ihrer Figuren (oder ihre Gruppe) es sieht: mit Dunkelsicht oder
+weil es in einem Licht steht, in das die Figur hineinsieht. Gerechnet
+wird am Server (`redactDark` nach `redactMap`) mit derselben Rechnung wie
+die laufende Sicht im Browser (`figureView`); vorher hielt nur der Nebel
+zurück, und wer im Dunkeln wartete, stand im Kartenartikel jeder
+Spielerin — bloss schwarz übermalt.
+
+- Je **Ebene** mit den Figuren auf ihr; steht dort keine eigene Figur,
+  bleibt die Ebene, wie sie ist (der Nebel gilt weiter) — ohne Augen gibt
+  es keine Sicht.
+- Nur **Spiel-Tokens** (`kind: play`): Lichter, Assets, Übergänge und das
+  Gruppen-Token sind Karte, keine Wesen. Die Figuren der Gruppe bleiben
+  immer.
+- Kommt ein Licht dazu oder zieht jemand, kommt die Karte über den
+  Live-Kanal neu (T-399) — und mit ihr, wer jetzt zu sehen ist.
+- Die Vorschau „View as“ der Leitung rechnet dasselbe im Browser: als
+  eine Figur, was sie sieht; als alle Spielenden, was irgendeine
+  Spielerfigur oder die Gruppe sieht.
+
+**Das Licht der Zonen** (`ZoneKind.light`): wo eine Zone liegt, gilt ihr
+Licht statt das der Karte (`lightAt`, die zuletzt gezeichnete oben).
+**Magische Dunkelheit** auf einer hellen Karte: wer darin steht, geht nur
+an Spielende, die ihn mit Dunkelsicht oder in einem Licht sehen; die Seite
+malt die Zone für sie deckend dunkel, auch wenn sie „Areas“ ausblenden —
+Dunkelheit ist Sicht, keine Beschriftung. Ein **erleuchteter Saal** in
+einer dunklen Karte: wer darin in Sichtlinie steht, ist zu sehen, und die
+Dunkelheit ist dort ausgeschnitten wie bei einem Licht. Dass Dunkelsicht
+magische Dunkelheit nicht durchdringt, kennt die Zonenart noch nicht —
+dafür bräuchte sie eine eigene Angabe.
+
+### Lichter an Gegenständen, an und aus (T-305)
+
+**Licht ist ein eigenes Werkzeug** (Light, Taste L): Helligkeit der Karte,
+Light source und Light on/off stehen dort und nicht mehr unter Fog.
+
+- **Ein Gegenstand leuchtet** mit `Item.lightBright` (hell, in Fuss) und
+  `Item.lightDim` (dämmrig **darüber hinaus**, wie die Regel schreibt: eine
+  Fackel 20 ft hell, weitere 20 ft dämmrig). Liegt er als Marker auf der
+  Karte (Kulisse: der Fackelhalter, die Laterne), leuchtet der Marker;
+  hält eine Figur ihn **in der Hand** (Platz `mainHand`/`offHand`, `inHand`),
+  leuchtet ihr Token, ein Gruppen-Token wie sein hellstes Mitglied
+  (`itemLight`, `carriedLight`, `carriedLights`). Gerechnet beim Lesen
+  (D8): wer die Fackel verstaut, löscht sie. Der Kartenkontext schickt die
+  Radien (`lights`, je Markerziel), Zug und Tür am Server rechnen gleich.
+- **Ein Radius an der Kante schlägt den des Gegenstands** — dieselbe
+  Laterne darf auf einer Karte weiter leuchten.
+- **An und aus** (`marker.props.lightOff`, Light › Light on/off): die Radien
+  bleiben, das Licht ist nur gerade aus — auch das getragene.
+- **Leistung:** die Strahlen rechnen über Zahlenreihen statt Objekte, und
+  die Fläche eines Lichts wird je Sperrenliste zwischengespeichert
+  (`lightPolygon`) — beim Ziehen eines Tokens ändern sich die Sperren nicht.
+  Gemessen mit 200 Sperren und vier Lichtern: eine Sicht samt Dunkelsicht
+  rund 6 ms am Rechner (`sichtlicht.test.ts` prüft unter 60 ms).
+
+Noch nicht: Tokens im Dunkeln, die die Figur nicht sieht, stehen für
+Spielende weiter da (zurückgehalten wird nur unter dem Nebel).
+
+Ein Zug einer Spielerin durch eine Sperre, die den Schritt hält, wird
+abgelehnt („A wall is in the way.“); der Zugplan rechnet dieselben Sperren
+als Wände (`planGrid`). Die Leitung zieht weiter durch alles.
+
+---
+
+## Zonen und Gebiete (T-219)
+
+Zwei Kanten legen eine Fläche auf die Karte, und beide zeigen auf einen
+Artikel, der sagt, was sie bedeutet:
+
+- **`zone`** auf eine Zonenart (`ZoneKind`, eine Regel: schwieriges
+  Gelände, magische Dunkelheit, eine Falle mit `hiddenUntil`).
+- **`territory`** auf irgendetwas, das dort Boden hält — eine Fraktion,
+  ein Reich, eine Bande.
+
+Die Form steht an der Kante (`rect`, `circle` mit `r`, `poly` mit `pts`,
+in Anteilen der Karte), die Bedeutung am Artikel: dieselbe Zonenart „Eis“
+liegt auf zehn Karten, und eine Korrektur an ihr gilt überall.
+
+**Gezeichnet wird aufs Gitter gerastert** (REQ-193): ein Feld gehört zur
+Fläche, wenn seine Mitte darin liegt. Am Tisch zählt, welche Felder Eis
+sind, nicht wo die Linie genau verläuft — und es ist dieselbe Regel, mit
+der der Zugplan schwieriges Gelände zählt (T-349). Zeigte die Karte das
+Eis anders, als der Plan rechnet, glaubte man dem Bild und verlöre die
+Bewegung. Ohne Gitter steht die Form selbst da; ebenso, wenn sie mehr als
+`AREA_CELL_LIMIT` Felder hätte (eine Weltkarte mit feinem Raster).
+
+```mermaid
+flowchart LR
+  K["Kante zone / territory<br/>Form, floor"] --> R["areaCells<br/>Mitte in der Form?"]
+  G["Gitter der Ebene<br/>gridGeometry"] --> R
+  R --> S["SVG über Bild und Gitter,<br/>unter Markern und Nebel"]
+  A["Artikel am Ende<br/>(ZoneKind, Fraktion)"] -->|Kontext areas, gesiebt| F["Name, Regel, Farbe"]
+  F --> S
+```
+
+- **Farbe:** `territory.color`, sonst die Regel der Zone — Dunkelheit
+  schiefergrau, Schaden rot, schwieriges Gelände erdfarben wie im
+  Zugplan, Licht gelb; ein Gebiet ohne Farbe bekommt einen Farbton aus
+  der Id seines Herrn (dieselbe Fraktion ist auf jeder Karte dieselbe
+  Farbe).
+- **Je Ebene:** eine Fläche gehört wie ein Marker einer Ebene
+  (`props.floor`, leer: das Erdgeschoss) — Schlamm im Keller ist nicht
+  auf dem Dach. Vor T-219 lag eine Zone auf jeder Ebene.
+- **Zurückgehalten** wird am Server (`redactMap`): eine Fläche auf einen
+  Artikel, den die Spielerin nicht sieht, eine versteckte Zone, die noch
+  niemand fand (`found` an der Kante), und unter dem Nebel, was nicht
+  aufgedeckt ist. Die Leitung sieht die versteckte gestrichelt.
+- **Live:** eine Fläche ist eine Kante an der Karte; ändert die Leitung
+  sie (oder setzt `found`), kommt die Karte über den Live-Kanal neu
+  (T-399) und die Spielerin sieht es ohne Neuladen.
+- **„Areas“** über der Karte blendet die Flächen aus und ein — eine Sache
+  der Sicht, gemerkt im Browser.
+
+**Ziehen** (Werkzeuggruppe **Zones**, Taste Z, nur wer die Karte
+schreibt): unter *For* wählen, wofür die Fläche steht — eine Zonenart
+oder eine Fraktion (dann ist es ihr Gebiet) —, dann *Rectangle* (ziehen),
+*Ellipse* (den Kasten ziehen; gespeichert als Vieleck aus 24 Ecken, so
+braucht der Kreis kein Seitenverhältnis) oder *Polygon* (Ecken antippen,
+mit Einrasten wie bei den Unterkarten). Die Fläche kommt auf die gezeigte
+Ebene. *Found* tippt eine versteckte Zone an und macht sie an **dieser**
+Stelle für Spielende sichtbar (noch einmal: wieder versteckt) — dieselbe
+Falle an einer anderen Stelle bleibt verborgen. *Remove* nimmt die Fläche
+weg; Zonenart und Fraktion bleiben. Die Gruppe steht da, wo Wände,
+Unterkarten oder Marker eingeschaltet sind (`Campaign.mapTools`) — also
+auf Kampf- wie auf Landkarten, ohne eine neue Einstellung. Ein Gebiet für
+etwas anderes als eine Fraktion (ein Reich als Ort) geht weiter über die
+Kanten im Bearbeiten.
+
+Biome (E-122) und Abfrage-Overlays (T-332) sind eigene Karten.
 
 ---
 
@@ -92,8 +576,13 @@ vorwärts, die Karte nennt ihre Umgebung. An der Kante steht der Rahmen
 (`x`, `y`, `w`, `h` in Anteilen), also **wo** auf der grossen Karte die
 kleine liegt.
 
-Der Rahmen wird mit dem Werkzeug *Sub-map* aufgezogen und nicht in die Mitte
-gelegt. Eine Karte, die zeigt, wo sie liegt, ist der halbe Zweck der
+Der Rahmen wird mit dem Werkzeug *Sub-maps › Link map* aufgezogen und nicht
+in die Mitte gelegt (T-320): Rahmen ziehen, die Karte wählen, die dort
+liegt — geschrieben wird an ihr (`insideMap` mit dem Rahmen; eine alte
+Kante wird ersetzt, denn eine Karte liegt in genau einer). *Unlink* nimmt
+die Kante wieder weg; die Karte bleibt. Zur Wahl stehen alle Karten ausser
+dieser und denen darüber — sonst entstünde ein Kreis. Eine Karte im Spiel
+verlinkt nichts, das tut ihre Vorlage. Eine Karte, die zeigt, wo sie liegt, ist der halbe Zweck der
 Verschachtelung: `world > continent > settlement > district > battle` ist
 eine Kette von Rahmen, und ein Klick hinein ist der Zoom.
 
@@ -101,12 +590,309 @@ Alles in Anteilen, nie in Bildpunkten — dieselbe Entscheidung wie bei Nebel
 und Tokens. Eine Karte, die neu ausgeschnitten wird, verlöre sonst jeden
 Rahmen.
 
+### Verknüpfung als Form, Zoomtiefe, Anzeige, Rand (T-327)
+
+Eine Verknüpfung ist mehr als ein Rechteck. Alles steht an derselben Kante
+`insideMap` der Unterkarte (`packages/model/src/maplinks.ts`); was sie nicht
+sagt, sagt die Kampagne, und ohne beides gilt, was vor T-327 galt.
+
+- **Bereich als Form** (`area`): ein Vieleck in Anteilen der Karte darüber,
+  dieselbe Form wie die Fläche eines Übergangs (T-326). *Sub-maps › Link
+  shape* tippt es Ecke um Ecke an; die erste Ecke noch einmal oder *Done*
+  schliesst es. `x`/`y`/`w`/`h` bleiben sein **Kasten**: auf ihn wird das
+  Bild der Unterkarte gelegt und mit ihm gerechnet (`liftPoint`,
+  `frameShare`, das Gruppen-Token) — die Form sagt nur, wo die Verknüpfung
+  gezeichnet wird und wo ein Klick sie trifft. *Rectangle* nimmt die Form
+  wieder weg. Dasselbe freie Vieleck zeichnet am Übergang *Draw shape*.
+  **Beim Zeichnen** (22.10.): die Ecken stehen da, die erste hervorgehoben;
+  sie rasten ein wie Wände (`einrasten`), dazu an die Ecken der übrigen
+  Formen dieser Karte — zwei Bezirke teilen so ihre Grenze. Alt setzt ohne
+  Einrasten, Halten öffnet die Lupe, *Undo point* und Backspace nehmen die
+  letzte Ecke zurück, Enter schliesst. *Show points* zeigt die Ecken der
+  übrigen Formen.
+- **Hinein nur, wo der Fokus liegt** (22.10.): der Zeiger beim Rad, sonst
+  die Mitte des Blicks (`zoomStep` mit `focus`, `inLink`). Er muss in der
+  Verknüpfung liegen — in ihrer Form, wenn sie eine hat. Vorher genügte,
+  dass ein Rahmen den Blick füllte und irgendwo zu sehen war; das Rad am
+  Rand führte in eine Stadt in der Mitte. Der Regler *Enter when it fills*
+  zeigt mit einer Marke, wie viel die Verknüpfung den Blick **jetzt**
+  füllt, und *Use current* übernimmt das.
+- **Keine Lupe mit der Maus** (22.10.): die Lupe ist für den Finger. Wer
+  mit der Maus drückte und erst nach 0,28 s zog, bekam sie statt des
+  Verschiebens — die Karte liess sich scheinbar nicht mehr ziehen.
+- **Zurücknehmen** (22.10.): *Undo point* und Backspace im Entwurf einer
+  Wand und eines Vielecks; *Undo* und Ctrl/Cmd+Z in der Gruppe Walls
+  nehmen die letzte Änderung an den Wänden dieser Ebene zurück — nur die
+  Wände, damit kein Token zurückspringt, das inzwischen jemand gezogen
+  hat. Der Verlauf gilt in der offenen Seite.
+- **Kein Absprung, solange ein Werkzeug läuft** (22.10.): ein Rahmen führt
+  nur in der Auswahl hinein. Mit *Unlink* angetippt, sprang die Seite
+  früher in die Unterkarte, bevor die Verknüpfung gelöst war; mit *Link
+  shape* oder *Measure* landete der Punkt im Rahmen statt auf der Karte.
+  In jedem anderen Werkzeug lässt ein Rahmen das Antippen zur Karte durch
+  (ausser *Unlink*, das ihn antippt).
+- **Zoomtiefe** (`near`): ab welchem Anteil des Blicks der nächste
+  Zoomschritt hineinführt, 10–100 %, Vorgabe 55 % (`MAP_NEAR`). Ein
+  kleiner Hof in einer grossen Stadt soll früh öffnen, ein Viertel erst,
+  wenn man wirklich davorsteht.
+- **Anzeige** (`show` für die Leitung, `showPlayers` für Spielende):
+  *Click to jump* (Rahmen mit Namen, Klick springt — wie bisher), *Frame
+  only* (Umrandung, kein Klick), *Icon* (ein Symbol ⊡ in der Mitte,
+  Klick springt), *Hidden* (nichts zu sehen, Zoomen führt trotzdem hinein).
+  Die Vorgabe steht an der Kampagne (`mapLinkShow`, `mapLinkShowPlayers`,
+  Rules & options). Der Server schickt jedem Betrachter nur die Anzeige,
+  die für ihn gilt; was die Kante selbst sagt, nur der Leitung. Mit
+  *Sub-maps* offen steht jede Verknüpfung als Rahmen da — sonst fände die
+  Leitung eine versteckte nicht wieder.
+- **Die Karte darüber als Rand** (`outer`, Vorgabe `Campaign.mapLinkOuter`,
+  ohne Angabe aus): in der Unterkarte steht um ihr Bild herum blass die
+  Karte darüber, in gleicher Ausrichtung. Die Lage wird aus dem Kasten
+  gerechnet (`outerPlacement`, D8): die Karte darüber ist um `1/w` grösser
+  und um `x/w` verschoben. Es gibt sie nur, wo der Betrachter die Karte
+  darüber hat — dieselbe Liste wie die Brotkrumen, also gesiebt nach
+  Freigabe und `Session.mapNavigation` —, und mit ihrem Bild, wie er es
+  bekommt: für Spielende unter Nebel die beschnittene Adresse (T-312), das
+  Verdeckte bleibt durchsichtig. Gezeichnet wird der Rand im sichtbaren
+  Ausschnitt (er trägt nichts zur Scrollfläche bei) und läuft beim
+  Schwenken mit.
+- **Hinaus** (`mapExits`): oben in der Bühne ein Pfeil zur Karte darüber,
+  nur wenn es sie für den Betrachter gibt. Ganz hinauszoomen führt wie
+  bisher ebenfalls hinauf. Nachbarkarten (hinüber statt hinauf) warten auf
+  E-121; ein Ausgang trägt dafür schon `kind: 'neighbour'` und die Seite.
+
+### Gitter über den Massstab verbinden (T-329)
+
+Eine Stadtkarte (1 Feld = 50 ft) in einer Regionskarte (1 Hex = 1 mi) soll
+genau die Hexe einnehmen, die ihre Fuss ausmachen — die Gitter laufen
+ineinander. Dafür steht an der Kante `insideMap` der Schalter **`align`**
+(*Sub-maps › Link settings › Align to parent grid*; `packages/model/src/mapscale.ts`).
+
+- **Grösse aus beiden Massstäben** (`alignedSize`): gerechnet in Fuss je
+  Bildpunkt (`feetPerPixel` = Massstab durch Feldbreite). Die Unterkarte ist
+  `nat.w · fpp(Kind)` Fuss breit, das sind `/ fpp(Eltern)` Bildpunkte der
+  Karte darüber, als Anteil ihrer Breite. Die Bildgrössen kommen am Server
+  vom Asset (`Asset.width`/`height`, `mapNatOf`) — der Server lädt kein Bild.
+- **Lage am Raster** (`snapToParentGrid`): bei Quadraten die linke obere
+  Ecke an die nächste Gitterecke, bei Hexen die **Mitte** des Bereichs in
+  die Mitte eines Hexes (eine Stadt liegt *in* einem Hex). Ausgangspunkt ist
+  die Mitte des gespeicherten Kastens.
+- **Eine Form geht mit**: ein Vieleck (`area`) wird aus seinem Kasten in den
+  ausgerichteten gestreckt.
+- **Gerechnet beim Lesen** (D8): gespeichert bleiben `x`/`y`/`w`/`h` als
+  freie Lage und Grösse — fällt der Schalter, gelten sie wieder. Der
+  Kartenkontext schickt den ausgerichteten `frame`, dazu `childGrid` (das
+  Raster der Unterkarte in Anteilen des Bereichs; die Seite zeichnet beide
+  Gitter, solange *Sub-maps* offen ist) und für die Leitung `alignIssue`.
+  Das Gruppen-Token rechnet durch denselben Rahmen (`partyPosition` mit
+  `frameFor`).
+- **Nicht umrechenbar** (`alignIssue`): `units`, wenn ein Massstab keine
+  Länge ist („1 day" ist eine Reisezeit) — der Schalter ist dann gesperrt
+  und sagt warum —, `size`, wenn eine Bildgrösse fehlt. Dann gilt die
+  freie Grösse.
+- **Distanzen über Karten**: Messen (M) in einer Unterkarte zeigt die
+  Strecke zusätzlich in der Einheit der Karte darüber (`convertDistance`,
+  „≈ 0,19 mi on Region"; `up` im Kartenkontext), in der Karte darüber in der
+  einer Unterkarte, wenn beide Enden in ihrem Bereich liegen. *Add to
+  route* sammelt gemessene Stücke auch über einen Sprung in eine andere
+  Karte und zählt sie in Fuss zusammen, gezeigt in der Einheit der Karte,
+  auf der man steht (`routeFeet` im Modell, die Grundlage für Reisen,
+  T-177); ein Stück ohne Länge zählt nicht und wird genannt. Die Route lebt
+  nur in der Seite.
+- **Für T-328** (Marker zwischen Kartenstufen): Punkte wandern mit
+  `liftPoint`/`lowerPoint` durch den Rahmen, den `effectiveMapLink` liefert
+  — dieselbe Rechnung wie hier.
+
+### Marker und Tokens zwischen Kartenstufen (T-328)
+
+Was auf einer Stadtkarte steht, soll die Regionskarte mitzeigen; was die
+Leitung auf der Regionskarte in die Stadt setzt, soll die Stadtkarte
+kennen. Beides ohne zweite Kopie (`packages/model/src/mapstack.ts`).
+
+- **Tief → hoch, gelesen** (`liftMarkers`, D8): der Kartenkontext
+  (`lifted`) hebt die Marker jeder Unterkarte mit ihrer Verknüpfung
+  (`effectiveMapLink`, also auch ausgerichtet und als Form) auf die Karte
+  darüber — `liftPoint` durch den Kasten. Gehoben werden Orte und Personen
+  (`static`), Aufträge (`quest`) und Spiel-Tokens (`play`); nicht das
+  Gruppen-Token (das steht schon über `partyPosition` auf jeder Stufe),
+  Assets, Übergänge und freie Lichter. Was oben schon selbst einen Marker
+  hat, kommt nicht zweimal. Mehr als `LIFT_SINGLES` (6) werden ein
+  **Bündel mit Zahl** in der Mitte des Bereichs; ein Klick führt hinein.
+  Eine Stufe weit und nur die erste Ebene: auf der Weltkarte steht nicht
+  jede Kiste jedes Kellers. Die Seite zeichnet gehobene Marker kleiner und
+  gestrichelt; ein Klick öffnet die Kurzansicht.
+- **Hoch → tief, als Vorschlag** (`placementSuggestions`): ein Marker der
+  Karte darüber im Bereich einer Unterkarte bleibt, wo er ist — **er ist
+  der gespeicherte Vorschlag**. Die Unterkarte rechnet daraus beim Lesen
+  die Liste **„To place"** (`toPlace`, nur für die Leitung) mit der Lage
+  aus `lowerPoint`, gestrichelt auf der Karte. *Confirm* setzt ihn an diese
+  Lage, *Move…* an eine angetippte; dann **wandert** er
+  (`confirmPlacement`): erst kommt die Kante an der Unterkarte, dann geht
+  die oben weg — es gibt ihn wieder einmal, und oben steht er gehoben.
+  *Keep on …* setzt `stay` am Marker oben: er ist dort gemeint, keine
+  Unterkarte schlägt ihn mehr vor. Ein Marker, der unten schon steht, wird
+  nicht vorgeschlagen. Bei einer Karte im Spiel zählt oben nur, was an der
+  Instanz selbst steht — was die Vorlage trägt, wandert nicht von hier aus.
+- **Gesiebt am Server**: die Unterkarte kommt, wie der Betrachter sie
+  bekommt (`redactMap`: ihr Nebel, `hidden`, Sichtbarkeit des Ziels; eine
+  nicht freigegebene Instanz gar nicht), ihr Bereich nur, wo er oben
+  aufgedeckt ist, und jeder gehobene Punkt nur, wo oben kein Nebel liegt.
+  Eine Verknüpfung, die Spielende nicht sehen (`showPlayers: hidden`),
+  verrät auch keine Marker. Ein gehobener Marker, dessen Ziel der
+  Betrachter nicht sieht, steht nicht da.
+
+---
+
+## Stockwerke und Portale (T-307)
+
+Ein Turm, ein Keller, ein Schiff mit drei Decks: **eine Karte, mehrere
+Ebenen** (E-108). Unterkarten (oben) sind für einen anderen Massstab —
+Region, Stadt, Haus —, nicht für gestapelte Geschosse, die gemeinsam
+gespielt werden.
+
+**Eine flache Liste, keine Stapelnummer.** Je Ebene ein Name, ein
+Gebäudeteil (`structure`: Halle, Westturm, Ostturm) und optional ein
+Höhenbereich (`elevation`, von–bis in Fuss). Welche Ebenen verbunden sind,
+sagen **allein die Übergänge**, nie die Reihenfolge. So decken sich zwei
+ungleich hohe Türme ab:
+
+| Ebene | Gebäudeteil | Höhe |
+|---|---|---|
+| West 1 | West tower | 0–20 ft |
+| East 1 | East tower | 0–10 ft |
+| East 2 | East tower | 10–20 ft |
+
+West 1 liegt neben East 1 *und* East 2 (`elevationsOverlap`); eine Brücke
+von West 1 nach East 2 ist ein Übergang wie jeder andere. Die Leiste
+gruppiert nach Gebäudeteil und sortiert darin nach Höhe (`floorGroups`);
+zwei Bereiche auf derselben Höhe dürfen auch eine Ebene sein — ein Bild mit
+beiden Turmsockeln.
+
+**Die erste Ebene ist die Karte selbst** („Ground"): ihr Bild ist
+`Image.image`, Gitter, Sperren und Blätter stehen, wo sie vor T-307
+standen. Bestehende Karten sind darum ohne Umschreiben Karten mit einer
+Ebene (Migration 112 zieht das Register nach und zählt sie). Jede weitere
+Ebene trägt in `Map.floors` **dieselben Felder** — eigenes Bild, eigenes
+Gitter, **eigener Massstab** (ein Turm kleiner, ein Keller grösser), eigene
+Sperren und Blätter, eigenes Licht (`lighting`). Ein Marker steht auf der
+Ebene, die `props.floor` nennt, ohne Angabe auf der ersten.
+
+**Gerechnet wird je Ebene über eine Projektion** (`floorView`): eine
+Ebene sieht aus wie eine Karte ohne weitere Ebenen, mit ihrem Bild, Gitter,
+Nebel und nur ihren Markern. Sicht, Licht, Messen, Aufdecken, Türen,
+Zugplan und Zurückhalten rechnen damit unverändert; `withFloorView`
+schreibt eine geänderte Ebene in die Karte zurück.
+
+**Nebel und Freigabe sind Stand am Tisch** und stehen neben den Ebenen:
+`Map.floorReveal` (je Ebene die aufgedeckten Formen) und
+`Map.floorReleased` (`false` hält eine Ebene zurück). An einer Instanz
+(T-289) kopiert ein Aufdecken im Keller so nicht alle Ebenen der Vorlage
+in die Instanz. Eine Ebene mit `gmOnly` geht nie an Spielende, eine
+zurückgehaltene erst nach „Held back“ aus — beide samt ihren Markern und
+den Übergängen, die dorthin führen (`redactFloors`; ein Treppenpfeil in
+ein verborgenes Geschoss verriete es). Das beschnittene Kartenbild
+(T-312) gilt je Ebene: die Adresse nennt `ebene~blatt`.
+
+### Übergänge
+
+Ein Übergang ist **eine Markerart** (`kind: 'passage'`) mit Ziel
+{Karte, Ebene, Punkt}: die Kante zeigt auf die Zielkarte (dieselbe für
+Treppe und Leiter), `toFloor`, `toX`, `toY` sagen Ebene und Punkt dort.
+Gestalten: `stairs`, `ladder`, `bridge`, `portal`. Gesetzt wird mit
+Floors › Add passage: das Ende hier antippen, „Leads to“ wählen, das Ende
+dort antippen — oder „another map…“ für ein Portal auf eine andere Karte
+(es führt auf deren erste Ebene, in die Mitte).
+
+- **Beide Richtungen** (Vorgabe): am Ziel steht ein **gespiegeltes Ende**
+  (`passageEnds`, gestrichelt), kein zweiter Marker — ein Paar von Hand zu
+  pflegen hiesse, dass eines wandert und das andere nicht.
+- **Einbahn** (`oneWay`): kein gespiegeltes Ende, also kein Weg und kein
+  Blick zurück.
+- **Durchsehen oder nur durchgehen** (`sight: through | none`): wer auf
+  einem Ende steht, durch das man sieht, sieht auch vom Zielpunkt aus —
+  auf der Zielebene, mit deren Sperren und **in deren Massstab**
+  (`sightInto`). Ein Portal mit `none` zeigt nichts von drüben.
+
+**Durchgehen:** ein Token, das man nah an einem Ende loslässt (ein halbes
+Feld), steht genau darauf. Antippen des Übergangs zeigt das Ziel, „Show
+…“ und „Take … through“: `POST /api/maps/:id/move` mit `via` versetzt
+das Token auf Zielebene und Zielpunkt (`goThrough`) — wer es ziehen darf,
+darf es durchgehen lassen; mit Bestätigung durch die Leitung (`moves:
+confirm`) und im Kampf wartet auch das. Seit T-326 (unten) versetzt auch
+ein Portal auf eine andere Karte, in deren Instanz für die Sitzung.
+
+### Übergänge als Fläche (T-326)
+
+Eine Treppe ist breiter als ein Punkt, und vor einem Portal steht eine
+ganze Gruppe. **Ein Ende darf eine Fläche sein** (`props.area`, am Ziel
+`props.toArea`): ein Vieleck in Anteilen der Karte, gesetzt mit „Draw
+area“ in der Karte des Übergangs — zwei Ecken, auf die Felder gerundet.
+**Ohne Fläche ist ein Ende das Feld um seinen Punkt** (`passageArea`;
+ohne Gitter der Punkt selbst) — bestehende Übergänge sehen aus wie vorher
+und verhalten sich wie vorher, nur zählt jetzt das ganze Feld.
+
+- **Wer darin steht, steht am Übergang** (`inPassage`, `tokensInPassage`).
+- **Sicht von innen:** wer in der Fläche einer Treppe mit Sicht steht,
+  sieht auf der Zielebene von der **entsprechenden Stelle** der Zielfläche
+  aus (`across`: wo man im Kasten der Fläche steht, steht man im Kasten
+  der Zielfläche) — oben an der Treppe sieht man oben, unten unten.
+  Gerechnet wird wie jede Sicht (T-305) mit den Sperren der Zielebene;
+  zurückgehalten wird am Server wie bisher (`redactFloors`, `redactMap`).
+- **Zielfelder:** wer durchgeht, landet auf einem **freien Feld der
+  Zielfläche**, das nächste am Zielpunkt zuerst (`landingSpots`); reicht
+  es nicht, auch auf belegten — niemand bleibt stehen, weil die Treppe
+  oben voll ist. Die Bildgrösse der Zielebene kommt vom Asset
+  (`Asset.width/height`), nicht vom Browser.
+
+**Durchschicken** (`apps/server/src/uebergang.ts`):
+
+- **Die Leitung schickt alle** in der Fläche: „Send all through“,
+  `POST /api/maps/:id/passage` `{via, floor}`. Durch ein **Portal auf eine
+  andere Karte** kommen die Tokens dort an — liegt die Quelle als Instanz
+  auf dem Tisch einer Sitzung (T-289), in die Instanz der Zielkarte für
+  dieselbe Sitzung (angelegt, wenn es sie nicht gibt), und eine
+  zurückgehaltene Instanz wird dabei freigegeben. Zeigt die Sitzung die
+  Quellkarte, zeigt sie danach die Zielkarte: **die Spielenden wechseln
+  mit**.
+- **Spielende gehen selbst:** ein Token in der Fläche, „Go through with …“
+  — oder **auf ein Portal ziehen**, dann geht es gleich hindurch (so war es
+  in der alten Karte; an einer Treppe öffnet sich nur ihre Karte, denn wer
+  auf der Treppe steht, will vielleicht nur sehen). Dieselbe Route wie
+  bisher, `POST /api/maps/:id/move` mit `via`.
+
+**Wer, wann, was es kostet** (`passageRulesOf`, `mayUsePassage`): die
+Vorgabe steht an der Kampagne (Rules & options › Map), je Übergang
+überschreibbar (`props.rules`, „Who, when, cost“ in seiner Karte):
+
+| Einstellung | Kampagne | Werte | Vorgabe |
+|---|---|---|---|
+| wer | `passageTrigger` | `gm`, `players`, `both` | `both` |
+| wann im Kampf | `passageWhen` | `any`, `turn` (eigener Zug), `roundEnd` (letzter Zug der Runde) | `any` |
+| Bewegung | `passageMove` (am Übergang auch `feet`) | `none`, `square`, `half`, `all` | `none` |
+| Aktion | `passageAction` | `none`, `action`, `bonus` | `none` |
+| Bestätigung | `passageConfirm` | `moves` (wie `Campaign.moves`), `always`, `never` | `moves` |
+
+Ohne Angabe gilt, was vor T-326 galt. Ausserhalb eines Kampfes gibt es
+keinen Zug, also hält `when` dort nichts und nichts kostet etwas. **Im
+Kampf geht es über den Zugplan** (T-198): steht der geplante Zug in der
+Fläche, bietet der Planer „Through …“ an; der Schritt `kind: 'passage'`
+zieht seine Fuss vom Tempo und nimmt Aktion oder Bonusaktion
+(`planBudget`), der Server rechnet die Kosten beim Einreichen aus den
+Regeln neu und prüft, dass die Figur an der Stelle in der Fläche steht und
+der Übergang es jetzt erlaubt. Danach endet der Plan — die Figur steht
+woanders. Geprüft wird **am Server**; die Maske bietet nur an.
+
+**Später:** Sicht zwischen Ebenen nur über Übergänge — ein Fenster nach
+aussen, der Blick vom Turmdach in den Hof wird ein eigener Übergang
+„Ausblick“. Das Aufdecken beim Ankommen oben (heute deckt erst der nächste
+Zug auf) kommt danach; ebenso Flächen als freies Vieleck (heute ein
+Rechteck aus zwei Ecken).
+
 ---
 
 ## Hineinzoomen statt hineinspringen
 
 Das Rad zoomt. Füllt ein Unterkartenrahmen den Blick — mehr als 55 % in
-**beiden** Richtungen; ein Rahmen, der nur quer voll ist, ist ein Streifen
+**beiden** Richtungen, oder die Zoomtiefe der Verknüpfung (`near`, T-327); ein Rahmen, der nur quer voll ist, ist ein Streifen
 und kein Ziel —, dann wird er aufdringlich: durchgezogen, beschriftet,
 „zoom in to enter". **Erst der Schritt danach betritt ihn.**
 
@@ -114,6 +900,30 @@ Zwei Stufen, weil eine Schwelle allein ein Sprung wäre, den niemand kommen
 sieht. Und zurück geht es genauso: wer auf einer Unterkarte ganz
 hinauszoomt, landet auf der Karte darüber. Ohne das wäre das Hineinzoomen
 eine Einbahnstrasse.
+
+**Festhalten** (REQ-132, T-219): das Schloss in der Zoomgruppe hält die
+Kartenebene. Rad, `+`/`-` und Kneifen zoomen dann nur näher und weiter —
+kein Rahmen sagt „zoom in to enter“ an, keiner wird betreten, und ganz
+draussen geht es nicht zur Karte darüber. Wer auf der Stadtkarte eine
+Strasse lesen will, landet sonst im Hafenviertel. Brotkrumen und
+angeklickte Rahmen führen weiter dorthin, wohin sie zeigen: das Schloss
+hält das Zoomen, nicht die Navigation. Es steht nur da, wenn es etwas zu
+halten gibt (Unterkarten oder eine Karte darüber), und gilt je Browser
+(`nw.karte.fest`), nicht für die Karte.
+
+**In Play nur, wenn die Sitzung es erlaubt** (T-308). Auf einer Karte im
+Spiel bleiben Spielende, wo der Tisch ist: der Schalter
+`Session.mapNavigation` (Vorgabe aus, in der Kartenleiste der Leitung
+„Players stay here" / „Players change maps") sagt, ob sie zoomen dürfen.
+Aus schickt der Kontext ihnen weder Brotkrumen noch Rahmen
+(`navigation: false`), und die Seite fällt beim Hinauszoomen auch nicht
+auf die Kante der Karte zurück — Rahmen sind Bild. An führen Rahmen und
+Brotkrumen **nur in Instanzen derselben Sitzung**, die freigegeben sind;
+eine Vorlage, die nicht im Spiel ist, ist für sie kein Ziel. Die Leitung
+navigiert immer, im Spiel in die Instanz der Sitzung, wenn es eine gibt,
+sonst in die Vorlage. Gesiebt wird am Server (`/api/maps/:id/context`).
+Abseits des Spiels (eine Vorlage, in der Vorbereitung) gilt die
+Sichtbarkeit allein.
 
 Gemessen wird das Sichtfenster, **gerechnet** das Bild. Beim Zeichnen hängt
 das neue Bild noch nicht im Baum — es zu messen ergäbe null, und dann wäre
@@ -171,6 +981,32 @@ Rechtsklick, der ohne Rückfrage etwas löscht, ist der Klick, den man auf
 einem Laptop-Touchpad aus Versehen macht. Der Weg hinaus steht im selben
 Dialog, mit Rückfrage.
 
+### Assets: fix oder verschiebbar (T-306)
+
+In der Seite heisst ein Möbel **Asset**: Tokens › **Add asset** setzt
+eines (dasselbe Bild darf zehnmal dastehen, es rastet nicht), Tokens ›
+**Asset** stellt ein angetipptes ein — Breite in Feldern, Höhe ÷ Breite,
+Drehung (⟲ ⟳ in 15°-Schritten), **Movable in play** und **Blocks**.
+
+- **Vorgabe fix.** Ein Asset bewegt sich in Play nicht, auch für die
+  Leitung nicht: die richtet es in der **Bearbeitung** ein (auf der Seite
+  der Karte, wer sie schreibt — dort ist jedes zieh-, dreh- und
+  skalierbar). Mit `movable` schiebt es in Play die Leitung immer und
+  Spielende, wenn die Kampagne sie mehr als die eigene Figur ziehen lässt
+  (`tokenMove` `party`, `allies`, `all`) und Züge nicht erst bestätigt —
+  ein Vorschlag nennt eine Figur, und eine Kiste ist keine. Geschrieben
+  wird an der offenen Karte, im Spiel also an der Instanz (T-289), nicht
+  an der Vorlage.
+- **Was es hält** (`blocks`): eine Sperrart ausser Türen — Wand (Schrank:
+  Schritt, Blick, Licht), Fenster, Hindernis (Kiste: nur der Schritt),
+  unsichtbare Wand. Der gedrehte Umriss wird **beim Lesen** zu vier
+  Sperren dieser Art (`assetWalls`); in `Map.walls` steht nichts davon,
+  sonst wanderte die Sperre nicht mit der Kiste. Sicht, Licht und der Weg
+  eines Zuges rechnen damit (`blockingWalls`), der Server prüft den Schritt
+  der Spielenden gegen dieselben Sperren.
+- **Licht** wie an jedem Marker (Light › Light source, an/aus) — eine
+  Laterne, die als Schrank sperrt, leuchtet aus sich heraus.
+
 ---
 
 Mit dem Werkzeug *Sub-map* lässt sich ein gesetzter Rahmen auch wieder
@@ -185,7 +1021,396 @@ einer herausgezoomten der halbe Rahmen.
 
 ---
 
+## In der Seite (T-115)
+
+Die Seite zeichnet die Karte mit `nw-karte` — auf der Artikelseite
+(Layout-Element `map`) und unter **Play** (`/play`). Gerechnet wird in
+`packages/model/src/map.ts`, nicht in der Komponente: Blätter
+(`drawnSheets`), Gitter und Messen (`gridGeometry`, `measure`), Rahmen
+und der Schritt hinein oder hinaus (`frameShare`, `zoomStep`), das
+Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
+(`redactMap`). Dieselben Regeln wie oben; die Tabelle K1–K7 in
+[Datenmodell.md](Datenmodell.md) sagt, wo was steht.
+
+- **Gesten:** ein Finger oder die Maus schwenkt, das Rad und zwei Finger
+  zoomen, `+`/`-` auf der Tastatur auch. Ein Marker antippen öffnet seine
+  Kurzansicht mit „Open article" — wie jeder genannte Artikel.
+- **Play folgt der Sitzung** (`SessionState.activeMap`, `GET /api/play`).
+  Wer unter Play in eine Unterkarte zoomt, schaut hinein (`?map=`) — die
+  Sitzung und der Beamer bleiben, wo sie sind.
+- **Der Stand kommt aus dem Bestand.** Die Karte ist ein Artikel; was
+  neben ihr steht (Brotkrumen, Unterkarten, Markerziele, Gruppe), fragt
+  `GET /api/maps/:id/context`, neu, sobald der Artikel neu kommt. Über
+  den Live-Kanal (T-116) kommt die Karte neu, wenn jemand einen Marker
+  setzt; der Kontext, wenn sich eine Karte oder ein Markerziel ändert, und
+  Play, wenn die Leitung eine andere Karte auf den Tisch legt.
+- **Die Leitung** (und wer die Karte schreibt) zieht Marker an eine neue
+  Stelle und setzt neue mit „Add marker" — beides schreibt nur die Kante.
+  Gitter, Massstab und Blätter stellt sie in den Feldern der Karte ein.
+- **Die Werkzeugleiste** (T-203, nach dem
+  [Vergleich mit anderen VTTs](vorschlaege/Karten-VTT-Vergleich.md)):
+  links senkrecht, am Telefon waagrecht über der Bühne. Gruppen Auswahl
+  (S), Tokens (T, Leitung), Messen (M) und Nebel (F, Leitung); die aktive
+  Gruppe zeigt ihre Unterwerkzeuge in einer Zeile über der Karte, noch
+  einmal wählen oder Esc führt zurück zur Auswahl. Wände (T-118), Notizen
+  und Zeichnen stehen inzwischen mit ihrem Werkzeug da (Zeichnen seit
+  T-219). Die Tasten gelten unter Play, im Vollbild oder mit dem
+  Fokus in der Karte, nie beim Tippen. Über der Bühne bleibt, was die
+  Sicht einstellt: Zoom, Blätter, „View as“ (GM · all players · eine
+  Figur, T-320 — vorher „Player view“ und „For“), Vollbild.
+- **Werkzeuge je Kartentyp** (T-320, `Campaign.mapTools`, `mapToolsOf`):
+  welche Gruppen die Leiste zeigt, sagt die Kampagne je `Map.kind`. Ohne
+  Einstellung: auf `battle` Wände, Nebel, Licht, Gitter, Tokens, Assets
+  und Marker; auf allen anderen Unterkarten (*Sub-maps*), Marker und
+  Assets — Nebel lässt sich einschalten. Eine Karte ohne Art ist `region`,
+  wie das Register vorgibt. Auswahl, Messen und Ebenen stehen immer da;
+  Wege und Reise haben noch kein Werkzeug auf der Karte. **Was auf der
+  Karte schon gilt, bleibt bearbeitbar:** Nebel, der an ist, und eine
+  Karte, die nicht hell ist, behalten ihre Gruppe — sonst liesse sich der
+  Nebel nicht mehr aufdecken. Eingestellt wird unter Rules & options ›
+  Map tools (eine Tabelle Art × Gruppe) oder an der Leiste mit „⚙ Tools“
+  für die Art der offenen Karte.
+- **Am Telefon** (T-320) liegt die Leiste als eine Zeile fest am unteren
+  Rand unter der Karte (`position: sticky`), die Unterwerkzeuge darüber;
+  Sicht, Freigabe und „Party & encounters“ stehen hinter „⋯ View“.
+- **Vollbild** (Umschalt+F): unter Play geht die ganze Seite ins Vollbild
+  (`.vollbild-ziel`), damit der Zugplan dabei bleibt; auf der
+  Artikelseite die Karte allein. Ohne Fullscreen API (iPhone) legt sich
+  die Karte über die Seite; Esc verlässt beides.
+- **Die Seitenleiste** („Party & encounters“, bis T-320 „Table“, unter Play offen, auf der Artikelseite
+  zu; `seitenleiste.ts`, `GET /api/maps/:id/side`): die Figuren der Gruppe
+  der laufenden Kampagne mit Trefferpunkten (Stand an der Figur, Maximum
+  am Statblock) und Zuständen — ◎ zentriert die Karte auf ihr Token,
+  „Place“ oder Ziehen der Zeile aufs Feld setzt ein Spiel-Token. Für die
+  Leitung darunter die Begegnungen der Sitzung (`?session=`, sonst die,
+  die diese Karte auf dem Tisch hat): was über `partOf` unter ihr hängt,
+  die geführte und die auf dieser Karte, mit „Place n“ für die noch
+  fehlenden Teilnehmer. Gerechnet in `packages/model/src/kartenseite.ts`
+  über **gesiebte** Artikel — ein zurückgehaltenes Maximum fehlt hier wie
+  am Bogen.
+- **Vorplatzieren und Beginnen** (Datenmodell K15): an einer Begegnung,
+  die nicht läuft, „Prepare n“ — die Teilnehmer stehen blass und
+  gestrichelt auf der Karte, nur die Leitung sieht sie, und können an
+  ihren Platz gezogen werden. „▶ Start“ würfelt die Initiative, deckt sie
+  auf und lässt die Sitzung die Begegnung führen; Ring und Zugplan folgen
+  von selbst.
+
+## Karten finden und anlegen (T-202)
+
+Karten haben einen festen Ort: **Play › Maps** (`/maps`) listet jede
+Karte, die man sieht, mit Vorschaubild, Unterkarten eingerückt unter ihrer
+Karte, gefiltert nach Ebene, Marke und Namen. „New map“ nimmt ein
+Kartenbild (hochladen oder wählen) und legt daraus die Karte an — Name aus
+dem Bild, Ebene die Schreibebene (`mapFromImage`). Ohne Karten steht dort
+gleich die Kurz-Hilfe: *A map is an image with a grid.*
+
+An der Sitzung bietet „Map on the table“ neben Karten auch **Kartenbilder**
+an; wer eines wählt, bekommt die Karte dazu, und die liegt dann auf dem
+Tisch. Auf der Artikelseite einer Karte steht, in welchen Sitzungen,
+Szenen und Kämpfen sie vorkommt („Used in“).
+
+## Nebel in der Seite (T-117)
+
+**Zugedeckt ist alles, was keine aufgedeckte Form berührt** — wie im
+Prototyp. `Map.fog` schaltet den Nebel, `Map.reveal` hält, was aufgedeckt
+ist; beides steht an der Karte, weil Aufgedecktes bleibt.
+
+- **Formen:** `rect` (aufgezogen), `circle`, `poly` (das Sichtpolygon des
+  Prototyps) und `path`, der **Pinselstrich**: ein Linienzug mit Halbmesser
+  `r`. Kreis und Strich messen `r` in Anteilen der Breite und tragen das
+  Seitenverhältnis `ar`, mit dem sie gezogen wurden — der Server kennt die
+  Bildgrösse nicht und muss trotzdem sagen können, ob ein Marker darin
+  steht.
+- **Werkzeuge der Leitung** (Knopf *Fog*): *Reveal* zieht ein Rechteck auf,
+  *Brush* malt in der gewählten Breite (in Feldern), *Hide* deckt zu, was
+  mit seiner Mitte im Kasten liegt, dazu *Reveal all* und *Cover all*.
+  Ein Finger zieht die Form, zwei zoomen weiter.
+- **Entlang des Weges** (*Reveal along moves*): wer ein Token im Nebel
+  zieht, deckt den Weg auf — die Leitung so breit wie der Pinsel, ein Zug
+  über den Server zwei Felder breit, `for` die gezogene Figur. **Ob, sagt
+  die Kampagne** (`Campaign.revealOnMove`, T-204); die Karte darf es
+  überschreiben (`Map.revealOnMove`, die Wahl in der Nebelleiste: campaign
+  / on / off). Die Bewegung zählt in beiden Fällen; ohne Aufdecken deckt
+  die Leitung nachher auf. Wände rechnet die Seite dabei noch nicht — der
+  Prototyp nimmt das Sichtpolygon.
+- **Sicht aufdecken** (*Reveal sight*, T-219): die Leitung tippt ein Token
+  an und deckt auf, was es von seinem Platz aus sieht — bis zur nächsten
+  Wand, im Dunkeln nur seine Dunkelsicht und die Lichter, in die es
+  hineinsieht (`revealView`, dieselbe Rechnung wie ein Zug des Servers).
+  Gilt der Nebel je Figur, für diese Figur. Sieht es nichts Neues, sagt die
+  Seite das, statt eine leere Form zu speichern.
+- **Je Gruppe oder je Figur** (`Campaign.fog`, T-204): je Gruppe sieht
+  jede Spielerin alles Aufgedeckte. Je Figur darf eine Form `for` nennen —
+  eine Figur oder eine Gruppe —, und dann sehen sie nur diese, ihre
+  Gruppe und die Leitung; was die Leitung ohne Wahl aufdeckt, gilt allen.
+  In der Kopfleiste der Karte wählt die Leitung unter *For*, für wen sie
+  aufdeckt und wessen Sicht *Player view* zeigt; ohne *Player view* sieht
+  sie die Vereinigung.
+- **Züge der Spielenden** (`Campaign.moves`, T-204): ausserhalb eines
+  Kampfes zieht eine Spielerin ihre eigene Figur, auch wenn sie die Karte
+  nicht schreibt (`POST /api/maps/:id/move`). `free` zieht sofort,
+  `confirm` legt einen Vorschlag an — gestrichelt vom Token zum Ziel, mit
+  ✓ und ✗ für die Leitung, gespeichert als Zugplan mit einem Schritt
+  (T-198), live über den Kanal. Im Kampf gilt ohnehin der Zugplan.
+- **Wer zieht** (`Campaign.tokenMove`, T-290, E-040): nur die Leitung,
+  die eigenen Figuren (Vorgabe), die Gruppe, dazu die Verbündeten (wer an
+  der Begegnung `Ally` trägt) oder jedes Token. Der Server rechnet es
+  (`mayMoveToken`) und schickt der Seite die ziehbaren (`movable`); im
+  Kampf plant man für dieselben über den Zugplan. In der Werkzeuggruppe
+  *Tokens* zeigt die Leitung der Knopf *Movement: own · confirm* den
+  Stand und öffnet ihn als kleines Blatt — geändert wird an der
+  Kampagne, für alle sofort. Den Vorschlag sieht jeder, der das Token
+  sieht.
+- **Gezeichnet auf einer Leinwand** (T-204): der Nebel war ein
+  SVG-Rechteck mit `mask="url(#…)"`; unter `<base href="/">` löst nicht
+  jeder Browser den Verweis gegen das eigene Dokument auf, und dann deckte
+  das Rechteck alles zu — die Spielersicht war schwarz, auch das
+  Aufgedeckte. Jetzt deckt eine Leinwand alles zu und schneidet die
+  Formen heraus (`karten/nebel.ts`).
+- **Zurückgehalten wird am Server** (`redactMap`): Marker unter dem Nebel
+  gehen nicht an Spielende, ausser dem Gruppen-Token und den Figuren der
+  Gruppe — wer im Dunkeln steht, steht trotzdem auf der Karte. Rahmen von
+  Unterkarten nur, wenn ihre Mitte oder eine Ecke aufgedeckt ist.
+- **Das Bild beschneidet der Server** (T-312, E-041,
+  `apps/server/src/kartenbild.ts`). Solange der Nebel an ist und nicht
+  alles aufgedeckt (`fullyRevealed`: ein Rechteck über die ganze Karte,
+  wie *Reveal all* es schreibt, oder Nebel aus), zeigen `Image.image` und
+  die Blätter für Spielende nicht auf das Asset, sondern auf
+  `/api/maps/:id/image?sheet=<blatt>&fog=<stand>` — das Bild mit der Maske
+  des Aufgedeckten (`revealMaskSvg`, dieselbe Fläche wie `inShape`), der
+  Rest durchsichtig, in der Grösse des Originals. Gerechnet wird aus der
+  gesiebten Karte, also bei Nebel je Figur aus dem, was **diese** Figur
+  aufgedeckt hat. Das Original gibt `/api/assets/:id` Spielenden nicht,
+  solange es unter einem Nebel liegt, den sie sehen (auch nicht als
+  Vorschau). Der **Stand** ist ein Hash aus Bildversion, Blatt und den
+  sichtbaren Formen: Spielende mit gleichem Aufgedecktem teilen ihn, der
+  Server rechnet ein Bild je Stand einmal (Zwischenspeicher im Speicher,
+  `MAP_CROP_CACHE_MB`, Vorgabe 256), und der Browser behält es. Gebündelt
+  wird beim Aufdecken selbst — ein Pinselstrich wird beim Loslassen
+  gespeichert, also lädt der Beamer ein neues Bild je Strich. Eine
+  beschnittene Adresse als Bild zurückzuschreiben lehnt der Server ab.
+  **Grenzen:** ein Bild, das nur als Adresse woanders liegt (`https://…`),
+  kann der Server nicht beschneiden — es geht weiter, wie es ist; und eine
+  Vorlage, die Spielende sehen und die keinen Nebel trägt, zeigt ihr Bild
+  ganz (die Vorlage einer Karte im Spiel auf `gm` stellen). Kachelweise
+  (REQ-138) kommt mit den Kacheln. Was wirklich geheim ist, gehört
+  weiter auf ein Blatt `gmOnly` — das geht gar nicht hinaus.
+- **Die Leitung sieht halb hindurch.** Mit *Player view* sieht sie die
+  Karte, wie Spielende sie bekommen: Nebel deckend, ohne Blätter der
+  Leitung, ohne versteckte Marker — dieselbe Rechnung (`redactMap`), im
+  Browser, als Vorschau.
+
+## Tokens im Spiel und wer dran ist (T-117)
+
+- **Teilnehmer auf die Karte** (REQ-135): läuft auf dieser Karte ein Kampf
+  (die Begegnung, die die Sitzung führt, oder eine laufende mit `onMap`),
+  setzt *Place combatants* jeden Teilnehmer ohne Token als Marker
+  `kind: play` in die Mitte des Ausschnitts, ein Feld auseinander; die
+  Leitung zieht sie an ihren Platz. *Clear play tokens* räumt nach dem
+  Kampf auf — Vorbereitetes und die Gruppe bleiben. Seit T-289 stehen
+  Spiel-Tokens an der **Karte im Spiel** (unten), also je Runde.
+- **Live:** ein Zug ist eine Änderung der Karte und geht über den
+  Live-Kanal an jedes Gerät, gesiebt je Empfänger.
+- **Wer dran ist** (REQ-144): ein goldener Ring um das Token des
+  Laufenden, ein gestrichelter um das des Nächsten, und in der Zeile
+  darunter „Round 2 · Ghoul’s turn · next: Rook". Spielende sehen den
+  Ring nur, wo ihre Initiative-Reihe den Teilnehmer zeigt (D53, D58) —
+  ein Gegner, dessen Zug noch nicht kam, ist auch nicht „next".
+- **Das Tokenbild** ist `Statblock.token` des Statblocks der Kreatur — ein
+  Asset der Klasse „Token" (T-119), gesiebt, eine Instanz mit dem Token
+  ihrer Vorlage —, sonst ihr Bild (`Image.image`). **Ohne Bild** stehen
+  die Anfangsbuchstaben des Namens, den der Server schickt — für Spielende
+  ist das der Deckname, solange der Name nicht freigegeben ist (REQ-178,
+  `redactEntity`); die Maske entscheidet das nicht.
+- **Spielende ziehen die eigene Figur** noch nicht — wer es erlaubt und
+  wo das steht, ist E-040.
+
+## Karten und Begegnungen im Spiel (T-289)
+
+Entschieden 19.10. (E-039, E-041): **wer eine Karte oder Begegnung nutzt,
+nutzt eine Instanz davon** — wie eine Wache aus einem Statblock
+(Datenmodell §7). Die Vorlage bleibt die Vorbereitung; was am Tisch
+geschieht, steht an der Instanz.
+
+```mermaid
+flowchart LR
+  V["Karte (Vorlage)<br/>Bild, Gitter, Sperren, Marker"] -- instanceOf --- I1["Instanz · Abend 1<br/>Nebel, Spiel-Tokens, released"]
+  V -- instanceOf --- I2["Instanz · Abend 2"]
+  B["Begegnung (Vorlage)"] -- instanceOf --- BI["Instanz · Abend 1<br/>Runde, Initiative"]
+  BI -- onMap --> I1
+  S["Sitzung Abend 1"] -. activeMap / activeEncounter .-> I1
+  S -.-> BI
+```
+
+- **Take into play** (Play, die Leitung, `POST /api/play/take`): die Karte
+  wird eine Instanz der Sitzung — in der Ebene der Kampagne, Nebel an,
+  nichts aufgedeckt, **nicht freigegeben**; die Sitzung zeigt auf sie
+  (`activeMap`). Dieselbe Karte noch einmal in derselben Sitzung setzt
+  den Stand fort (`sessionInstance`); eine andere Sitzung bekommt eine
+  eigene. **Start encounter** an einer Vorlage tut dasselbe für die
+  Begegnung: ihre Instanz liegt mit `onMap` auf der Instanz der Karte,
+  die vorplatzierten Tokens der Vorlage werden Spiel-Tokens der
+  Karteninstanz, und die Vorlage bleibt bei Runde 0.
+- **Freigabe** (`Map.released`, Knopf *Release to players*): bis dahin ist
+  die Instanz für Spielende **nicht vorhanden** — nicht in Listen, nicht
+  über die Id, nicht im Live-Kanal, nicht unter Play (`heldBackMap`, in
+  `articleVisible`). Danach sehen sie sie sofort mit Nebel.
+  **Freigeben heisst teilen** (`releaseMap`, 22.10.): die Instanz erbt die
+  Sichtbarkeit ihrer Vorlage, und eine Vorlage in Vorbereitung ist oft
+  `prepared` und nur für die Leitung — dann zeigte die Freigabe nichts.
+  Darum setzt sie auch `Status.status: ready` und
+  `Visibility.audience: campaign`; ein `hiddenFrom` bleibt stehen.
+  Zurücknehmen nimmt nur `released`. Der Deckname der Vorlage
+  (`Identity.cover`) geht mit auf die Instanz.
+- **Die Karte gibt ihr Bild frei, nicht das Asset** (22.10.): Spielende
+  bekommen jedes Blatt über `/api/maps/:id/image` — beschnitten unter dem
+  Nebel, ganz, wenn keiner liegt oder alles aufgedeckt ist. Gefragt wird,
+  ob sie die Karte sehen; das Asset muss niemand eigens teilen.
+  `/api/assets/:id` fragt weiter das Asset.
+- **Deckname und Aufdecken** (REQ-178): trägt die Karte einen Decknamen,
+  sehen Spielende ihn, bis die Leitung *Reveal name* drückt (⋯ View). Das
+  ist gewöhnliches Wissen (docs/Wissen.md › Aufdecken).
+- **Nebel je Instanz:** `Map.reveal` und `Map.fog` stehen an der Instanz;
+  der Nebel der Vorlage gilt ihr nicht. Spiel-Tokens sind Marker der
+  Instanz — die zweite Runde sieht die der ersten nicht (E-109: vorerst
+  Marker und nicht `participates.props.x/y`).
+- **Played** an der Vorlage (Artikelseite der Karte): die gespielten
+  Stände mit Datum, Sitzung und Begegnung, ein Klick öffnet den Stand
+  (die Instanz, mit Nebel; die Leitung sieht beides). Das ist die
+  bewusste Ausnahme von „Instanzen stehen in keiner Liste" (Datenmodell
+  V8). Gelesen über `GET /api/maps/:id/played`, gesiebt.
+- **Bestand** (Migration 106): je Karte mit Spiel-Tokens oder auf dem
+  Tisch einer Sitzung eine Instanz `mi_<karte>`, freigegeben; Tokens und
+  Aufgedecktes wandern hin, die Sitzung zeigt auf sie.
+- **Stockwerke** (T-307, E-108) kommen als Ebenen derselben Karte: eine
+  Instanz je Gebäude, Formen und Marker tragen dann ihre Ebene.
+
+## Unterwegs bemerken (T-350, REQ-209)
+
+`packages/model/src/spotting.ts`, am Server `bemerkenUnterwegs`
+(`apps/server/src/zugplan.ts`). Aus dem Prototyp (`confirmMove`).
+
+Geht eine Figur der Spielenden einen Weg — frei gezogen
+(`POST /api/maps/:id/move`) oder im bestätigten Zugplan —, fragt jedes
+Feld des Wegs ab dem ersten Schritt, was sie von dort bemerkt:
+
+- **Versteckte Tokens** (`marker.props.hidden`): gegen ihre Heimlichkeit —
+  `props.stealth` am Token, sonst 10 + Heimlichkeit aus dem Statblock der
+  Kreatur (`senseNumbers`). Ohne beides bemerkt sie niemand; dann deckt die
+  Leitung von Hand auf.
+- **Versteckte Zonen** (`ZoneKind.hiddenUntil`, noch nicht `found`): gegen
+  diese Zahl, von einem Feld der Zone aus.
+
+Gerechnet mit derselben Prüfung wie überall (`notices`): Sichtlinie gegen
+die Sperren, die den Blick halten; Licht aus Karte, Lichtern und Zonen; im
+Dunkeln nur mit Dunkelsicht, die dann als Dämmerlicht zählt; −5 im
+Dämmerlicht und in leicht verdeckten Feldern; schwer verdeckt sieht
+niemand. Die Gruppe sieht mit den Augen ihres besten Mitglieds. Was
+bemerkt wird, steht danach da (`hidden` weg) bzw. ist gefunden
+(`found: true`), und eine Zeile sagt es: im Ergebnis des Zugplans, beim
+freien Ziehen als Hinweis über der Karte.
+
+**Zonen betreten** (REQ-208, `zonesEntered`): wer eine Zone betritt, deren
+Art Schaden, einen Rettungswurf, einen Zustand oder Bewegungskosten nennt,
+bekommt eine Zeile („Rook enters Thorns: difficult terrain."). Gewürfelt
+wird nicht — ob die Falle diesmal greift, entscheidet die Leitung. Eine
+versteckte, ungefundene Zone nennt die Zeile nicht.
+
+Ohne Gitter wird nichts geprüft (es gibt keine Feldmitten). Schickt die
+Seite beim freien Ziehen keine Felder, gilt der Schritt vom Feld des
+Tokens zum Zielfeld.
+
+```mermaid
+flowchart LR
+  W[Weg: Felder ab dem 1. Schritt] --> K[hiddenOnMap<br/>Verstecke + Heimlichkeit]
+  K --> S[spotsAlong<br/>Sichtlinie · Licht · PP]
+  S -->|bemerkt| A[hidden weg / found: true]
+  W --> Z[zonesEntered<br/>Zonen mit Wirkung]
+  A --> L[Zeilen im Ergebnis]
+  Z --> L
+```
+
+## Der Zugplan (T-198, Prototyp)
+
+Unter Play steht unter der Karte eine **Aktionsleiste** wie in Baldur's
+Gate 3 — ein Prototyp zum Testen, Bedienung vor Vollständigkeit.
+
+- **Ressourcen** oben rechts: ● Aktion, ▲ Bonusaktion, ◆ Reaktion und die
+  Bewegung als Balken (`planBudget`, `packages/model/src/zugplan.ts`).
+  „Dash" gibt das Tempo noch einmal.
+- **Kacheln** rechnet der Server beim Lesen (D8, D51): die Aktionen des
+  Statblocks (`composedOf` auf Artikel mit `Action`-Karte, die Art aus
+  `Action.actionType`), dazu waffenloser Schlag und die allgemeinen
+  Aktionen (Dash, Disengage, Dodge, Help, Hide).
+- **Auf der Karte**: *Move* zeigt die erreichbaren Felder im übrigen
+  Tempo (5-10-5, andere Tokens besetzt, `planReach`), mit der Maus die
+  Wegvorschau mit Fuss; ein Antippen legt den Weg in die Zugfolge. Ein
+  Angriff zeigt seine Reichweite als Ring, Ziele in Reichweite rot
+  umrandet mit der **Trefferchance** (`hitChance`, natürliche 1 und 20),
+  die übrigen blass.
+- **Die Zugfolge** liest sich „Move 20 ft → Greataxe → Goblin → Bonus:
+  Rage", mit Vorschau (Trefferchance, Schaden, erwarteter Schaden);
+  umordnen per Ziehen oder ← →, zwei Wege tauschen nicht.
+- **Einreichen und bestätigen**: der Plan geht an die Leitung (Echtzeit
+  über den Live-Kanal, Meldung `plan`). Bestätigt sie, würfelt der Server
+  Angriff und Schaden ins Log (T-172, kritisch die Würfel doppelt), und das
+  Token wandert ans Ende des Weges. Abgelehnt mit Grund geht er zurück.
+- **Wer plant:** wer die Figur führt (`app_user_actor`) und ein Token auf
+  der Karte hat; die Leitung für jede Kreatur mit Statblock, auch für
+  einen Gegner. Die **Rüstungsklasse** eines Ziels sieht nur die Leitung;
+  Spielende sehen die Chance.
+- **Ein Plan ist Spielgeschehen, kein Inhalt**: er steht im Protokoll
+  (`event_log`, `turnplan`, `subject` die Karte), je Änderung ein Eintrag
+  mit derselben Plan-Id; es gilt der jüngste. Keine Migration, kein
+  Artikel, keine Ausfuhr.
+
+### Runde 2: Gelegenheitsangriffe und kein freies Ziehen
+
+- **Wer bedroht:** die Tokens der Gegenseite mit Statblock, im Kampf nur
+  die Teilnehmer. Seiten gibt es zwei: die der Gruppe (Spielerfigur,
+  Mitglied einer Gruppe, `participates.ally`) und alle anderen
+  (`seiteVon`, `apps/server/src/zugplan.ts`). Die Reichweite ist der
+  weiteste Nahkampfangriff, sonst 5 ft.
+- **Vor dem Senden:** verlässt ein geplanter Weg (oder die Vorschau) die
+  Reichweite eines Gegners, steht ein ⚠ am Feld davor, und der Schritt
+  sagt „provokes an opportunity attack from Goblin" (`opportunityAttacks`,
+  jeder Gegner einmal je Zug). **Disengage** vor dem Weg hebt es auf.
+  Die Felder rechnet die Karte; dem Server schickt der Plan dafür die
+  Bildgrösse mit (`nat`).
+- **Beim Ausführen** hält der Zug am Feld an, das das Token verlassen
+  will (`state: 'reacting'`, `pending`), und fragt, wer reagieren darf —
+  die Leitung für Gegner, Spielende für ihre Figur: „Opportunity attack?"
+  Ja würfelt den besten Nahkampfangriff am Server ins Log und verbraucht
+  die Reaktion (`event_log`, `reaction`); Nein lässt ziehen. Danach geht
+  der Zug weiter (`POST /api/maps/:id/turn-plan/:plan/react`).
+- **Die Reaktion ist weg bis zum eigenen nächsten Zug** (`reactionBack`,
+  nach Runde und Platz in der Reihe); ohne Kampf, bis ein Zug der Figur
+  bestätigt ist. Die Leiste zeigt ◆ dann blass, und ein Plan mit einer
+  Reaktion geht nicht durch.
+- **Kein freies Ziehen im Kampf:** läuft auf der Karte eine Begegnung
+  (`encounterOnMap`), lehnt der Server das Schreiben der Karte ab, wenn
+  jemand, der nicht leitet, ein Spiel-Token oder das Token eines
+  Teilnehmers verschiebt (`zugSperre`, 423). Die Maske sagt es vorher;
+  die Leitung zieht weiter und liest „Moved outside the plan." Ausserhalb
+  eines Kampfes gilt die Kampagneneinstellung (T-204).
+
+Noch nicht (Folgeaufgaben): weitere Reaktionen (Shield, Counterspell) als
+Kacheln, die auf einen Auslöser warten; Waffen aus dem Inventar als
+Kacheln, Zauber mit Flächen und Zauberplätzen, Schaden an der Figur
+abziehen, Initiative und „wer ist dran" als Bedingung, Hex-Raster, Wände
+(`mapBarriers`), Vorteil/Nachteil und Deckung.
+
 ## Was noch fehlt
 
-- **Bewegung**, die `mapBarriers` auch auswertet.
+- **Die Regeln einer Zone auf Licht und Sicht** (`zoneLight`/`obscured`)
+  — gezeichnet und gezogen werden Zonen seit T-219 (oben). Sperren und Sichtlinie stehen seit
+  T-118, Licht, Dunkelsicht und laufende Sicht seit T-216.
+- **Rahmen aufziehen** und Marker einstellen (Art, versteckt) mit der
+  Maus; heute über die Kanten im Bearbeiten. Assets stellt Tokens › Asset
+  ein (T-306).
+- **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).
 - **Mehrere Tokens auf einmal** verschieben.
+- **Spielende ziehen die eigene Figur** (E-040).
+- **Das Kartenbild am Server beschnitten** (E-041): solange nicht alles
+  aufgedeckt ist, nur das Aufgedeckte an Spielende — Folgeaufgabe von
+  T-289.

@@ -1,7 +1,9 @@
 import type { ViewDef } from '@nw/model';
 
 /**
- * Ansichten (REQ-164) — **drei, und der Ort wählt sie.**
+ * Ansichten (REQ-164) — **vier, und der Ort wählt sie** (seit T-110 mit
+ * dem Druck; eigene kommen im Register dazu und werden dort gewählt, wo
+ * gewählt wird: auf der Kachel und beim Drucken).
  *
  * Es waren einundzwanzig, und vierzehn davon gab es für genau eine
  * Artikelart: `sheet` nur für Kreaturen, `craft` nur für Rezepte, `stack`
@@ -47,19 +49,30 @@ export const views: Record<string, ViewDef> = {
     composed: false,
     relations: false,
     bindings: false,
-    image: false,
+    image: true,
     /* **Eine Übersicht ist ein Satz.** Die Feldtabelle steht trotzdem hier,
        mit leerer Auswahl: so lässt sich je Artikelart **eine** Gruppe
        dazunehmen — die Art einer Kreatur, die Seltenheit eines
        Gegenstands —, ohne dass aus dem Verweis eine Tabelle wird. Leer
        heisst leer: solange niemand etwas ankreuzt, steht dort nur der Satz. */
+    /* Das Bild ist hier eine **Vorschau** neben dem Namen (T-114) — in
+       einer Listenzeile ein Daumennagel, im Satz nichts. Wer an einer Art
+       keine will, nimmt das Element an ihr weg. */
     layout: [
+      { id: 'ov-img', el: 'image' },
       { id: 'ov-desc', el: 'description' },
       { id: 'ov-f', el: 'fields', fields: [] },
     ],
   },
 
-  /** Die Karte: ein Bild, ein Satz, das Wesentliche. */
+  /**
+   * **Die Karte** — Popup, Kachel, Marker, Kompendium-Vorschau und das
+   * „+" der Suche (T-346: die Suche hatte eine eigene Ansicht `search`, die
+   * dasselbe zeigte). Oben, wofür man sie öffnet: die Kennwerte der Art,
+   * dann der Satz, dann die Passagen. **Das Bild zuletzt**: im Kartenrahmen
+   * wird unten abgeschnitten, wenn der Platz nicht reicht, und dann soll es
+   * das Bild treffen und nicht die Werte.
+   */
   quick: {
     label: 'Quick',
     order: 2,
@@ -70,13 +83,13 @@ export const views: Record<string, ViewDef> = {
     bindings: false,
     image: true,
     layout: [
-      { id: 'q-img', el: 'image' },
-      { id: 'q-desc', el: 'description' },
       /* Wie bei der Übersicht: die Auswahl ist leer und wird je Art
-         gefüllt. Eine Karte trägt zwei oder drei Werte, und **welche**
+         gefüllt. Eine Karte trägt drei bis sechs Werte, und **welche**
          weiss die Art und nicht die Ansicht. */
       { id: 'q-f', el: 'fields', fields: [] },
+      { id: 'q-desc', el: 'description' },
       { id: 'q-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
+      { id: 'q-img', el: 'image' },
     ],
   },
 
@@ -94,6 +107,10 @@ export const views: Record<string, ViewDef> = {
     relations: true,
     bindings: true,
     image: true,
+    /* Was kein Element nimmt, steht am Ende (T-110): die Seite kennt noch
+       nicht jedes Element, und ein Feld, das nur der Bogen zeigt, wäre
+       sonst nirgends zu lesen. */
+    rest: true,
     layout: [
       { id: 'l-img', el: 'image' },
       { id: 'l-desc', el: 'description' },
@@ -103,6 +120,8 @@ export const views: Record<string, ViewDef> = {
          Art keine solche Kante, zeichnet das Element nichts. */
       { id: 'l-linked', el: 'linked' },
       { id: 'l-b', el: 'prose', fields: 'all' },
+      /* Die Teile eines Kapitels oder einer Szene, wie im Buch (T-108). */
+      { id: 'l-parts', el: 'parts' },
       { id: 'l-c', el: 'composed' },
       /* Wer diesen Artikel zusammensetzt, nach Kreaturentyp (D51): ein Biss
          zeigt Tiere und Drachen, ein Merkmal seine Völker. Wo niemand ihn
@@ -118,6 +137,238 @@ export const views: Record<string, ViewDef> = {
          auch. */
       { id: 'l-stand', el: 'standing' },
       { id: 'l-r', el: 'relations' },
+    ],
+  },
+
+  /**
+   * **Der Druck** (T-110, E-030 b): „Print" an der Artikelseite. Ein Blatt
+   * A4 hat keine Seitenspalte und keine Knöpfe — also kein Bild, das eine
+   * Seite füllt, keine Kantenliste, keine Meinungen, kein Vorbereitungsstand;
+   * dafür alles, was man am Tisch nachliest. Eine Art passt es an wie jede
+   * Ansicht (`InterfaceDef.views`).
+   */
+  print: {
+    label: 'Print',
+    order: 4,
+    fields: 'all',
+    description: true,
+    composed: true,
+    relations: false,
+    bindings: true,
+    image: false,
+    /* Kein Rest: die Feldtabelle nimmt schon alles — ausser dem
+       Vorbereitungsstand, der am Tisch nichts sagt (T-110 Schritt 7). Mit
+       Rest stünde er doch wieder am Ende. */
+    layout: [
+      { id: 'p-desc', el: 'description' },
+      { id: 'p-f', el: 'fields', fields: 'all', except: ['Status'] },
+      { id: 'p-b', el: 'prose', fields: 'all' },
+      { id: 'p-parts', el: 'parts' },
+      { id: 'p-c', el: 'composed' },
+    ],
+  },
+
+  /**
+   * **Die schnelle Erfassungsmaske** (T-425, REQ-432, E-169): der Dialog
+   * „Create …“, am Tisch und aus einer Auswahl. Leer — welche Felder man
+   * beim schnellen Anlegen fragt, weiss die Art; ohne Angabe fragt der
+   * Dialog wie bisher die Pflichtfelder und die einfachen Felder der
+   * Kurzansicht.
+   */
+  create: {
+    label: 'Create',
+    order: 6,
+    fields: 'none',
+    description: false,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: false,
+    layout: [{ id: 'cr-f', el: 'fields', fields: [] }],
+  },
+
+  /**
+   * **Die ausführliche Erfassungsmaske** (T-425, REQ-432, E-169): die
+   * Artikelseite im Bearbeiten nach „New article“. Leer — ohne Gestaltung
+   * öffnet sich die Seite `full`; gestaltet eine Art sie, steht beim
+   * ersten Bearbeiten genau diese Anordnung da.
+   */
+  createFull: {
+    label: 'Create (full)',
+    order: 7,
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: false,
+    layout: [{ id: 'cf-f', el: 'fields', fields: [] }],
+  },
+
+  /**
+   * **Die Erfassungsansicht „Roleplay“** (T-462, REQ-461): eine Kreatur, wie
+   * man sie spielt — nach dem Universal Roleplaying Template von The
+   * Alexandrian: Erscheinung, zwei bis drei Rollenspielhinweise,
+   * Hintergrund, Schlüsselinformationen; dazu Agenda, Geheimnisse und die
+   * Beziehungen (Kante `regards`). Eine Maske der Gruppe `createFull` mit
+   * Geltung `Creature`: wählbar beim Anlegen und im Bearbeiten
+   * (`createForms`), Vorgabe in World und Story (`defaultIn`). Dieselben
+   * Felder wie „Fight“, anders geordnet — gespeichert wird nichts doppelt.
+   */
+  roleplay: {
+    label: 'Roleplay',
+    order: 8,
+    group: 'createFull',
+    applies: { types: ['Creature'] },
+    defaultIn: ['world', 'story', 'Story', 'Arc', 'Scene', 'Session', 'Place'],
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: true,
+    layout: [
+      {
+        id: 'rp-who',
+        el: 'section',
+        text: 'Who they are',
+        children: [
+          { id: 'rp-img', el: 'image' },
+          { id: 'rp-desc', el: 'description' },
+          { id: 'rp-f', el: 'fields', fields: ['Creature.kind', 'Creature.role', 'Creature.species', 'Creature.attitude'] },
+        ],
+      },
+      {
+        id: 'rp-play',
+        el: 'section',
+        text: 'At the table',
+        children: [
+          { id: 'rp-p', el: 'prose', fields: ['Creature.appearance', 'Creature.personality', 'Creature.background', 'Creature.keyInfo'] },
+          { id: 'rp-agenda', el: 'fields', fields: ['Creature.agenda'] },
+          { id: 'rp-secrets', el: 'prose', fields: ['Secrets.secret'] },
+        ],
+      },
+      {
+        id: 'rp-ties',
+        el: 'section',
+        text: 'Relationships',
+        children: [
+          { id: 'rp-stand', el: 'standing' },
+          { id: 'rp-r', el: 'relations' },
+        ],
+      },
+    ],
+  },
+
+  /**
+   * **Die Erfassungsansicht „Fight“** (T-462, REQ-461): der Statblock im
+   * Mittelpunkt — an der Kreatur der ihres Statblocks (Element `linked`),
+   * am Statblock selbst wie im Buch —, dazu, was der Kampf braucht: Grösse
+   * und Token, der Stand der Trefferpunkte, die Taktik, die Beute (das
+   * Inventar) und die Begegnungen, in denen sie steht. Gilt für `Creature`
+   * **und** `Statblock`: ein Statblock ohne Kreatur wird so angelegt.
+   * Vorgabe in Play und Rules und von einer Begegnung oder Karte aus.
+   */
+  fight: {
+    label: 'Fight',
+    order: 9,
+    group: 'createFull',
+    applies: { types: ['Creature', 'Statblock'] },
+    defaultIn: ['play', 'rules', 'Encounter', 'Map', 'Statblock'],
+    fields: 'none',
+    description: false,
+    composed: true,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      {
+        id: 'fi-sb',
+        el: 'section',
+        text: 'Statblock',
+        children: [
+          /* An der Kreatur: die Felder ihres Statblocks, mit seinen Eingaben (T-272). */
+          { id: 'fi-linked', el: 'linked', except: ['Inventory'] },
+          /* Am Statblock: wie im Monster Manual (W2). */
+          { id: 'fi-book', el: 'statblock' },
+          {
+            id: 'fi-core',
+            el: 'fields',
+            fields: [
+              'Statblock.size',
+              'Statblock.ac',
+              'Statblock.hp',
+              'Statblock.hpFormula',
+              'Statblock.speed',
+              'Statblock.cr',
+              'Statblock.prof',
+              'Abilities',
+              'Statblock.senses',
+              'Statblock.resistances',
+              'Statblock.vulnerabilities',
+              'Statblock.immunities',
+              'Statblock.conditionImmunities',
+              'Statblock.legendaryActions',
+              'Statblock.legendaryActionsLair',
+              'Statblock.bonuses',
+              'Proficiencies',
+            ],
+          },
+          /* Angriffe, Aktionen, Legendary und Lair aus `composedOf`. */
+          { id: 'fi-actions', el: 'composed' },
+        ],
+      },
+      {
+        id: 'fi-table',
+        el: 'section',
+        text: 'At the table',
+        children: [
+          { id: 'fi-token', el: 'token' },
+          {
+            id: 'fi-state',
+            el: 'fields',
+            fields: ['Statblock.token', 'Statblock.combatRole', 'Vitals.hp', 'Vitals.hpTemp', 'Vitals.hitDiceLeft', 'Vitals.conditions', 'Vitals.hidden', 'Creature.kind', 'Creature.role'],
+          },
+          { id: 'fi-tactics', el: 'prose', fields: ['Tactics.tactics'] },
+        ],
+      },
+      { id: 'fi-loot', el: 'section', text: 'Loot', children: [{ id: 'fi-inv', el: 'inventory' }] },
+      {
+        id: 'fi-fights',
+        el: 'section',
+        text: 'Fights and maps',
+        children: [
+          { id: 'fi-enc', el: 'collection', text: 'In these fights', path: [{ relation: 'participates', dir: 'in' }], types: ['Encounter'], show: 'list', sort: { by: 'name' } },
+          { id: 'fi-r', el: 'relations' },
+        ],
+      },
+    ],
+  },
+
+  /**
+   * **Ein Handzettel** (T-110 Schritt 7) — die erste eigene Ansicht: was man
+   * den Spielenden über einen Ort, eine Szene, eine Figur in die Hand gibt.
+   * Beschreibung, Absatz und Vorlesetext, keine Werte und keine Geheimnisse.
+   * Was eine Spielerin nicht sehen darf, hält der Server ohnehin zurück; der
+   * Handzettel lässt auch weg, was die Leitung beim Drucken für sich sieht.
+   * Gewählt beim Drucken und auf der Kachel.
+   */
+  handout: {
+    label: 'Handout',
+    order: 5,
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: false,
+    bindings: true,
+    image: true,
+    layout: [
+      { id: 'h-img', el: 'image' },
+      { id: 'h-desc', el: 'description' },
+      /* Leer wie bei `quick` (T-234): welche Werte auf den Zettel gehören,
+         weiss die Art — die Seltenheit eines Gegenstands, die Art eines Orts. */
+      { id: 'h-f', el: 'fields', fields: [] },
+      { id: 'h-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
     ],
   },
 };

@@ -22,7 +22,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
-import type { TableRole } from '@nw/model';
+import { isLayer, layersOf, type Entity, type TableRole } from '@nw/model';
 
 /** Wie lange eine Sitzung ohne Wiedersehen gilt. Eine Woche: lange genug,
  *  dass niemand mitten in der Sitzung herausfliegt, kurz genug, dass ein
@@ -40,13 +40,41 @@ export interface User {
    *  Person: was die eine erfahren hat, weiss er auch, wenn er auf die
    *  andere schaut, und die Freigabeliste zeigt einen Absender. */
   actorIds: string[];
+  /** **In welcher Kampagne eine Figur dem Konto gehört** (T-412,
+   *  Entscheid der Leitung 23.10.: „pro Kampagne zuweisen") — Figur →
+   *  Kampagne. Fehlt eine Figur hier, ist die Kampagne unbekannt (Bestand
+   *  vor Migration 159, den sie nicht zuordnen konnte); dann gilt sie wie
+   *  bisher überall. `actorIds` einer Anfrage nennt nur die Figuren der
+   *  laufenden Kampagne (`inKampagne`). */
+  actorCampaigns?: Record<string, string>;
   /** **Die Rolle je Kampagne** — Kampagnen-Id → `gm ǀ co-gm ǀ player ǀ
    *  spectator`. Sie steht am Konto und in keinem Artikel: eine Figur sagt
    *  nicht, in welcher Runde ihr Konto was ist, und eine Kontoangabe in
    *  einem Artikel wanderte beim Export mit (REQ-199). `isAdmin` ist etwas
    *  anderes — die Verwaltung der ganzen Installation. */
   roles: Record<string, TableRole>;
+  /** **Was dieses Konto angelegt hat** (REQ-237, E-011): die Artikel, die
+   *  es als Spielerin angelegt hat. Sie gehören ihr zum Schreiben, und sie
+   *  sieht sie in jedem Stand. Steht am Server neben dem Konto
+   *  (`app_user_article`), nicht im Artikel — eine Konto-Id im Artikel
+   *  wanderte beim Export mit (REQ-199). Gesetzt nur von der Ablage;
+   *  `putUser` schreibt es nicht. */
+  authoredIds?: string[] | undefined;
+  /** **Die Ebenen, die dieses Konto bearbeitet** (T-098, E-001): darin
+   *  schreibt es jeden Artikel und legt neue an. Steht am Server neben dem
+   *  Konto (`app_user_layer`), nicht an der Ebene — eine Konto-Id in einem
+   *  Artikel wanderte beim Export mit (REQ-199). Die Ebene der Kampagne
+   *  steht hier nicht: die schreiben `gm` und `co-gm` von selbst. Gesetzt
+   *  nur von der Ablage; `putUser` schreibt es nicht. */
+  layerIds?: string[] | undefined;
+  /** Davon die, die es **besitzt** — angelegt oder übertragen. Wer eine
+   *  Ebene besitzt, sagt, wer sonst darin schreibt. */
+  ownedLayerIds?: string[] | undefined;
   disabledAt?: string | undefined;
+  /** **Seit wann es das Konto gibt** (T-163): „What's new" zeigt nur, was
+   *  danach kam — wer neu dazukommt, braucht nicht die ganze Geschichte.
+   *  Aus `app_user.created_at`; `putUser` schreibt es nicht. */
+  createdAt?: string | undefined;
 }
 
 /** Eine Einladung: ein Code, der eine Registrierung erlaubt, und sonst
@@ -145,17 +173,37 @@ export function sessionExpiry(from: Date = new Date()): Date {
 
 /**
  * Wer was darf. Die Regel ist absichtlich kurz, weil eine lange Regel
- * niemand mehr nachliest: die Spielleitung darf alles, ein Spieler darf
- * lesen und genau die Artikel schreiben, die seiner Figur gehören.
+ * niemand mehr nachliest: die Verwaltung darf alles, jedes andere Konto
+ * schreibt genau die Artikel, die seiner Figur gehören, die es selbst
+ * angelegt hat (REQ-237) — und die in Ebenen liegen, die es bearbeitet
+ * (T-098, E-001: eigene, zugeteilte und als `gm`/`co-gm` die Ebene der
+ * Kampagne; `inWritableLayers`).
  *
  * „Gehört" heisst: die Figur selbst, und was über eine Kante an ihr hängt —
  * ihr Inventar zum Beispiel. Die Kante steht in den Daten, also wird sie
- * dort nachgesehen und nicht hier behauptet.
+ * dort nachgesehen und nicht hier behauptet. Was er angelegt hat, steht
+ * neben dem Konto (`authoredIds`); `ownedIds` bringt alles mit.
  */
 export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): boolean {
   if (!user || user.disabledAt) return false;
   if (user.isAdmin) return true;
   return ownedIds.has(id);
+}
+
+/**
+ * **Liegt dieser Artikel ganz in Ebenen, die geschrieben werden dürfen?**
+ * (T-098, E-001) Jede Ebene, die ihn bringt (`layersOf`, ohne `removes`),
+ * muss darunter sein: ein Artikel, der auch in einem geteilten Regelwerk
+ * liegt, änderte sonst dort mit. Ohne Ebene liegt er in keiner fremden,
+ * aber auch in keiner eigenen — er bleibt bei der Verwaltung, und wer ihn
+ * ändern will, legt eine Fassung an. Eine Ebene selbst schreibt, wer
+ * darin schreibt.
+ */
+export function inWritableLayers(e: Entity, writable: ReadonlySet<string>): boolean {
+  if (!writable.size) return false;
+  if (isLayer(e) && writable.has(e.id)) return true;
+  const ebenen = layersOf(e);
+  return ebenen.length > 0 && ebenen.every((l) => writable.has(l));
 }
 
 // ------------------------------------------------------------ API-Tokens
@@ -198,13 +246,65 @@ export function tokenExpiry(days: unknown, from: Date = new Date()): Date {
 }
 
 /**
+ * **Ablauf als Datum** (T-112): die Maske fragt „bis wann", nicht „wie
+ * viele Tage". Ein Tag ohne Uhrzeit gilt bis zu seinem Ende (UTC). Was
+ * schon vorbei ist, wird abgelehnt, nicht still auf die Vorgabe gesetzt —
+ * wer ein Datum nennt, meint es; was weiter als 365 Tage reicht, wird auf
+ * die Grenze gekürzt, wie bei den Tagen.
+ */
+export function tokenExpiryAt(value: unknown, from: Date = new Date()): Date | null {
+  const roh = String(value ?? '').trim();
+  const tag = /^\d{4}-\d{2}-\d{2}$/.test(roh);
+  const d = new Date(tag ? `${roh}T23:59:59.999Z` : roh);
+  if (!roh || Number.isNaN(d.getTime()) || d.getTime() <= from.getTime()) return null;
+  const grenze = from.getTime() + TOKEN_DAYS_MAX * 24 * 60 * 60 * 1000;
+  return new Date(Math.min(d.getTime(), grenze));
+}
+
+/**
  * **Leitung oder Verwaltung** — wer die Werkbank benutzen darf. Leitung
  * heisst `gm` oder `co-gm` in irgendeiner Kampagne; geschrieben wird
- * trotzdem nur, was `mayWrite` erlaubt (die Leitung schreibt heute noch
- * nicht, siehe Zugang.md › Was noch fehlt).
+ * trotzdem nur, was `mayWrite` erlaubt — für die Leitung die Artikel in
+ * den Ebenen, die sie bearbeitet (T-098).
  */
 export function isLeitung(user: User | null): boolean {
   if (!user || user.disabledAt) return false;
   if (user.isAdmin) return true;
   return Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+}
+
+// ------------------------------------------------------------ Spielersicht
+
+/** Der Anfragekopf, mit dem die Leitung die Sicht eines Mitglieds einnimmt
+ *  (REQ-241, E-019 a). Die Oberfläche setzt ihn je Tab. */
+export const VIEW_AS_HEADER = 'x-view-as';
+
+/**
+ * **Wer wessen Sicht einnehmen darf** (REQ-241, E-019 a): die Leitung
+ * (`gm`, `co-gm`) der laufenden Kampagne und die Verwaltung, und nur für
+ * ein Mitglied dieser Kampagne. Ohne laufende Kampagne niemand.
+ *
+ * Die Verwaltung sieht ohnehin alles; die Leitung nicht. Darum darf die
+ * Leitung keine Verwaltung einnehmen — sie sähe sonst mehr als sich selbst.
+ */
+export function mayViewAs(user: User | null, target: User | null, campaignId: string | null): boolean {
+  if (!user || user.disabledAt || !target || target.disabledAt || !campaignId) return false;
+  if (!target.roles?.[campaignId]) return false;
+  if (user.isAdmin) return true;
+  if (target.isAdmin) return false;
+  const rolle = user.roles?.[campaignId];
+  return rolle === 'gm' || rolle === 'co-gm';
+}
+
+/**
+ * **Das Zielkonto, wie die Leitung es sieht** (REQ-241): dieselben
+ * Figuren, dasselbe Eigene, aber nur die Rolle in der laufenden Kampagne.
+ * Leitet das Ziel anderswo, sähe die Leitung über die geteilten Ebenen
+ * sonst, was dort nur dessen Leitung sieht. Die Verwaltung bekommt das
+ * Konto ganz.
+ */
+export function viewedAs(user: User, target: User, campaignId: string): User {
+  if (user.isAdmin) return target;
+  const rolle = target.roles[campaignId];
+  return { ...target, roles: rolle ? { [campaignId]: rolle } : {} };
 }

@@ -76,6 +76,19 @@ export const enums: Record<string, EnumDef> = {
    * eine Kampagne mit einer anderen Leiter ist eine andere Zeile und kein
    * Codewechsel.
    */
+  /**
+   * **Die Stufen der Sichtbarkeit**, von aussen nach innen: `public` jedes
+   * Konto, `campaign` jedes mit einer Rolle am Tisch (in der Übersicht
+   * „Table"), `players` die Spielenden, `gm` die Leitung. Eine Zeile, seit
+   * drei Felder sie brauchen (T-252): `Visibility.audience` am Artikel,
+   * `Layer.defaultAudience` und die Regeln je Gruppe der Kampagne.
+   */
+  Audience: {
+    name: 'Audience',
+    label: 'Audience',
+    values: ['public', 'campaign', 'players', 'gm'],
+  },
+
   DrawTime: {
     name: 'DrawTime',
     label: 'Draw time',
@@ -86,12 +99,41 @@ export const enums: Record<string, EnumDef> = {
    * **Die Regeln ohne Träger (D48).** Zustand, Aktion, Merkmal, Talent,
    * Fertigkeit, Zauber haben eigene Arten; was übrig bleibt, trägt hier ein
    * Wort: `rule` (Variantregeln), `travel` (was eine Figur an einem
-   * Reiseknoten tun kann, REQ-171), `sense`, `reward`, `boon`, `option`.
+   * Reiseknoten tun kann, REQ-171), `sense`, `reward`, `boon`, `option`,
+   * und seit T-087 `upgrade` (eines Fahrzeugs), `facility` (ein Raum der
+   * Bastion, 2024) und `card` (eine Karte eines Decks) — Untertypen ohne
+   * eigene Felder, also Wörter und keine Zeilen.
    */
   RuleKind: {
     name: 'RuleKind',
     label: 'Rule kind',
-    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option'],
+    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option', 'upgrade', 'facility', 'card', 'system'],
+  },
+
+  /**
+   * **Was für eine Begegnung** (T-178, REQ-085): ein Kampf ist eine Art
+   * davon und nicht die einzige. Eine Zeile und keine Liste am Feld, weil
+   * die Oberfläche je Art anders handelt und Zufallstabellen (Biom,
+   * Region, Reise) Begegnungen jeder Art liefern — wer eine Art
+   * dazunimmt, nimmt sie an einer Stelle dazu. Ein Untertyp je Art wäre
+   * ein Wort als Zeile (CLAUDE.md › Untertyp ohne eigene Felder).
+   */
+  EncounterKind: {
+    name: 'EncounterKind',
+    label: 'Encounter kind',
+    values: ['combat', 'social', 'puzzle', 'exploration', 'hazard', 'trap', 'resource', 'story'],
+  },
+
+  /**
+   * **Was für ein Ort** (T-423): von der Leitung gepflegt, unter Registry ›
+   * Lists. Die Werte stehen deutsch, weil sie Kampagneninhalt sind
+   * (CLAUDE.md › Sprache). `Place.kind` nennt die Zeile mit `suggest`: sie
+   * schlägt vor und hält nicht.
+   */
+  PlaceKind: {
+    name: 'PlaceKind',
+    label: 'Place type',
+    values: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
   },
 
   State: {

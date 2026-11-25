@@ -31,9 +31,11 @@
  * diese Abfrage über die Kanten.
  */
 
-import { PARTICIPATES, redactParticipants } from './initiative.js';
-import type { Entity, EntityId, Registry } from './types.js';
+import { ancestryLine } from './choices.js';
+import { PARTICIPATES, redactParticipants, type PlayerViewRules } from './initiative.js';
+import type { Entity, EntityId, Registry, ViewApplies } from './types.js';
 import { entityName, entriesOf, entryRef } from './entity.js';
+import { appliesHolds } from './viewScope.js';
 
 /** Die Kantenart, die einen Artikel mit seinen Informationen verbindet. */
 export const KNOWLEDGE_RELATION = 'knowledge';
@@ -43,6 +45,23 @@ export const KNOWN_BY_RELATION = 'knownBy';
 export const INCLUDES_RELATION = 'includes';
 /** Party-Mitgliedschaft — wer in der Gruppe ist, erbt deren Wissen. */
 export const PARTY_RELATION = 'memberOfParty';
+/** Party → Kampagne: zu welcher Runde eine Gruppe gehört (A8). */
+export const PARTY_OF_RELATION = 'partyOf';
+
+/**
+ * **Die Gruppen einer Kampagne** (A8, T-100) — die Parties mit `partyOf`
+ * auf sie, die älteste zuerst (nach Nummer, dann Id). Die erste ist die,
+ * in die eine zugeteilte Spielerfigur von selbst kommt: jede Kampagne
+ * bekommt beim Anlegen eine, und wer zwei Tische hat, legt die zweite an
+ * und teilt von Hand zu.
+ */
+export function partiesOf(entities: ReadonlyMap<EntityId, Entity>, campaignId: EntityId): Entity[] {
+  const nummer = (e: Entity) => String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? '');
+  return [...entities.values()]
+    .filter((e) => (e.relations ?? []).some((r) => r.type === PARTY_OF_RELATION && r.to === campaignId))
+    .sort((a, b) => nummer(a).localeCompare(nummer(b)) || a.id.localeCompare(b.id));
+}
+
 /**
  * Fraktionsmitgliedschaft — **eine Fraktion weiss nichts, ihre Mitglieder
  * wissen** (Abgleich A7, REQ-203). Die Kante trägt den Rang
@@ -82,12 +101,52 @@ function edges(entity: Entity | undefined, type: string): EntityId[] {
   return (entity?.relations ?? []).filter((r) => r.type === type).map((r) => r.to);
 }
 
-/** Die Informationen, die an diesem Artikel hängen — in Reihenfolge der Kanten. */
-export function informationsOf(entities: Map<EntityId, Entity>, article: Entity): Entity[] {
+/**
+ * **Die Geltung einer Information** (T-285, REQ-350): für welche Artikel
+ * sie gilt, in der Form der Ansichten (`ViewApplies`) — „jede Kreatur mit
+ * Herkunft Orc". Ohne Geltung gilt sie nur dort, wo ein Artikel sie über
+ * `knowledge` nennt, wie bisher.
+ */
+export function infoApplies(info: Entity): ViewApplies | null {
+  const a = info.components?.[INFO_COMPONENT]?.['applies'];
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  const v = a as ViewApplies;
+  return v.types?.length || v.where?.length || v.article ? v : null;
+}
+
+/* Die Informationen mit Geltung, einmal je Bestand gesucht: es sind
+   wenige, gefragt wird je Artikel — bei einer Liste 24 000 Mal (W7).
+   Ein Bestand, der wächst oder schrumpft, wird neu durchsucht. */
+const regelCache = new WeakMap<ReadonlyMap<EntityId, Entity>, { size: number; infos: Entity[] }>();
+export function ruleInformations(entities: ReadonlyMap<EntityId, Entity>): Entity[] {
+  const da = regelCache.get(entities);
+  if (da && da.size === entities.size) return da.infos;
+  const infos = [...entities.values()].filter((e) => (e.interfaces ?? []).includes(INFO_COMPONENT) && infoApplies(e));
+  regelCache.set(entities, { size: entities.size, infos });
+  return infos;
+}
+
+/**
+ * Die Informationen, die an diesem Artikel hängen — in Reihenfolge der
+ * Kanten —, und mit `registry` dazu die, deren Geltung ihn trifft (T-285).
+ * Eine Unterart zählt für ihre Grundart: „Herkunft Orc" trifft auch
+ * „Orc (Mountain)" (`ancestryLine`).
+ */
+export function informationsOf(entities: ReadonlyMap<EntityId, Entity>, article: Entity, registry?: Pick<Registry, 'interfaces'>): Entity[] {
   const out: Entity[] = [];
   for (const id of edges(article, KNOWLEDGE_RELATION)) {
     const info = entities.get(id);
     if (info) out.push(info);
+  }
+  if (registry) {
+    const regeln = ruleInformations(entities);
+    if (regeln.length && !(article.interfaces ?? []).includes(INFO_COMPONENT)) {
+      const reihe = (id: string) => ancestryLine(id, entities);
+      for (const info of regeln) {
+        if (out.includes(info)) continue;
+        if (appliesHolds(registry, infoApplies(info)!, article, [], reihe)) out.push(info);
+      }
+    }
   }
   return out;
 }
@@ -125,7 +184,7 @@ export function covers(info: Entity, component: string, property: string): boole
  * verlangt.
  */
 export function knowledgeHolders(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   viewerId: EntityId | readonly EntityId[],
 ): Set<EntityId> {
   /* **Ein Konto kann mehrere Figuren führen.** Dann ist „ich" ihre
@@ -138,6 +197,23 @@ export function knowledgeHolders(
     const viewer = entities.get(one);
     if (!viewer) continue;
     for (const partyId of edges(viewer, PARTY_RELATION)) holders.add(partyId);
+    /* **Was die Figur ist, weiss sie** (T-285, REQ-351): ihre Herkunft
+       samt Grundart, ihr Hintergrund, ihre Klassen und Unterklassen und
+       was sie gewählt hat (ein Talent) — ein Schritt weit wie die Gruppe.
+       Ein Wissen, das der Herkunft Orc zugeteilt ist, weiss jede Figur mit
+       dieser Herkunft. */
+    for (const r of viewer.relations ?? []) {
+      if (r.type === 'hasAncestry') for (const id of ancestryLine(r.to, entities)) holders.add(id);
+      else if (r.type === 'hasBackground') holders.add(r.to);
+      else if (r.type === 'hasClass') {
+        holders.add(r.to);
+        const sub = r.props?.['subclass'];
+        if (typeof sub === 'string' && sub) holders.add(sub);
+      } else if (r.type === 'chose') {
+        const picks = Array.isArray(r.props?.['picks']) ? (r.props['picks'] as unknown[]) : [];
+        for (const p of picks) if (typeof p === 'string' && entities.has(p)) holders.add(p);
+      }
+    }
     /* Die Fraktion zählt auch einen Schritt weit — den Rang prüft `knows`
        an der Zuteilung, denn hier ist nur die Frage, wer gemeint ist. */
     for (const factionId of edges(viewer, FACTION_RELATION)) holders.add(factionId);
@@ -158,7 +234,7 @@ export function factionRanks(faction: Entity | undefined): string[] {
  * Tippfehler darf nichts aufschliessen.
  */
 export function rankIndex(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   viewerId: EntityId | readonly EntityId[],
   factionId: EntityId,
 ): number | null {
@@ -191,7 +267,7 @@ export function rankIndex(
  * gemeint hat.
  */
 export function knows(
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   info: Entity,
   viewerId?: EntityId | readonly EntityId[],
 ): boolean {
@@ -222,7 +298,7 @@ export function knows(
  * Die Bündel, die diese Information nennen — ein Rückbezug, weil `includes`
  * nur vorwärts gespeichert wird.
  */
-export function bundlesWith(entities: Map<EntityId, Entity>, infoId: EntityId): Entity[] {
+export function bundlesWith(entities: ReadonlyMap<EntityId, Entity>, infoId: EntityId): Entity[] {
   const out: Entity[] = [];
   for (const e of entities.values())
     if (edges(e, INCLUDES_RELATION).includes(infoId)) out.push(e);
@@ -248,13 +324,13 @@ export function informationsIn(entities: Map<EntityId, Entity>, bundle: Entity):
  * die Gruppierung ordnet sie nur, sie erweitert sie nie.
  */
 export function knowledgeGroups(
-  _registry: Pick<Registry, 'interfaces'>,
-  entities: Map<EntityId, Entity>,
+  registry: Pick<Registry, 'interfaces'>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
   allFields: FieldRef[],
   viewerId?: EntityId | readonly EntityId[],
 ): KnowledgeGroup[] {
-  const infos = informationsOf(entities, article);
+  const infos = informationsOf(entities, article, registry);
   const claimedFields = new Set<FieldRef>();
 
   const groups: KnowledgeGroup[] = infos.map((info) => {
@@ -325,12 +401,29 @@ export function visibleFields(
  */
 export function redactEntity(
   registry: Pick<Registry, 'interfaces'>,
-  entities: Map<EntityId, Entity>,
+  entities: ReadonlyMap<EntityId, Entity>,
   article: Entity,
   viewerId?: EntityId | readonly EntityId[],
-  gmFields: string[] = ['Secrets.secret', 'Tactics.tactics'],
+  gmFields: string[] = ['Secrets.secret', 'Tactics.tactics', 'Encounter.solution', 'Encounter.hint'],
+  /** Was die Kampagne Spielenden von der Initiative zeigt (T-022, `initiativeRulesOf`). */
+  participantView?: PlayerViewRules,
+  /**
+   * **Ein Deckname verdeckt** (REQ-178): trägt der Artikel einen
+   * Decknamen, gilt sein Name als ungewusst, bis eine bekannte Information
+   * ihn nennt. Der Server setzt es für alle ausser der Leitung — wer
+   * einen Decknamen einträgt, meint, dass die Spielenden ihn sehen.
+   */
+  coverHides = false,
 ): Entity {
-  if (!viewerId) return article;
+  /* **Ohne Betrachter geht der Artikel ganz hinaus** — die Verwaltung und
+     die Leitung seiner Kampagne (`leadsArticle`, T-447, T-455). Nur der
+     bequeme Name oben wird aus der Karte gefüllt: aus Postgres kommt er
+     leer (es gibt keine Karte `Name`), und bis T-447 füllte ihn das Sieb
+     für jeden ausser der Verwaltung — der Durchstich las sonst `''`. */
+  if (!viewerId) {
+    const n = ((article.components ?? {})['Identity'] as { name?: unknown } | undefined)?.name;
+    return typeof n === 'string' && n !== '' && n !== article.name ? { ...article, name: n } : article;
+  }
   const gmSet = new Set(gmFields);
 
   /* Ein Feld mit `many` zählt je **Eintrag**: `Creature.secret#anchor`. Ein
@@ -368,7 +461,10 @@ export function redactEntity(
   let feldErlaubt = (component: string, property: string, _eintrag?: string): boolean =>
     !gmBlank.has(property) && !gmJe.get(component)?.has(property);
   let erlaubt: (ref: FieldRef) => boolean = (ref) => !nurSL(ref);
-  if (informationsOf(entities, article).length) {
+  /* Nennt eine **bekannte** Information den Namen? Die Restgruppe zählt
+     dafür nicht: unbeansprucht heisst nicht gewusst. */
+  let nameGewusst = false;
+  if (informationsOf(entities, article, registry).length) {
     const allFields: FieldRef[] = [];
     for (const [component, card] of Object.entries(article.components ?? {})) {
       for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
@@ -385,6 +481,7 @@ export function redactEntity(
       if (!g.info) continue; /* die offene Restgruppe beansprucht nichts */
       if (!g.known) continue;
       g.fields.forEach((f) => erlaubtF.add(f));
+      if (g.fields.includes('Identity.name')) nameGewusst = true;
     }
     const rest = groups.find((g) => !g.info);
     rest?.fields.forEach((f) => { if (!nurSL(f)) erlaubtF.add(f); });
@@ -398,7 +495,15 @@ export function redactEntity(
     const behalten: Record<string, unknown> = {};
     for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
       if (vieleFelder(component, property)) {
-        const uebrig = entriesOf(value).filter((e) => feldErlaubt(component, property, e.id));
+        /* **Ein Eintrag mit Form bleibt ganz** (`entry`, `Choices.choices`):
+           gesiebt wird je Id, hinaus geht der Eintrag, wie er steht. Bis
+           T-080 ging `{id, value}` hinaus, und an einer Wahl stand für
+           Spielende danach nichts mehr. */
+        const roh = Array.isArray(value) ? value : [value];
+        const uebrig = entriesOf(value)
+          .map((e, i) => ({ e, x: roh[i] as unknown }))
+          .filter(({ e }) => feldErlaubt(component, property, e.id))
+          .map(({ e, x }) => (x && typeof x === 'object' ? x : e));
         if (uebrig.length) behalten[property] = uebrig;
         continue;
       }
@@ -417,9 +522,13 @@ export function redactEntity(
   /* Ein Name, der gar nicht in der Karte steht, ist nicht gewusst — wie im
      langen Weg, wo er in keiner Feldliste vorkommt. */
   const hatName = 'name' in ((article.components ?? {})['Identity'] ?? {});
-  if (!hatName || !erlaubt('Identity.name')) {
+  const verdeckt = coverHides && !!wer?.cover && !nameGewusst;
+  if (!hatName || verdeckt || !erlaubt('Identity.name')) {
     const cover = wer?.cover;
-    components['Identity'] = { ...(components['Identity'] ?? {}), name: cover || 'jemand' };
+    const { aliases: _aliases, ...ohneAliasse } = components['Identity'] ?? {};
+    /* Verdeckt der Deckname, gehen die Aliasse mit: ein anderer Name für
+       dasselbe verriete den richtigen. */
+    components['Identity'] = { ...(verdeckt ? ohneAliasse : (components['Identity'] ?? {})), name: cover || 'jemand' };
   }
 
   /* Auch der bequeme Name oben am Artikel. Ihn stehen zu lassen wäre die
@@ -432,7 +541,7 @@ export function redactEntity(
   const kampf = article.relations?.some((r) => r.type === PARTICIPATES);
   const karte = ((article.components ?? {})['Encounter'] ?? {}) as { round?: number; turn?: number };
   const relations = kampf
-    ? redactParticipants(entities, article.relations!, { round: karte.round, turn: karte.turn })
+    ? redactParticipants(entities, article.relations!, { round: karte.round, turn: karte.turn }, participantView)
     : article.relations;
   /* REQ-226, D58: die Zugnummer zählt die ganze Reihe, auch was verborgen
      ist oder noch nicht erschien — sie geht nicht hinaus; wer dran ist,

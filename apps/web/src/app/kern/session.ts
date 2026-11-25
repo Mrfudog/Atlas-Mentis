@@ -33,8 +33,13 @@ export class Session {
     return u.isAdmin || Object.values(u.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
   });
   readonly angemeldet = computed(() => this.user() !== null);
+  /** **Die Sicht eines Mitglieds** (REQ-241): wer gesehen wird und wer
+   *  schaut, vom Server. `null`: man sieht als man selbst. */
+  readonly viewAs = computed(() => this._me()?.viewAs ?? null);
   /** Darf das Register ändern — Anzeige, keine Kontrolle; der Server prüft. */
   readonly darfRegister = computed(() => this._me()?.registry === true);
+  /** Testumgebung: Daten können beim Ausrollen oder Einlesen ersetzt werden (T-070). */
+  readonly dev = computed(() => this._me()?.env === 'dev');
   readonly hatEinladungen = computed(() => this._me()?.invites === true);
   /**
    * Ob die Verwaltungsseite diesem Konto etwas zeigt: der Verwaltung immer,
@@ -65,14 +70,25 @@ export class Session {
   });
 
   /**
-   * Darf dieser Betrachter Artikel anlegen? Wer alles schreiben darf
-   * (`writable: null`, die Verwaltung) — einen Artikel, den es noch nicht
-   * gibt, besitzt kein Spieler. Der Server prüft es beim Anlegen noch
-   * einmal; das hier spart nur den Knopf, der danach Nein sagt.
+   * Darf dieser Betrachter Artikel anlegen? Die Verwaltung, und Spielende
+   * der laufenden Kampagne (REQ-237) — das sagt der Server (`create`). Er
+   * prüft es beim Anlegen noch einmal; das hier spart nur den Knopf, der
+   * danach Nein sagt.
    */
   readonly darfAnlegen = computed(() => {
     const me = this._me();
-    return !!me?.user && me.writable === null;
+    if (!me?.user) return false;
+    return me.create ?? me.writable === null;
+  });
+  /** Darf `ready` an diesem Artikel angeboten werden? Verwaltung und
+   *  Leitung (`gm`), und ein Spieler an seiner eigenen Figur samt Statblock
+   *  und Inventar (REQ-237, E-014 d). Anzeige, keine Kontrolle. */
+  readonly darfReady = computed(() => {
+    const me = this._me();
+    if (!me?.user) return () => false;
+    if (me.ready ?? me.writable === null) return () => true;
+    const figur = new Set(me.character ?? []);
+    return (id: string) => figur.has(id);
   });
 
   private laeuft: Promise<void> | null = null;
@@ -88,6 +104,9 @@ export class Session {
     this.laeuft ??= this.api
       .me()
       .then((me) => {
+        /* Gilt die Sicht nicht mehr (Rolle weg, Kampagne gewechselt),
+           antwortet der Server als man selbst — und der Tab vergisst sie. */
+        if (me.viewAsRefused) this.api.setViewAs(null);
         this._me.set(me);
       })
       .catch(() => {
@@ -137,7 +156,18 @@ export class Session {
    * die Sitzung am Server weiterlebt, ist es auch. Also wird lokal geleert
    * **und** hingeschrieben, dass es vielleicht nicht angekommen ist.
    */
+  /**
+   * Die Sicht eines Mitglieds einnehmen oder verlassen (REQ-241). Danach
+   * fragt die Sitzung neu: erst der Server sagt, ob es gilt.
+   */
+  async viewAsUser(id: string | null): Promise<void> {
+    this.api.setViewAs(id);
+    await this.load(true);
+  }
+
   async logout(): Promise<string | null> {
+    /* Die Sicht hält nicht über das Abmelden (REQ-241). */
+    this.api.setViewAs(null);
     let warnung: string | null = null;
     try {
       await this.api.logout();

@@ -1,0 +1,2058 @@
+{
+  "entries": [
+    {
+      "id": "2026-11-05-creature-forms",
+      "date": "2026-11-05",
+      "title": "Roleplay and Fight forms for creatures",
+      "text": "New article for a creature asks which form: Roleplay (appearance, roleplaying cues, background, key info, agenda, secrets — after The Alexandrian’s Universal Roleplaying Template) or Fight (the statblock, hit points now, tactics, loot). A statblock opens in Fight. Both write the same fields; switch at any time above the fields, and focus a field for its help.",
+      "area": "Articles",
+      "link": "/compendium?type=Creature"
+    },
+    {
+      "id": "2026-11-05-icons",
+      "date": "2026-11-05",
+      "title": "Icons for types, fields and articles",
+      "text": "Every type can carry an icon in the registry — a place shows a pin, a creature a figure, a quest a scroll — and subtypes inherit it. A field may carry one too, and an article can choose its own under Identity › Icon. The icon stands before the name in lists, quick views, titles, edges and on board cards; the picker searches the set by name and tag.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-11-05-gm-reads-whole",
+      "date": "2026-11-05",
+      "title": "GMs read their campaign whole",
+      "text": "A GM or co-GM without a character of their own used to miss the secrets, tactics, solutions and hints of their own campaign, and the enemies of an encounter before the fight. Now whoever runs the campaign reads its articles whole, and saving an encounter from its page no longer drops hidden combatants. Players still see what they know; a GM of another campaign reads like a player.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-11-05-collection-two-edges",
+      "date": "2026-11-05",
+      "title": "A collection can follow two edges in one step",
+      "text": "In the view designer, “Also via” lets the last step of a collection follow a second edge kind — people from the scenes and from the fights in one list, and whoever is in both stands once.",
+      "area": "Views",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-11-04-inventory-boxes-everywhere",
+      "date": "2026-11-04",
+      "title": "Container boxes on every inventory page",
+      "text": "The party’s inventory and the page of an inventory or container now show each container inside as its own foldable box, as Gear does — side by side on a desktop, stacked on a phone.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
+      "id": "2026-11-04-gear-body-draw",
+      "date": "2026-11-04",
+      "title": "Gear: body places, draw times with reasons, containers side by side",
+      "text": "Gear lists body places — armor, legs, rings per hand, necklaces — with an attunement counter. Each item says how long it takes to draw and why, also inside containers (Bag of Holding +1). The grid explains its size (Small 4×4 + extra 2×2, STR 14 → +2) with a zone legend. Containers get their own foldable boxes; GMs edit zones under Rules & options.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
+      "id": "2026-11-04-map-labels-stamps",
+      "date": "2026-11-04",
+      "title": "Labels and stamps on the map",
+      "text": "Draw now also places text labels and stamps such as a skull, a warning sign or a flag on a drawing layer, in three sizes.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-11-04-hex-walls",
+      "date": "2026-11-04",
+      "title": "Walls snap to hex corners",
+      "text": "On hex maps, wall points now snap to the corners of the hexes, as they snap to grid corners on square maps.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-11-04-zone-light",
+      "date": "2026-11-04",
+      "title": "Magical darkness and lit halls",
+      "text": "A zone kind that sets its light now counts where it lies: who stands in magical darkness stays hidden from players even on a bright map, and a lit hall in a dark map shows who stands in it.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-faster-pages",
+      "date": "2026-10-29",
+      "title": "Character sheets and boards load faster",
+      "text": "A statblock asks for all its proficiencies at once, and a board fetches all its cards in one go — a character page used to wait for a hundred small requests. The help behind “?” now loads when you open it.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-29-reveal-sight",
+      "date": "2026-10-29",
+      "title": "Reveal what a token sees",
+      "text": "Under Fog, Reveal sight lifts the fog from what a token sees where it stands — up to the walls, and in the dark only as far as its darkvision and the lights it sees.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-free-action",
+      "date": "2026-10-29",
+      "title": "A free action with a note in the turn plan",
+      "text": "When the rules here have no tile for what you want to do, “Other action” (and bonus action, reaction, free action) takes a note of what happens. It uses its slot and shows up in the result as manual — a missing rule no longer blocks the turn.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-draw-on-maps",
+      "date": "2026-10-29",
+      "title": "Draw on the map",
+      "text": "The tool group Draw (D) sketches on the map with pen, line, rectangle and ellipse, on drawing layers of their own. A layer can be kept for the GM only; players see the others at once.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-weapons-attack",
+      "date": "2026-10-29",
+      "title": "Weapons in hand are attacks in the turn plan",
+      "text": "A character holding a weapon now finds it in the turn plan as an attack, with to-hit and damage worked out from the statblock, the weapon’s own bonus and effects. With two light weapons an off-hand attack is offered as a bonus action.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-travel-and-noticing",
+      "date": "2026-10-29",
+      "title": "Noticing on the way, draw times and travel",
+      "text": "A character moving on the map now notices hidden creatures and hidden traps its passive Perception beats, and entering a zone that does something says so. Items in a container draw one step slower than the container, and the hands name what stowing and dropping cost. A party shows day, watch and when rations and light are due, with “Wait a watch” and “Next node”.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-prepare-on-map",
+      "date": "2026-10-29",
+      "title": "Prepare an encounter on its map from the encounter",
+      "text": "Before an encounter starts, its initiative tracker has Prepare on map: the map opens with the combatants already set, hidden from the players until you press Start.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-dark-tokens",
+      "date": "2026-10-29",
+      "title": "What waits in the dark stays hidden",
+      "text": "On a dark map, players now get only the tokens their characters can see, with darkvision or in light. A creature in the dark no longer reaches their browser at all; it appears when a light or darkvision reaches it, without reloading.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-encounter-prepared",
+      "date": "2026-10-29",
+      "title": "An encounter shows its place, map and loot, and adds several foes at once",
+      "text": "An encounter can now happen at a place, like a scene, and its page shows Place, Map and Loot (with quantity and chance) as groups you can move in the view designer. In the initiative tracker, Add a combatant takes a number — four goblins become Goblin 1 to 4, each with its own row — and offers Create “…” as … for a creature or statblock that does not exist yet.",
+      "area": "Play",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-draw-zones",
+      "date": "2026-10-29",
+      "title": "Draw zones and territories on the map",
+      "text": "The new tool group Zones (Z) draws a zone kind or a faction’s territory on the map as a rectangle, ellipse or polygon, on the floor you are on. Found reveals a hidden trap to the players at that spot; Remove takes an area off the map.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-campaign-decisions",
+      "date": "2026-10-29",
+      "title": "Every campaign decision in one list",
+      "text": "The Overview of the campaign page lists what the campaign has decided — layers, compare layers, members and every rule — each with its state and what a change does. Change opens the place where just that decision is made again.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-29-map-level-lock",
+      "date": "2026-10-29",
+      "title": "Lock the map level while zooming",
+      "text": "A lock next to Fit keeps zooming on the map you are on: no more slipping into a sub-map or out to the map above while you look closer. Breadcrumbs and frames still take you there when you click them.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-map-areas",
+      "date": "2026-10-29",
+      "title": "Zones and territories on the map",
+      "text": "Zones such as difficult terrain or magical darkness and the territories of factions now lie on the map as coloured squares on the grid, on their own floor. Players see them as far as they may and as far as the fog is lifted; a hidden trap appears for them once the GM marks it found. Areas above the map hides them.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-29-discard-sell",
+      "date": "2026-10-29",
+      "title": "Discard and sell right at the piece",
+      "text": "In an inventory, a picked piece now has Discard and Sell instead of Remove. Discard asks how many and takes the piece out of the game, with Undo right after. Sell lists the shops you can see with what each pays — those where the scene in play is come first — and puts the coins into the purse.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-item-features",
+      "date": "2026-10-28",
+      "title": "Enhancements and item properties are rules articles",
+      "text": "+1 Weapon, Silvered and the other magic variants are now enhancements under Rules, not items; you add them to a piece as before. Item properties such as Versatile say in a field what they do on the sheet, and a weapon’s versatile die stands on its link to the property. Item fields an enhancement has no place for are kept in its notes.",
+      "area": "Rules",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-folds-remembered",
+      "date": "2026-10-28",
+      "title": "Folded filters and registry groups are remembered",
+      "text": "Filters you open or close in the compendium and the areas, and the inherited groups you open on a type in the registry, now stand the same after reloading — kept for your account, for each page and type.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-encounter-stances",
+      "date": "2026-10-28",
+      "title": "Who stands where, and hints with one click",
+      "text": "A conversation encounter lists who takes part and what each thinks of the party. Under each puzzle hint the GM can press “Reveal to the party” to share just that hint. Trap and hazard encounters show their hazards as cards.",
+      "area": "Story",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-deleted-trash",
+      "date": "2026-10-28",
+      "title": "Deleted: restore within 30 days",
+      "text": "What you delete now waits 30 days in Deleted (Account › Deleted articles). Restore one article or everything from one deletion; the GM sees what others deleted too. Empty trash deletes it for good — only then do images lose their files.",
+      "area": "Articles",
+      "link": "/trash"
+    },
+    {
+      "id": "2026-10-28-statblock-rolls",
+      "date": "2026-10-28",
+      "title": "Roll skills, saves and crafting checks",
+      "text": "On a statblock, skill and saving throw bonuses and ability modifiers are now dice to click; the log says “Stealth check” or “DEX save”. Crafting has “Roll check”, which rolls with the crafter's own bonus on the server. A long rolls log now pages past the first thousand rolls.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-tracker-damage-types",
+      "date": "2026-10-28",
+      "title": "Damage types in the tracker, effects on saves and spells",
+      "text": "Damage in the initiative tracker asks for its type and counts resistances, immunities and vulnerabilities, like a confirmed turn; a concentrating combatant rolls the save at once. Effects on saving throws, spell save DC, spell attacks, checks and weapon attacks now change the sheet and the turn plan's tiles, and Unarmored Defense works as an effect.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-28-visibility-per-article-rule",
+      "date": "2026-10-28",
+      "title": "Hide one article of a shared rulebook",
+      "text": "In Articles and their layers the GM can now set the visibility of an article even when it comes from a rulebook other campaigns share: it becomes a rule of this campaign for that one article, shown as “campaign (this article)”. The book itself stays unchanged.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "visibility"
+      }
+    },
+    {
+      "id": "2026-10-28-plan-allies-terrain",
+      "date": "2026-10-28",
+      "title": "Moving through allies and difficult terrain",
+      "text": "In Plan turn a path may now pass through allies (but not stop on them), and zones of difficult terrain cost double, shown brown. The server counts the feet itself, so a path that is too long is refused.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-28-version-variant-copy",
+      "date": "2026-10-28",
+      "title": "Version, variant or copy in another layer",
+      "text": "Copy… on an article makes a version for this campaign, a variant beside it or an independent copy, in one of your layers — with its parts, statblock and inventory if you tick them. Handy for articles from a shared rulebook you cannot save.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-move-layer-followers",
+      "date": "2026-10-28",
+      "title": "Moving an article takes its parts along",
+      "text": "When you move an article to another layer, a list now asks what goes along: its parts, its own statblock, its inventory and the pieces in it — ticked when they lie in the same old layer — with where else each is linked. On the campaign page you can move a whole selection the same way, and undo it.",
+      "area": "Campaign",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-first-damage",
+      "date": "2026-10-28",
+      "title": "First damage shows at once",
+      "text": "Damage, healing or temporary hit points applied right after opening a character sheet now show straight away; before, the first change was saved but the sheet kept the old number.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-prefer-version",
+      "date": "2026-10-28",
+      "title": "Choose which version shows",
+      "text": "Where two books bring the same thing, the GM can now prefer one version — on the article under Versions or in Articles and their layers — or put a layer first for some types under Order in play (“Weapons: PHB 2024 first”). Lists and links follow; no book is changed.",
+      "area": "Campaign",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-target-big-token",
+      "date": "2026-10-28",
+      "title": "Attacks reach big tokens",
+      "text": "In Plan turn, range now counts to the nearest square a target takes up, from where your planned move ends: a huge dragon you stand next to can be hit with a 5 ft attack. If a target is out of range, the planner says so instead of ignoring the tap.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-28-characters-per-campaign",
+      "date": "2026-10-28",
+      "title": "Characters per campaign",
+      "text": "A character given to an account now belongs to it in that campaign only. In a new campaign you no longer find the characters of your other tables as yours; under Campaign › Members each campaign lists and gives its own.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-default-columns",
+      "date": "2026-10-28",
+      "title": "Lists show what a thing is",
+      "text": "Places, factions, quests, scenes, events, stories, arcs, parties, maps, recipes and crafting orders now bring their own columns to the Compendium and the areas: a quest shows progress and reward, a place its type and environment, an event its kind and date. Your own column choice stays; “Reset to default” goes back to these.",
+      "area": "Compendium",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-section-bar",
+      "date": "2026-10-28",
+      "title": "Expand all, collapse all, next section — on more pages",
+      "text": "The bar from the Layers tab now also stands above the filters of the Compendium and the areas, above the chapters of an article (Expand all opens Admin and Log, and the article page keeps them so for your account), on a type in the Registry (all inherited types at once) and in long steps of the character assistant. Alt+↑/↓ jumps, with Shift it collapses or expands all.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-28-size-effects-choose",
+      "date": "2026-10-28",
+      "title": "Overlapping size effects: you choose",
+      "text": "When Enlarged and Reduced (or any two size effects) are on a creature at once, they no longer add up: the latest applies, and the GM picks at the token which one counts. Size conditions in the initiative with a duration now change the token too, and its size falls back when they run out.",
+      "area": "Maps",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-running-campaign",
+      "date": "2026-10-28",
+      "title": "Campaign page and header agree",
+      "text": "The campaign page opens on the running campaign and follows when it is switched in the header; Boards follow too. A new campaign can be picked in the header at once, and the admin can make the shown campaign the running one from its Overview.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-expertise-proficient",
+      "date": "2026-10-28",
+      "title": "Expertise only where you are proficient",
+      "text": "In the character assistant an expertise choice offers only skills and tools the character is already proficient in, earlier picks of the same step included; the others are locked and say “not proficient yet”. A choice can switch this off in its data.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-open-choices",
+      "date": "2026-10-28",
+      "title": "Open choices keep a character an idea",
+      "text": "A character can only be set to prepared or ready once every choice of its ancestry, background, class and granted features is made; the message names what is left to decide. Equipment may still wait.",
+      "area": "Characters",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-28-partner-official",
+      "date": "2026-10-28",
+      "title": "Partner books are Official",
+      "text": "Books made with partners of Wizards of the Coast (Critical Role, Rick and Morty, LEGO …) now show Official as their publisher, as on D&D Beyond. The group Partnered stays as a category, so you can still find them.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-28-designer-phone",
+      "date": "2026-10-28",
+      "title": "Designing a view on a phone",
+      "text": "On a phone, Design this view now opens the designer in its Design tab instead of a sheet that covered Edit and the view bar.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-28-steps",
+      "date": "2026-10-28",
+      "title": "Guided creation in steps",
+      "text": "Add the element Steps to a type’s Create (full) view to walk through creating it page by page, with Back and Next. New article for a player character now opens the character builder directly.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-28-create-forms",
+      "date": "2026-10-28",
+      "title": "Decide what creating asks",
+      "text": "Design the views Create and Create (full) for a type under Registry › Views: the quick dialog then asks the fields you chose, and New article opens the new article with them first.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-28-unassigned",
+      "date": "2026-10-28",
+      "title": "Every article has a layer: Unassigned",
+      "text": "Articles that fit no other layer now wait in the layer Unassigned, and the workbench lists them under Unassigned so you can move each where it belongs. A layer without a publisher group now reads “Unknown” as its publisher.",
+      "area": "Workbench",
+      "link": "/werkbank"
+    },
+    {
+      "id": "2026-10-27-required-for-a-state",
+      "date": "2026-10-27",
+      "title": "Fields required only for prepared or ready",
+      "text": "In the registry a field or edge kind can now be required only to be prepared or to be ready: ideas stay quick, and an article cannot be set to that state while something is missing — the message says what. The workbench lists articles under Ready with gaps.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-26-shop-collections",
+      "date": "2026-10-26",
+      "title": "Shops sell and buy by collection",
+      "text": "A shop can now sell a whole collection — “sells → Simple weapons” — and say with “buys” edges what it buys back and at which rate; without them it buys everything at its buy rate. The wares show where an item comes from, and the sell list what the shop does not take.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-26-collection-articles",
+      "date": "2026-10-26",
+      "title": "Collections: group articles by rule or by hand",
+      "text": "Create a Collection under Rules — Simple Melee Weapons, Damage Types — and give it a rule of types, tags and field conditions; add other articles by hand with the edge “in collection”, or exclude one. Its page lists the members, and players see only those they may.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-26-design-tokens",
+      "date": "2026-10-26",
+      "title": "Colour a view with design tokens",
+      "text": "In the view designer, an element’s head, surface, frame and text take a design token — a named colour with a light and a dark value — and a view can give every element of a kind the same design. Registry › Tokens lists the colours with their contrast, and the workbench warns when a text reads too weak on its surface.",
+      "area": "Registry",
+      "link": "/registry?tab=tokens"
+    },
+    {
+      "id": "2026-10-26-designer-bar",
+      "date": "2026-10-26",
+      "title": "View designer: one bar to insert, undo, copy and paste",
+      "text": "The view designer has a bar on top: insert elements by group or find them by name, undo and redo every change until you save, copy an element and paste it into another view. A selected element gets a floating toolbar to move, duplicate or remove it, and the keys Ctrl+Z, Ctrl+Shift+Z, Ctrl+C, Ctrl+V and Ctrl+D work there too.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-10-26-linked-article-board-sketch",
+      "date": "2026-10-26",
+      "title": "Show a linked article in any view, and boards as a sketch",
+      "text": "In the view designer, Linked article can now follow any edge and show the article at its end in a view you choose — the place of a scene as its quick view. A board’s quick view is a small sketch of its cards, in the popup and under the + of a search hit. Scenes list their encounters; arcs keep them as tiles.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-10-26-collections-everywhere",
+      "date": "2026-10-26",
+      "title": "Arcs, scenes and places show what belongs to them as tiles",
+      "text": "An arc shows its scenes, a scene its encounters — as tiles in their own quick view, grouped by type, instead of the plain Contains list. A place shows the places within it and who lives there. In the view designer, a Collection can now also be a table, with the edge’s values and fields as columns, and can gather its articles from a filter of types, tags and fields, like the Compendium.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-26-overlays",
+      "date": "2026-10-26",
+      "title": "Overlays: change a view for one article or a condition without copying it",
+      "text": "In the view designer, save for one article or for a condition “as an overlay”: only what you add, move or take away is kept, and everything else keeps following the view. Elements sit by position, so “map at position 15” lands in the same place on every type. Where two overlays meet, the designer marks it with ⚠ and the workbench lists it under View conflicts.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-10-26-collection",
+      "date": "2026-10-26",
+      "title": "Sessions show their scenes and encounters as tiles",
+      "text": "A session now shows the scenes and encounters that belong to it as tiles, grouped by type — each in the quick view of its own type, so a change to the scene’s quick view shows there too. In the view designer, the new element Collection does the same for any edge: follow an edge, pick the types, tiles or a list, the view of each article and the order.",
+      "area": "Story",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-26-image-picker-any-file",
+      "date": "2026-10-26",
+      "title": "Upload image now reaches OneDrive on Android too",
+      "text": "Upload image opens the full file menu instead of only the photo picker, so you can pick an image from OneDrive or any other storage. The file is checked after you choose it; anything that is not a supported image says what to do instead.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-23-lists-suggest",
+      "date": "2026-10-23",
+      "title": "Own words in kind fields, place types as a list, colour picker",
+      "text": "Encounter kind and Place type now suggest the values of their list and those already in use, and take your own word too. Place types are a list under Registry › Lists. In the registry, any list field can hold or only suggest. Colour fields, like a faction’s colour, open a colour picker.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-23-arc-lists-scenes",
+      "date": "2026-10-23",
+      "title": "Arcs, scenes and sessions list what belongs to them",
+      "text": "An arc now lists its scenes and encounters under Contains, a scene its encounters, and a session the scenes and encounters that are part of it — each with its kind. Link them with part of; the session shows only its own, the chapter all of them.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-23-write-outside-campaign",
+      "date": "2026-10-23",
+      "title": "Write into layers outside the campaign layer",
+      "text": "Writes to in the header, the Layer field in Edit and New article now offer every layer you write in — the administration also ones it does not own, like an imported rulebook. Layers this campaign does not turn on are marked “not in play”: what you put there shows here only once the campaign turns them on.",
+      "area": "Campaign"
+    },
+    {
+      "id": "2026-10-23-shared-layer-on",
+      "date": "2026-10-23",
+      "title": "Turn on layers that other campaigns already use",
+      "text": "A new campaign can now turn on any layer, including the rulebooks and layers other campaigns already have — the tick no longer jumps back with a server error. If a link ever collides, the page now says so and what to do instead of “Internal server error”.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-23-inventory-anchor-cell",
+      "date": "2026-10-23",
+      "title": "Place a piece by the cell you hold it by",
+      "text": "In the grid inventory, tap a piece on one of its cells, then tap a free cell: the piece lands with exactly that cell there, so a sword or a T-shape goes where you point. The held cell is marked; tap another of its cells to change it.",
+      "area": "Inventory"
+    },
+    {
+      "id": "2026-10-23-gear-hands",
+      "date": "2026-10-23",
+      "title": "Gear: take items into your hands",
+      "text": "In a character’s Gear tab, tap an item in the grid, then Main hand or Off hand — or drag it there. Two-handed weapons take both hands, a shield goes on the off hand, and versatile weapons switch grip with One hand / Two hands. A warning asks before anything is pushed out, and Your turn shows what your hands block, with the reason.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-23-item-shapes-overview",
+      "date": "2026-10-23",
+      "title": "Item shapes by group, with reference items",
+      "text": "Rules & options › Inventory › Item shapes lists the shape groups and every item with the shape that applies and where it comes from. Change a group and every item without its own follows; give a +1 Longsword the Longsword as reference item and it takes its shape. The Shape panel on an item says where its shape comes from, and Group & reference sets both there.",
+      "area": "Inventory",
+      "link": "/inventory/shapes"
+    },
+    {
+      "id": "2026-10-22-campaign-articles-layers",
+      "date": "2026-10-22",
+      "title": "See each article's layer on the campaign page and set its visibility",
+      "text": "Layers and Visibility on the campaign page now list every article in play with its layer, publisher and who sees it. Filter and sort by layer, type or visibility, set one article's visibility in its row, or tick several and set it for all at once.",
+      "area": "Campaign",
+      "link": "/campaign?tab=visibility"
+    },
+    {
+      "id": "2026-10-22-rule-systems-as-layers",
+      "date": "2026-10-22",
+      "title": "Inventory is a rule system with its mechanics",
+      "text": "Inventory now stands as a rule system layer with the mechanics Weight, Slots, Grid and Default shapes. Each mechanic says which others it works with — the grid works with weight. Default shapes gives items their shape and stack size from groups and reference items, once its data is in.",
+      "area": "Rules",
+      "link": "/artikel/ly_rs_inventory"
+    },
+    {
+      "id": "2026-10-22-token-size-from-statblock",
+      "date": "2026-10-22",
+      "title": "Tokens take their size from the statblock and from effects",
+      "text": "A dragon placed on a map now covers its squares straight away — also monsters that are only a statblock. Effects with target size, such as Enlarge or Reduce, change it while they last, and Tokens › Token size still overrides it; the tooltip says where the size comes from.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-22-filter-relations",
+      "date": "2026-10-22",
+      "title": "Filter lists by relations",
+      "text": "“Relations” in the filters of the Compendium, World, Story and Rules finds articles that have a link or none, at least so many, or a link to one article — members of a faction, items with a grid shape.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-22-delete-articles",
+      "date": "2026-10-22",
+      "title": "Delete articles and images from your layer",
+      "text": "Images › Delete removes the selected images, and Delete on an article page removes that article — only what lies in your write layer; the rest of a selection is deselected and the message says how many. Undo right after brings everything back.",
+      "area": "Articles",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-22-filter-added-changed-by",
+      "date": "2026-10-22",
+      "title": "Filter lists by when and by whom",
+      "text": "In the Compendium, World, Story and Rules, “When & who” in the filters shows what was added or changed today, in the last 7 or 30 days or between two dates, and who added it; Sort puts the newest first. Added, Changed and Added by are also columns.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-22-edit-layer-first",
+      "date": "2026-10-22",
+      "title": "Change an article's layer while editing",
+      "text": "Edit now starts with the Layer field. Choose another of your write layers and Save moves the article there; the page tells you where it is now.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-22-board-cards-fit",
+      "date": "2026-10-22",
+      "title": "Structure and query cards use the whole card; long notes scroll",
+      "text": "A structure card in Web form now fits the whole web into the card instead of cutting it off, and structure and query cards use their full height. A text note longer than its box scrolls inside it, down to its last line.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-22-image-picker-files",
+      "date": "2026-10-22",
+      "title": "Pick images from Files and OneDrive on your phone",
+      "text": "Upload image now opens your phone's full picker, not just the photos: choose Browse or Files to take an image from OneDrive or any other storage. HEIC files from Files get a note on what to do instead.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-22-zoom-focus-undo-walls",
+      "date": "2026-10-22",
+      "title": "Zoom into the sub-map you point at; undo walls",
+      "text": "Zooming enters a sub-map only where the cursor or the centre of the view lies. Sub-maps › Enter when it fills marks where you are now; Use current takes it. Walls: Undo point and Backspace while drawing, Undo or Ctrl/Cmd+Z for the last change. With a mouse, holding before dragging moves the map again.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-22-link-shape-tools",
+      "date": "2026-10-22",
+      "title": "Link shapes with visible corners, snapping and undo",
+      "text": "Sub-maps › Link shape now shows its corners, snaps them to walls, the grid and the corners of other shapes, and takes one back with Undo point or Backspace; Enter finishes. Unlink, Link shape and the other tools no longer jump into the sub-map when you tap its frame.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-22-sight-through-gaps",
+      "date": "2026-10-22",
+      "title": "Line of sight holds at narrow gaps",
+      "text": "A token next to a narrow gap — an arrow slit, two walls that do not quite meet — no longer sees through the walls beside it. Fog already revealed by the old sight stays revealed; cover it again with Fog › Hide.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-22-release-shares-maps",
+      "date": "2026-10-22",
+      "title": "Release shares the map — image, fog and cover name included",
+      "text": "Release to players now also makes a map in play ready and open to the campaign, so players see it even when its template was for the GM only — with its image under the fog, without sharing the image itself. A cover name is what players see until you press Reveal name (⋯ View). The map stage no longer flickers when the map exactly fills it.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-22-section-bar",
+      "date": "2026-10-22",
+      "title": "Long pages: expand all, collapse all, jump between sections",
+      "text": "On the campaign’s Layers tab, Expand all and Collapse all fold every section — the order, saved selections, each group of books, compare layers and extra content — and ‹ › jump to the previous or next one (Alt+↑/↓). In a book, ‹ › go from section to section and on to the next chapter. On a phone the bar sits at the bottom.",
+      "area": "Campaign",
+      "link": "/campaign?tab=layers"
+    },
+    {
+      "id": "2026-10-22-turn-plan-range",
+      "date": "2026-10-22",
+      "title": "Turn plan: range, long range and conditions",
+      "text": "The server now checks an attack’s range when a turn is sent and again when it is confirmed. Beyond normal range a ranged attack rolls with disadvantage, and conditions like Blinded, Invisible, Restrained or Prone give advantage or disadvantage through their effects; the hit chance in Plan turn shows it.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-structure",
+      "date": "2026-10-21",
+      "title": "Structure: a faction as an organisation chart or web",
+      "text": "Put a Structure card on a board (⌥), choose a faction, place or family in ⚙: members with ranks, sub-factions, what it controls and who regards whom, tags on the lines — as tree or web; + shows more. A faction’s page shows it too (element Structure in the view designer). Players see only what they know.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-21-campaign-board",
+      "date": "2026-10-21",
+      "title": "A campaign board where players start",
+      "text": "Every campaign now has a board: the campaign, what is being played, the next session, the party, the open quests and the rumours, always up to date. Players land on it after signing in and get a bar back to the board, their character, maps, search and knowledge. The GM can send players to the compendium instead under Rules & options.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-21-book-illustrations",
+      "date": "2026-10-21",
+      "title": "Books and adventures: pictures in the text",
+      "text": "Open a book from the campaign’s layers: a picture in its text is now a part of its chapter, at its place between the paragraphs, with its caption. Until the image file is uploaded, a frame with the caption stands there. Players see only the pictures of what they may read.",
+      "area": "Layers",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-21-map-notes",
+      "date": "2026-10-21",
+      "title": "Maps: quick notes for the GM or the players",
+      "text": "Under Notes (N) on a map, tap where a note goes, write it and choose GM only or Players too. Each note is its own article, stands as a small card on the map and moves like a marker; players never see a GM note.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-marker-view",
+      "date": "2026-10-21",
+      "title": "Maps: markers as symbol, name, image or quick card",
+      "text": "Choose how markers stand on a map: as a symbol, a symbol with its name, an image, or a small quick card with the article’s quick view. Set it for one marker (tap it), for the whole map (Tokens › Markers show as), for each map kind under Rules & options, or for an article type in the registry.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-glossary-everywhere",
+      "date": "2026-10-21",
+      "title": "Conditions, properties and actions explain themselves",
+      "text": "The glossary now holds the conditions, weapon properties, actions, damage types, senses, cover, rests and more of the basic rules. Poisoned or prone are dotted in any text: hover for the definition, Ctrl/⌘+click for the entry and where it is used. Field names such as Hit points are dotted too, and Rules & options shows the entry under an option that names a term.",
+      "area": "Rules",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-21-board-query-cards",
+      "date": "2026-10-21",
+      "title": "Boards: query cards — lists, draws and slideshows",
+      "text": "A query card shows a selection of articles from types, tags, layers, single articles or a filter: as a list, as a random draw without putting back, or as a slideshow for a second screen. Players see only what they may see, and a draw can reveal what it brings to the party.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-21-rests",
+      "date": "2026-10-21",
+      "title": "Short and long rests on the character sheet",
+      "text": "Under Rest in a character’s header, “Short · hit die” rolls a hit die and heals it plus CON; “Long rest” brings back all hit points, half the hit dice and every spell slot, and takes one level of exhaustion away. No more resetting pips by hand.",
+      "area": "Characters",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-turn-plan-applies",
+      "date": "2026-10-21",
+      "title": "Confirmed turns take hit points; Dodge, Help and Hide count",
+      "text": "When the GM confirms a turn plan, damage comes off the target after its resistances, and a concentrating target rolls its save at once. Dodge gives attacks against you disadvantage until your next turn, Help gives an ally advantage on their next attack, Hide rolls Stealth and gives your next attack advantage — each as an entry in the initiative. Ready and Search can be planned too.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-effects-count",
+      "date": "2026-10-21",
+      "title": "Armor, items and conditions change the numbers",
+      "text": "A character’s AC now comes from the armor and shield it wears, and items, features and conditions change AC, speeds, resistances and the critical-hit threshold — on the sheet, in the initiative tracker and in the turn plan. Grappled sets every speed to 0. Passive Perception counts proficiency and expertise. “How the numbers come about” on a character says where each part comes from.",
+      "area": "Characters",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-places-from-books",
+      "date": "2026-10-21",
+      "title": "Places know their rooms, region, scenes and residents",
+      "text": "Places read from books and adventures now find more rooms, sit inside the region whose list names them, and list the scenes set there, their maps and the named creatures that live there. In the Workbench, Add edge takes its target from an edge path such as <-describedIn, so every article gets its own target in one change.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-21-item-shape-layer",
+      "date": "2026-10-21",
+      "title": "Item shapes as a layer of their own",
+      "text": "Shapes and stack sizes can come from a layer that only adds these fields: switched on in the campaign, every item shows them in its Shape and in the grid inventory, next to prices from another layer. Editing such a shape changes that layer.",
+      "area": "Inventory",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-21-item-shapes",
+      "date": "2026-10-21",
+      "title": "Paint item shapes, with the picture in the inventory",
+      "text": "An item’s page shows its shape for the grid inventory as grid or list, with its picture in the cells. Edit shape paints it on a growing 5 × 5 grid or takes the rows as text; Adjust inventory image sets an own picture, zoom, turn and fit. In the inventory, pieces show their picture and can be mirrored where the shape is not symmetric.",
+      "area": "Inventory",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-quick-first",
+      "date": "2026-10-21",
+      "title": "Quick cards: key values first, picture last",
+      "text": "The quick card — popup, map marker, board card and the + of a search hit — now opens with what you look for: a creature’s numbers, a spell’s level, school, casting time and range, an item’s rarity and weight, with measures in your units. The picture comes last and is cut off at the bottom when a popup or card runs out of room. Search hits show the quick card instead of a view of their own.",
+      "area": "Articles",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-21-list-columns",
+      "date": "2026-10-21",
+      "title": "Choose the columns of a list",
+      "text": "Columns in Compendium, World, Story and Rules picks the fields a table shows — also calculated values and edges — and their order. Your choice is kept per page and type and travels in the link; the GM can set it as the campaign default.",
+      "area": "Navigation",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-builder-takes-new-article",
+      "date": "2026-10-21",
+      "title": "The character builder keeps what you typed under New article",
+      "text": "Under New article › Player Character, “Use the character builder” now takes along the name, the layer and required fields. Ability Score Improvements ask per level on level-up, sidekicks included.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-21-board-tools",
+      "date": "2026-10-21",
+      "title": "Boards: tools for text, images, drawing and maps",
+      "text": "Boards have a tool bar like the map: headings, notes and lists with links, images, freehand, arrows and shapes, a background image, colour or map, and maps as live cards. Cards show any view up to Full, the canvas grows with what lies on it, and GM only keeps an element or card from players.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-21-views-per-kind",
+      "date": "2026-10-21",
+      "title": "Cards, search hits and handouts show what matters per kind",
+      "text": "The quick card of encounters, maps, recipes, parties, events, stories and arcs now shows their key values, and the + of a search hit shows the same values as the card. Handouts carry what you hand the players: kind and rarity of items, kind of places, factions and deities, reward of quests; a spell prints as a spell card.",
+      "area": "Articles",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-21-markers-between-maps",
+      "date": "2026-10-21",
+      "title": "Markers between map levels",
+      "text": "Markers and tokens of a sub-map now show on the map above at their place, many as one number. A marker set on the map above inside a sub-map waits there under To place until the GM confirms or moves it.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-aligned-sub-maps",
+      "date": "2026-10-21",
+      "title": "Sub-maps aligned to the grid above, distances across maps",
+      "text": "Sub-maps › Link settings › Align to parent grid sizes a linked map from both scales and snaps it to the grid of the map above, both grids showing. Measuring inside a sub-map also gives the distance in the unit of the map above, and Add to route sums up legs across maps.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-map-links",
+      "date": "2026-10-21",
+      "title": "Sub-map links as shapes, with zoom depth and a border",
+      "text": "A linked sub-map can lie in a drawn shape (Sub-maps › Link shape). Per link, set how far you zoom in before it opens and how GM and players see it — a frame to click, only the frame, an icon or nothing. Inside, the map above can show faded around the sub-map, and an arrow at the top leads back up. Defaults are under Rules & options › Map.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-passage-areas",
+      "date": "2026-10-21",
+      "title": "Stairs and portals cover an area; send everyone through",
+      "text": "A passage can cover several squares (Floors › tap a passage › Draw area). Standing anywhere on stairs you can see through shows the floor above. The GM sends everyone in the area through at once, also through a portal to another map; players drop their token on a portal to go through. Who may, when in an encounter and what it costs is set under Rules & options › Map and per passage.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-text-sections",
+      "date": "2026-10-21",
+      "title": "Text sections instead of passages on an article",
+      "text": "What an article called passages — read-aloud text, notes, secrets — is now Text sections, so it is no longer mixed up with passages between map floors. Below the fields every article lists the kinds of text its type offers and how many stand there, with + Text to add one; each section can be revealed on its own.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-21-one-tool-bar",
+      "date": "2026-10-21",
+      "title": "Plan turn, Initiative and floors in the map's tool bar",
+      "text": "Play is calmer: Plan turn is a tool in the map's tool bar, shown only for the characters you play (the GM plans for every creature). Initiative and Party open beside the map from the same bar, and the floor you see is picked under Floors. How much players plan — off, movement only, movement and actions, or full with reactions — is set under Rules & options › Combat › Turn planner.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-initiative-round-two",
+      "date": "2026-10-21",
+      "title": "Initiative: set the turn, open a combatant, full hit points",
+      "text": "Skip a turn, go back to the top or make any row current with ▸ — effects count down only on Next turn. The tracker shows Round and Turn x/y, starts everyone at full hit points, and ▾ opens a row with its actions and spells with rolls. Turn changes light up briefly (✦ turns it off). Initiative is now a rule system under Combat: D&D 5e (standard), without Delay.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-21-group-maps",
+      "date": "2026-10-21",
+      "title": "Group the map list by kind, location and more",
+      "text": "Play › Maps now has the Transformations bar: group your maps by map kind, location, region, layer, parent map or tag, with a count per group. Your grouping stays for your account, and you can save or share it as a link.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-20-hex-grid-and-scale",
+      "date": "2026-10-20",
+      "title": "Clean hex grids and a scale per square",
+      "text": "Hex grids now draw only the edges of each hex — no more lines running into a hex. Grid › 1 square = (or 1 hex =) sets what one cell is: 5 ft, 10 ft, 1 mi, 6 mi or your own; movement, reach, light and measuring use it, per floor too, and the bar under the map shows it.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-map-tools-per-kind",
+      "date": "2026-10-20",
+      "title": "Map tools per map kind, and Link map is back",
+      "text": "Battle maps show walls, fog, light and grid; world and region maps show Sub-maps, markers and assets. Set which tools each map kind shows under Rules & options › Map tools, or with ⚙ Tools on the map. Sub-maps › Link map drags a frame and links the map you zoom into there.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-map-lights-and-tokens",
+      "date": "2026-10-20",
+      "title": "Maps: place lights anywhere, remove tokens reliably",
+      "text": "Light › Light source now places a light wherever you tap the map, and circles show how far each light reaches. Tap a token in Select to remove it right there or press Delete; quick removals no longer get lost. Token size explains what it sets and previews it, View as replaces Player view and For, and on a phone the tools stay at the bottom under the map.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-initiative-tracker",
+      "date": "2026-10-20",
+      "title": "Initiative tracker in Play",
+      "text": "Play shows the order of the running encounter below the map: whose turn, the round, hit points and effects that count down at the start or end of a chosen turn. The GM moves turns, deals damage, delays and adds combatants; players end their own turn. What players see of foes is set under Rules & options › Combat, where the tracker can also be turned off.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-enhancements",
+      "date": "2026-10-20",
+      "title": "+1, silvered, adamantine: enhancements on a piece",
+      "text": "Open a piece in a character's inventory and add an enhancement such as +1 Weapon or Silvered: the piece then reads “+1 Silvered Dagger” and its price, rarity and bonuses are worked out from the dagger and the enhancements. Choose under Rules & options › Items whether prices combine, use the base price or are not calculated.",
+      "area": "Inventory",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-20-floors-and-passages",
+      "date": "2026-10-20",
+      "title": "Floors and passages: towers, cellars, portals",
+      "text": "A map can have several floors now, each with its own image, grid, scale and walls, grouped by building part and sorted by height (Floors, key E). Stairs, ladders, bridges and portals connect them: take a token through, see both floors from stairs, or make a portal one-way or walk-through only.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-levels-in-the-assistant",
+      "date": "2026-10-20",
+      "title": "Level up per class in the character assistant",
+      "text": "Edit a character and raise any of its classes with + in the class step, or add another class — multiclassing checks the minimum scores by the rules. The new level's features, choices and hit points follow as steps; there is no separate level-up page any more.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-20-rules-at-the-table",
+      "date": "2026-10-20",
+      "title": "Rules from graphs act in the turn plan",
+      "text": "Turn on Rules from graphs under a campaign’s Rules & options › At the table, and the rule articles in play react to the turn plan: they offer reactions like Shield or an opportunity attack when someone leaves a reach, is attacked, hit or damaged, and note what else follows. The opportunity attack then comes from its rule article, which you can change in the rule builder.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-views-per-type",
+      "date": "2026-10-20",
+      "title": "Views: change one type without touching the rest",
+      "text": "Designing a view from a type now changes only that type — “every article of Table” is chosen for you, and the designer saves an adjustment where it can and the type’s own arrangement otherwise, without a checkbox. Registry › Views lists under each view the types that say their own and the designed views, the views stand in a row at the top, and the elements can be searched.",
+      "area": "Registry",
+      "link": "/registry?tab=views"
+    },
+    {
+      "id": "2026-10-20-light-tool",
+      "date": "2026-10-20",
+      "title": "Light has its own tool; sight comes from player tokens",
+      "text": "Lighting, Light source and Light on/off now sit under their own map tool, Light (key L), instead of Fog. What players see is worked out from their characters' tokens; the party token only counts while none of them stands on the map.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-20-change-maps-in-play",
+      "date": "2026-10-20",
+      "title": "Decide whether players may change maps in play",
+      "text": "On a map in play, players now stay on the table map by default — sub-map frames are only picture. Press Players stay here to let them zoom into sub-maps and out to the map above; they reach only maps released in this session.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-19-map-assets",
+      "date": "2026-10-19",
+      "title": "Assets on the map: fixed or movable",
+      "text": "Place crates, tables and lanterns with Tokens › Add asset, then size, turn and set them with Tokens › Asset. Assets stay put in play unless you mark them Movable in play, and each can block movement, sight or both — a crate stops feet, a cupboard stops eyes too.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-19-who-moves-tokens",
+      "date": "2026-10-19",
+      "title": "Choose who moves tokens on the map",
+      "text": "A campaign now says which tokens players may drag: none, their own characters, the party, the party and its allies, or every token — and whether you confirm each move first. As GM, Tokens › Movement on the map shows the setting and changes it at once; a pending move is shown dashed to the whole table.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-19-fog-cropped-image",
+      "date": "2026-10-19",
+      "title": "Under the fog, players get only what is revealed",
+      "text": "While the fog is on, the map image players receive is cut to what has been revealed — the rest is not hidden in the browser, it is simply not sent. The full picture follows once you reveal everything or turn the fog off.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-19-map-grid-loupe-tokens",
+      "date": "2026-10-19",
+      "title": "Fine-tune and colour the grid, a loupe for placing, tokens that fill their squares",
+      "text": "Grid now has arrows for size and offset and a fine slider, a colour, an opacity and Show grid. Hold on the map while placing a point and a loupe opens. Tokens snap to the grid and cover the squares their size needs, half squares included; Played on a map opens each map in play straight in Play.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-19-sight-and-light",
+      "date": "2026-10-19",
+      "title": "Darkvision in greyscale, torches in hand, lights on and off",
+      "text": "On a dark map, what only darkvision reaches is now shown in greyscale, while lit areas keep their colour. Give an item Bright light and Dim light beyond: placed as a marker it lights itself, and held in a character's hand it lights that token. Light › Light on/off switches any light without losing its radius.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-19-chapters",
+      "date": "2026-10-19",
+      "title": "Pages in chapters: tabs on the phone, framed areas on the desktop",
+      "text": "Articles, characters and registry types are split into chapters — Fields, Relations, Linked here, Admin and Log on an article. On a phone they are tabs and the address keeps the one you chose; on a wider screen the fields stand on the left and relations on the right. Admin, on every article, shows its layers, who can see it and why, what is known about it and its versions.",
+      "area": "Articles",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-19-maps-in-play",
+      "date": "2026-10-19",
+      "title": "Maps in play: release to players, fog per session, look back later",
+      "text": "Taking a map or an encounter into play now makes the session's own copy: tokens, fog and the fight stay there, and the map itself stays as you prepared it. Players see the map only after Release to players, with the fog already on. On the map's page, Played lists every past table with its date, session and encounter.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-19-views-everywhere",
+      "date": "2026-10-19",
+      "title": "Designed views everywhere, a view row on every article, rows of a table",
+      "text": "A view you design now shows wherever its place asks for it — the popup on a named article or map marker, the preview beside a list, board cards and the print. Every article has a View row on top to see it in any view that applies, and the new element Table shows the rows of a random table with Roll.",
+      "area": "Views",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-19-choose-spells",
+      "date": "2026-10-19",
+      "title": "Choose cantrips and spells in the character assistant",
+      "text": "Spellcasting classes now ask for their cantrips and spells — a wizard's spellbook, a bard's spells known, prepared spells in the 2024 rules — from the class spell list and up to the level you cast. A new level adds the new ones; a spell you already have is locked.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-19-spellcasting-from-sources",
+      "date": "2026-10-19",
+      "title": "Spellcasting from your class and origin",
+      "text": "A spellcaster's header and Spells tab now fill themselves: the class gives the ability and the slots for your level, and origin, feats, features, items you hold and spells you chose add their spells — each with its source and, where it differs, its own ability.",
+      "area": "Characters",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-19-map-editor",
+      "date": "2026-10-19",
+      "title": "Draw walls as shapes, doors as boxes, set the grid on the map",
+      "text": "Walls can be drawn as a line, polyline (open or closed), rectangle, ellipse or polygon. Doors are boxes across the opening that players click, and a door drawn over a wall cuts it. Snap to points, grid corners and lines with an adjustable strength, show and drag corner points, and set the grid right on the image with Grid › Pick a square.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-19-token-tools",
+      "date": "2026-10-19",
+      "title": "Remove markers, place the creature, borders for tokens",
+      "text": "On the map, Remove takes a marker off again. Add marker lists one line per name with the creature first — the statblock and image are behind +. Adjust token now changes the image and picks a border: gold, silver, bronze and more.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-19-carry-blocks-handling",
+      "date": "2026-10-19",
+      "title": "Carry blocks: easier selecting, ordering and removing",
+      "text": "Selected cells are hatched grey and the grid no longer moves while you select; the page scrolls beside it. Blocks and zones move up and down, blocks are removed from their header, and a bar at the bottom keeps Save in reach while changes are unsaved.",
+      "area": "Inventory",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-19-character-locks",
+      "date": "2026-10-19",
+      "title": "No double picks in the character assistant",
+      "text": "Skills, tools, languages and feats you already have from an earlier step are locked in later choices and show where they come from; a later choice that doubles one is marked. The assistant shows the character's layer, and the rolls block on an article is now called Log.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-19-carry-blocks",
+      "date": "2026-10-19",
+      "title": "Carry sheet from blocks with real zones",
+      "text": "Rules & options › Inventory now builds the carry grid from blocks: paint zones as cells with a duration, set when a block applies (size, strength or any statblock field) and see the joined grid for any size and STR. Zones are easier to tell apart, in the inventory too.",
+      "area": "Inventory",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-19-adjust-token",
+      "date": "2026-10-19",
+      "title": "Tokens as they are, and Adjust token",
+      "text": "Ready-made round tokens now stand on the map as they are, without a second circle cut over them. Statblocks and creatures show their token on their page; “Adjust token” moves and zooms an image in its circle, or marks it as ready-made.",
+      "area": "Maps",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-19-rule-builder-rule-text",
+      "date": "2026-10-19",
+      "title": "Rules show their rule text",
+      "text": "In the rule builder (experiment), a rule shows what it does in words and, below, the text of the spell, feat or rule it is based on, linked to its book.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
+      "id": "2026-10-19-carry-grid-editor",
+      "date": "2026-10-19",
+      "title": "Set up the carry grid by drawing it",
+      "text": "Rules & options › Inventory now draws Basil’s sheet: pick the grid side per creature size, set the zone of each column on the grid, paint container templates and choose what dropping, stowing and body slots cost.",
+      "area": "Inventory",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-19-creature-image-from-statblock",
+      "date": "2026-10-19",
+      "title": "Creatures show their statblock’s image",
+      "text": "A creature without an image of its own now shows the image of its statblock — or its token —, also from a template, in lists, cards and on its page. Statblocks and parties show their image on their page too, and lists with images load faster on the second visit because the browser may keep them.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-19-untick-rule-methods",
+      "date": "2026-10-19",
+      "title": "Tick and untick methods in Rules & options",
+      "text": "Ability score methods, starting equipment methods and material substitutions now list every one in play with a tick — switch each on or off right on Rules & options. With none ticked, the defaults apply.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-19-knowledge-page",
+      "date": "2026-10-19",
+      "title": "Read a knowledge in one place",
+      "text": "The page of a knowledge now writes out everything it brings together — each information with its articles and exactly the fields it covers. Players read what their character knows there; whoever does not know it sees only that it exists.",
+      "area": "Knowledge",
+      "link": "/rules",
+      "query": {
+        "type": "Knowledge"
+      }
+    },
+    {
+      "id": "2026-10-19-knowledge-box",
+      "date": "2026-10-19",
+      "title": "A Knowledge box on every article",
+      "text": "GMs set at the side of an article which information exists about it — fields picked by group — and which knowledge it belongs to, or start a new knowledge right there. Works on rulebook articles too: the article itself stays unchanged.",
+      "area": "Knowledge",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-19-knowledge-for-groups",
+      "date": "2026-10-19",
+      "title": "Knowledge for whole groups and by ancestry",
+      "text": "An information can now hold for a group of articles — every orc, say — with “Applies to”, the way a view applies. Knowledge can be given to an ancestry, background, class, subclass or feat: every character who has it knows.",
+      "area": "Knowledge",
+      "link": "/rules",
+      "query": {
+        "type": "Knowledge"
+      }
+    },
+    {
+      "id": "2026-10-19-one-view-editor",
+      "date": "2026-10-19",
+      "title": "One editor for every view",
+      "text": "The view designer is now the editor for every view — Registry › Views, “Design” on a type’s page, and “Design this view” in an article’s Full edit, with the preview on the open article. Arrange elements as an indented tree, nest them in columns, sections or tabs, and save for every article, the whole type, or one article.",
+      "area": "Registry",
+      "link": "/registry",
+      "query": {
+        "tab": "views"
+      }
+    },
+    {
+      "id": "2026-10-19-rule-builder-builds-on",
+      "date": "2026-10-19",
+      "title": "Rules show the glossary terms they build on",
+      "text": "In the rule builder (experiment), every rule lists the terms it rests on — reach, reaction, spell slot … — and opens them in the glossary. Rule texts on Rules & options link the same terms.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
+      "id": "2026-10-18-rules-from-articles",
+      "date": "2026-10-18",
+      "title": "Rules & options come from rule articles",
+      "text": "Every system, rule and option on a campaign’s Rules & options tab is now a rule article of its own, in the layer it comes from — open it by its name, edit it like any article. The rule builder (experiment) lists the same articles by system and saves rules, texts and nodes into them.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-18-known-blueprints-rule",
+      "date": "2026-10-18",
+      "title": "Choose how blueprints are learned",
+      "text": "Rules & options › Crafting has “Known blueprints”: all from the start (Kibbles), only taught, or by rarity — every blueprint up to a rarity (common to start) for a tool the character is proficient in, plus what was taught.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-18-view-designer-experiment",
+      "date": "2026-10-18",
+      "title": "Experiment: design your own views",
+      "text": "Game masters can switch on the View designer in Rules & options › Experiments: build a view from sections, columns, tiles and tables, show values of linked articles, and say which articles it applies to. Articles and board cards then offer every view that applies.",
+      "area": "Registry",
+      "link": "/registry",
+      "query": {
+        "tab": "views"
+      }
+    },
+    {
+      "id": "2026-10-18-crafting-starts-with-all",
+      "date": "2026-10-18",
+      "title": "Crafting shows all blueprints until one is learned",
+      "text": "A character who has not learned a blueprint yet no longer sees an empty Crafting tab: it starts with all blueprints and says why. “<Name> knows” shows how many are learned.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-18-numbers-with-parts",
+      "date": "2026-10-18",
+      "title": "Character numbers with their parts",
+      "text": "Ability scores now include the bonuses of origin, background, choices and items everywhere — header, statblock, quick view and prerequisites. Below the statblock, “How the numbers come about” breaks down every ability, proficiency bonus, hit points, AC, initiative, speed and senses, each part linked to its source.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-18-visibility-by-group",
+      "date": "2026-10-18",
+      "title": "Who sees what, per group",
+      "text": "The campaign page has a Visibility tab: every group of articles — by layer, type, area or tag, in the order you choose — with how many each player, the table and the public see. Set a group to Public, Table, Players or GM, show or hide it for one player, and see which articles say it themselves. A layer can now set a default for its articles.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "visibility"
+      }
+    },
+    {
+      "id": "2026-10-18-rule-builder-engines",
+      "date": "2026-10-18",
+      "title": "Rule builder (experiment): engines, filters and more examples",
+      "text": "The rule builder lists rules by engine with search and filters for engine, trigger and active rules, brings a dozen sample rules with yes and no branches, and scrolls and zooms on a phone. Dry runs take an amount, such as damage or a spell level.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
+      "id": "2026-10-18-rule-options-in-place",
+      "date": "2026-10-18",
+      "title": "Change rules & options in place",
+      "text": "On the campaign’s Rules & options tab, pick “Use this” beside a variant to switch it at once — no edit form needed. Option and variant names link straight to the rule article that explains them; a variant without its own article points to the one of its option.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "rules"
+      }
+    },
+    {
+      "id": "2026-10-18-view-as-header",
+      "date": "2026-10-18",
+      "title": "View as from the header",
+      "text": "GMs and co-GMs find “View as ▾” under the campaign in the header: pick a player, spectator or co-GM and every page shows what they would see, read only. Alt+Shift+V switches back; on a phone it sits in the campaign popup.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "members"
+      }
+    },
+    {
+      "id": "2026-10-18-rule-builder-experiment",
+      "date": "2026-10-18",
+      "title": "Experiment: a rule builder with nodes",
+      "text": "Game masters can switch on the rule builder in Rules & options › Experiments: chain a trigger, conditions and outcomes on a canvas — for example offering a reaction when a creature is hit — and try it on a made-up event. It is an experiment and may be dropped again.",
+      "area": "Rules",
+      "link": "/lab/rules"
+    },
+    {
+      "id": "2026-10-18-layer-on-every-article",
+      "date": "2026-10-18",
+      "title": "Every article names its layer",
+      "text": "Under an article's title you now see the layer it is in, the layers of its other versions — one click opens that version — and why it shows: in play, from a compare layer, enabled as extra content, or in no layer. The quick view names the layer too, and lists show it when it is not the campaign's own.",
+      "area": "Layers",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-18-proficiencies-with-source",
+      "date": "2026-10-18",
+      "title": "Every proficiency with where it comes from",
+      "text": "A character is now proficient in what its class, background, origin, feats and choices grant — a tool chosen at the background counts in Crafting. Below the statblock, each saving throw, proficiency and expertise shows its source, linked to the article.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-18-campaign-tabs",
+      "date": "2026-10-18",
+      "title": "The campaign page in tabs",
+      "text": "The campaign page is split into tabs — Overview, Members, Layers and Rules & options — instead of one long page. The tab stands in the address, so you can share a link straight to the layers or the members.",
+      "area": "Campaign",
+      "link": "/campaign",
+      "query": {
+        "tab": "layers"
+      }
+    },
+    {
+      "id": "2026-10-16-character-crafting-campaign",
+      "date": "2026-10-16",
+      "title": "Crafting and Campaign tabs on your character",
+      "text": "Crafting on a character lists its blueprints — known or all — with filters for ready now, almost (one or two missing) and tool, opens the workbench of the one you pick with material from you and your party, and shows your orders with their checks. Campaign gathers what you were given: handouts, sessions, quests, people, encounters, maps and places.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-16-spells-tab",
+      "date": "2026-10-16",
+      "title": "A Spells tab on every caster",
+      "text": "Characters who cast spells have a Spells tab: ability, attack, save DC, slots and concentration on top, every spell by level with casting time, range and components, and Cast, which uses the lowest free slot and starts concentration. Below, your spell lists with what is possible for you now, and how you learn spells.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-16-your-turn",
+      "date": "2026-10-16",
+      "title": "Your turn: every action in one list",
+      "text": "A character's Combat tab starts with Your turn: every action by type — rules, statblock features, spells by casting time, potions — with a filter by type and by source. Mark Action, Bonus and Reaction as used, start a new turn. What your hands block stays in the list with the reason. Tap a row for its toolbar and details.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-16-player-sheet-header",
+      "date": "2026-10-16",
+      "title": "A character sheet header for the table",
+      "text": "A character's page opens with its header: hit points with an amount for Damage (temporary hit points first), Heal and Temp, vitals and spellcasting behind the arrows, hit dice, slots and inspiration as pips, gold and the abilities. The status row shows concentration and conditions with their duration and asks for the concentration save after damage. Below, the groups are tabs.",
+      "area": "Characters",
+      "link": "/world",
+      "query": {
+        "type": "PlayerCharacter"
+      }
+    },
+    {
+      "id": "2026-10-16-handbook-glossary",
+      "date": "2026-10-16",
+      "title": "A handbook with a glossary",
+      "text": "Everything the site explains is now on one page: first steps, the help of every page, rules and options, article types and a glossary with search, letters and filters. Glossary terms in any text are underlined with dots — hover for a preview, Ctrl/⌘+click to open the term beside the page with its effect, examples, translations and where it is used. The “?” leads to the part for your page.",
+      "area": "Help",
+      "link": "/handbook"
+    },
+    {
+      "id": "2026-10-16-rules-only-what-applies",
+      "date": "2026-10-16",
+      "title": "Rules & options shows grid settings only for grid inventories",
+      "text": "A campaign that counts inventory by weight or slots no longer lists the grid, zone and body slot settings under Rules & options › Inventory. Switch Inventory rules to Grid and they appear again.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-source-contents",
+      "date": "2026-10-15",
+      "title": "See everything a source brings, and choose down to single articles",
+      "text": "A layer's page now lists its articles by type, each linked, under Contents. Ticks show what the current campaign has in play: the GM turns the layer on or off, picks which types it brings, and enables single articles from a source that is not in play — the same choice as on the campaign page.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-spell-lists",
+      "date": "2026-10-15",
+      "title": "Filter spells by class list — and by what a character can cast",
+      "text": "Spells know which classes and subclasses have them on their list. Filter the spell list by Class spell list, or pick a character under Usable by to keep only the spells on its classes' lists up to the level it casts. In the registry, every field and edge now says whether and how it filters lists (In list filters).",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-15-map-light-darkvision",
+      "date": "2026-10-15",
+      "title": "Light, darkness and darkvision on the map",
+      "text": "Set a map bright, dim or dark under Fog › Lighting and give tokens or markers a light source. In the dark, characters see only lights and as far as their darkvision reaches, and moves reveal just that. On a fogged map, players see brightly what their character sees right now and the rest of what they found dimmed.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-compare-in-lists",
+      "date": "2026-10-15",
+      "title": "List articles from comparison layers, and enable them in one click",
+      "text": "In the campaign popup, Show comparison articles in lists adds what only a comparison layer brings to the compendium, the areas and the search — marked not in play, below the articles in play. The GM enables one with Enable, and it joins the campaign as extra content.",
+      "area": "Compendium",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-15-layer-order",
+      "date": "2026-10-15",
+      "title": "See and drag the order of the layers in play",
+      "text": "On the campaign page and in the layer popup, Order in play lists every layer, book and group in play with its place — the top one wins. Drag rows (by mouse or finger) to reorder, move a group as one block, or drag a single book out of its group to give it its own place. Each layer says what its place does, such as which articles it replaces and where its versions lose.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-encounter-kinds-fields",
+      "date": "2026-10-15",
+      "title": "Encounters show what their kind needs",
+      "text": "A puzzle has a solution and hints only the GM sees; reveal one hint at a time through an information. A social encounter has a goal, a resource a check, and an encounter can feature creatures and hazards. The map's side bar names each kind. In the registry, any layout element can be limited to matching articles (Only when …).",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-map-walls-doors",
+      "date": "2026-10-15",
+      "title": "Walls, doors and windows on the map — and fog that follows line of sight",
+      "text": "Draw walls, doors, windows and obstacles under Walls in the map tool bar. Tap a door to open it — players too, next to their token — and moves and opened doors reveal what the characters see.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-crafting-choose-materials",
+      "date": "2026-10-15",
+      "title": "Choose materials when crafting starts, with substitutes",
+      "text": "On a recipe, Start crafting now asks which pieces from the character's and the party's inventory to use, and says why a piece does not fit. A recipe may ask for a material group (say, any reagent of at least uncommon rarity) instead of one item, and a campaign can allow substitution rules, such as one material type standing in for another, under Rules & options.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-15-type-rules-and-extra-content",
+      "date": "2026-10-15",
+      "title": "One type rule for a whole group of books, and single articles as extra content",
+      "text": "On the campaign page, open a group such as Adventures and set a type rule — say, only rules, items and spells — and it applies to every book in that group you put in play, unless a book sets its own choice or is exempted. An article from a compare layer can now be enabled on its own page: it is in play, its book is not, and the campaign page lists it under Extra content.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-map-prepare-encounter",
+      "date": "2026-10-15",
+      "title": "Prepare an encounter on the map, then start it",
+      "text": "In Table beside the map, Prepare sets the combatants of an encounter on the map, hidden from the players until it starts. Start rolls initiative for whoever has none, reveals the prepared tokens and runs the encounter in the session.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-map-side-bar",
+      "date": "2026-10-15",
+      "title": "The party and the session's encounters beside the map",
+      "text": "Table beside the map lists the party with hit points and conditions; centre the map on a token, or place a character by button or by dragging it onto the map. The GM also sees the encounters of the session and places their combatants.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-trades-and-tools",
+      "date": "2026-10-15",
+      "title": "Trades show their recipes and materials; tools and characters show what they can craft",
+      "text": "A new article type Trade names the tools it is practised with. Its page lists every recipe of the trade with check, time and what it yields, and the materials those recipes need, with search and a rarity filter. A tool’s page shows “Can craft”, and a character’s Craft tab lists, per tool they are proficient in, the recipes it makes — learned or not.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-15-map-tool-bar",
+      "date": "2026-10-15",
+      "title": "Map tools in a tool bar, and fullscreen",
+      "text": "The map has a tool bar on the left: Select, Tokens, Measure and Fog, each with its tools above the map and a key (S, T, M, F). Fullscreen (Shift+F) gives the map the whole screen; on Play the turn planner stays with it. Boards open from a button.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-usable-by",
+      "date": "2026-10-15",
+      "title": "Filter by prerequisite and effect, and show what a character can use",
+      "text": "Feats, items and classes filter by their prerequisite (level, ability score, spellcasting, proficiency, class, ancestry) and items and feats by their effects (resistance, bonus to AC …). “Usable by” in the sidebar keeps what a character meets; what can’t be checked stays, marked “?”. The search filters the same way once one type is picked.",
+      "area": "Rules",
+      "link": "/rules?type=Feat"
+    },
+    {
+      "id": "2026-10-15-map-table-rules",
+      "date": "2026-10-15",
+      "title": "Fog per character, moves the GM confirms, and reveal along moves as a campaign rule",
+      "text": "Rules & options › On the map: one fog for the party or one per character, players move their tokens freely outside encounters or propose moves the GM confirms on the map, and whether moves reveal the way (a map may override it). With fog per character, “For” picks whom you reveal for and whose view Player view shows.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-read-and-class-on-the-article",
+      "date": "2026-10-15",
+      "title": "Books, classes and ancestries read on their own article page",
+      "text": "A layer’s page now shows its book right below the header — contents, search and your reading position, no separate Read tab. A class shows its level table, subclasses and features on its article page, an ancestry or background its variants and traits. Old links to the reading view and the class pages still land there. In the registry they are layout elements.",
+      "area": "Rules",
+      "link": "/classes"
+    },
+    {
+      "id": "2026-10-15-fog-player-view",
+      "date": "2026-10-15",
+      "title": "Fog of war shows what is revealed in every browser",
+      "text": "With fog on, the player view and player accounts now see the revealed parts of a map in every browser — before, some browsers covered the whole map, revealed areas included.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-help-per-page",
+      "date": "2026-10-15",
+      "title": "Help for every page",
+      "text": "The ? in the header opens help for the page you are on, with the What's new entries about it. On Play it explains the map tools, how fog is revealed (by hand or along moves), why there is no line of sight yet, and the turn planner with its reactions.",
+      "area": "Navigation",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-maps",
+      "date": "2026-10-15",
+      "title": "Maps have their own page",
+      "text": "Play › Maps lists every map you can see, with a preview, sub-maps indented under their map, and filters by layer and tag. “New map” turns an uploaded or chosen map image into a map. On a session, “Map on the table” now also offers map images and makes a map from the one you pick; a map’s page says which sessions and scenes use it.",
+      "area": "Play",
+      "link": "/maps"
+    },
+    {
+      "id": "2026-10-15-gallery-badges-use-as",
+      "date": "2026-10-15",
+      "title": "Images show their size, their tags as badges, and become maps or tokens",
+      "text": "Each image in the gallery now names its resolution, aspect ratio, file size and format, and the layer it comes from. Tags stand as badges: remove one with ×, add one with “+ tag”, or tag a whole selection. “Use as…” turns an image into a map (with a grid suggested from its resolution), the token of a creature, or a prop — and links straight to the result.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-15-opportunity-attacks",
+      "date": "2026-10-15",
+      "title": "Opportunity attacks in the turn planner",
+      "text": "When a planned move leaves an enemy's reach, the map marks the square with ⚠ and the turn says who it provokes — Disengage first to avoid it. As the turn plays out, whoever may react is asked “Opportunity attack?”: Attack rolls into the log and uses the reaction until that creature's next turn. During an encounter, player tokens move only through the turn plan.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-statblock-key-numbers",
+      "date": "2026-10-15",
+      "title": "Quick view of a statblock shows its key numbers",
+      "text": "Clicking a statblock or a creature — in the compendium preview, a popup, on a board or a map token — now shows AC, HP, speed, initiative, passive Perception and CR as one row of tiles; a character adds its current HP and conditions. The full statblock as in the book stays on the article page.",
+      "area": "Rules",
+      "link": "/rules",
+      "query": {
+        "type": "Statblock"
+      }
+    },
+    {
+      "id": "2026-10-15-rules-and-options",
+      "date": "2026-10-15",
+      "title": "A campaign shows the rules it plays by",
+      "text": "Open a campaign and switch to “Rules & options”: inventory, crafting, ability scores, starting equipment, feats, languages, travel and units, grouped, each with a sentence on what it does and the variant in use. Each variant links the rule article that explains it; where none exists yet, the GM can write one with a click.",
+      "area": "Story",
+      "link": "/story",
+      "query": {
+        "type": "Campaign"
+      }
+    },
+    {
+      "id": "2026-10-15-only-layers-in-play",
+      "date": "2026-10-15",
+      "title": "Only the layers in play are shown",
+      "text": "Lists, search, articles and their versions now name only the layers your campaign puts in play (and its compare layers). Layers that are off no longer appear as articles, filters or sources; a single line says how many articles are hidden and links to the campaign, where layers are turned on and off.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-builder-hit-points",
+      "date": "2026-10-15",
+      "title": "Hit points in the character builder, and Edit opens the builder",
+      "text": "The builder now has a Hit points step: roll each hit die or take its average, as the campaign allows, and see the maximum with your CON. Edit on a character opens the same builder with every choice in place, so you can change a pick and see what follows — Full edit switches to all fields. Cover name, alignment, size and appearance are asked at the end.",
+      "area": "World",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-15-saved-layer-selections",
+      "date": "2026-10-15",
+      "title": "One layer filter, and selections you can save",
+      "text": "World, Story, Rules and the Compendium now follow the layers in play for the campaign — “Change layers” in the sidebar opens the campaign popup at the top. There, under “Saved selections”, save what is in play under a name, for this campaign or any, open it to see its layers, and load it again with one click.",
+      "area": "Campaign",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-15-add-field",
+      "date": "2026-10-15",
+      "title": "Edit shows only the fields that matter",
+      "text": "Editing or creating an article now shows the required fields and those with a value. Every other field is under “+ Add field”: search it, read what each field means, and pick one to fill it in.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-15-turn-planner",
+      "date": "2026-10-15",
+      "title": "Plan your turn on the map (prototype)",
+      "text": "Under Play, a bar below the map shows your action, bonus action, reaction and movement, and your character's actions as tiles. Tap Move and a square, pick an attack and a target to see the chance to hit, line the steps up in order and send the turn to the GM — who confirms it, the dice are rolled into the log and your token moves.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-layer-groups-back",
+      "date": "2026-10-15",
+      "title": "Layer groups switch as a whole, and Back returns to your place",
+      "text": "The tick on a layer group now turns every book in it on or off — no earlier selection comes back — and shows whether all, none or some of its books are in play. When you open an article from a list and go back, the page scrolls to where you were, with the same groups open.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-builder-effects",
+      "date": "2026-10-15",
+      "title": "The character builder shows what each option brings",
+      "text": "Open “Effects” on an ancestry, background or class to see what it brings — a sub-ancestry includes its base — or tick “Compare” on up to four. Variants sit under their base, your pick's own choices appear right below it, and your draft is kept, so opening an article no longer loses it.",
+      "area": "World",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-15-origin-views",
+      "date": "2026-10-15",
+      "title": "Ancestries and backgrounds read like the class view",
+      "text": "Rules › Ancestries and Rules › Backgrounds list them with filters for source, size, creature type and rules version. Each page shows its traits written out and its choices with links; an ancestry lists its variants to switch between and compare, a background its tables as dice tables. The character builder links there with “More about this …”.",
+      "area": "Rules",
+      "link": "/ancestries"
+    },
+    {
+      "id": "2026-10-15-encounter-kinds",
+      "date": "2026-10-15",
+      "title": "Encounters have a kind",
+      "text": "An encounter can now say what it is: combat, social, puzzle, exploration, hazard, trap, resource or story — several at once, for a talk that turns into a fight. The kind shows in the encounter list and you can filter by it. Encounters that already had combatants are marked as combat.",
+      "area": "Compendium",
+      "link": "/compendium",
+      "query": {
+        "type": "Encounter"
+      }
+    },
+    {
+      "id": "2026-10-15-named-creatures",
+      "date": "2026-10-15",
+      "title": "Named creatures from the books are characters",
+      "text": "A named creature from an imported book or adventure now stands in World as a creature of its own, with its statblock attached, in the same layer. You can give it relationships, factions and a place on the map like any character you made yourself.",
+      "area": "World",
+      "link": "/world",
+      "query": {
+        "type": "Creature"
+      }
+    },
+    {
+      "id": "2026-10-15-rolls-log",
+      "date": "2026-10-15",
+      "title": "Every roll is kept in the article's log",
+      "text": "Dice buttons now roll on the server, and each roll is saved under Rolls on the article it was rolled on — a creature shows its statblock's rolls too, a session every roll made during it. Filter by who rolled or by session, Shift-click for advantage, Alt-click for disadvantage. The GM can roll hidden, and a campaign can show player rolls to the GM only (Player rolls visible to).",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-15-places-from-books",
+      "date": "2026-10-15",
+      "title": "Places from books and adventures",
+      "text": "Imported books and adventures now bring their places: keyed rooms, sections with their own map, and sections that describe a city, realm or building become Place articles in the book's layer, nested inside each other, linked to their scenes and maps. In the reading view a section shows the place it describes, one click away.",
+      "area": "World",
+      "link": "/world",
+      "query": {
+        "type": "Place"
+      }
+    },
+    {
+      "id": "2026-10-15-list-filters",
+      "date": "2026-10-15",
+      "title": "Filter lists by everything a type has",
+      "text": "Pick a type in the compendium or an area and the sidebar offers a filter for each of its fields and connections: spells by level, school, components, concentration, ritual, saving throw, damage type and the class that grants them; items by type, rarity, attunement, price and more. The choice stays in the address, so you can share it or save it as a filter group.",
+      "area": "Navigation",
+      "link": "/rules",
+      "query": {
+        "type": "Spell"
+      }
+    },
+    {
+      "id": "2026-10-15-write-layer",
+      "date": "2026-10-15",
+      "title": "See and choose where your articles go",
+      "text": "Under the campaign name in the top bar you now see which layer you write to. Open it to pick another of your layers in play; the choice is saved for your account, on every device. New article and quick create start there and let you change it for one article, and editing an article in another layer says so before you save.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-15-empty-layer",
+      "date": "2026-10-15",
+      "title": "Pick your write layer, empty a layer in one go",
+      "text": "Under Account › Layers, \"Make default\" picks the layer new articles go to, for example a test layer of your own. \"Empty…\" on a layer you own shows how many articles are in it, deletes them with their parts and the links pointing at them, and offers Undo right away.",
+      "area": "Navigation",
+      "link": "/account"
+    },
+    {
+      "id": "2026-10-15-compare-versions",
+      "date": "2026-10-15",
+      "title": "See at a glance where versions differ",
+      "text": "An article with other versions now shows a badge under its name (\"2 versions · differs in tier\"), and each version in the Versions box says in one sentence what it changes, or that only the source differs. A value the other version leaves out reads \"not set\" instead of a blank. Compare puts both versions side by side, every field and edge, with long texts compared line by line.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-14-crafting-circles",
+      "date": "2026-10-14",
+      "title": "Crafting checks are circles you click",
+      "text": "On a crafting order, each check is a circle: click once for a success, twice for a failure, three times to clear it. A failure applies the campaign rule at once and clicking back undoes it; nothing is used up until you finish. The rules themselves now live on the campaign and are shown on every recipe and order.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-14-character-choices",
+      "date": "2026-10-14",
+      "title": "Clearer choices in the character creator",
+      "text": "Each choice now says where it comes from (\"Fighter · Skill proficiencies (choose 2)\"), items in an option are links you can open in place, and \"two martial weapons of your choice\" or \"an artisan's tools\" lets you pick the actual items, which then land in the inventory.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-14-read-at-layer",
+      "date": "2026-10-14",
+      "title": "Read a book right at its layer",
+      "text": "Every layer now has a Read tab with the reading view, also before the layer is turned on, so you can look a book over first. A group shows its books as a shelf, books without text appear greyed out, and the contents fold open chapter by chapter and follow along as you read.",
+      "area": "Rules",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-not-stowed",
+      "date": "2026-10-14",
+      "title": "Loot lies in front of you until you stow it",
+      "text": "What a character buys, loots or is given first lies in a \"Not stowed\" area above the inventory grid: drag it into the grid (with mouse or finger), tap a cell, or press Stow. The campaign decides how long it may lie there; whatever is left at the end of the session (or when the table moves on) stays behind at the session, where anyone can pick it up again.",
+      "area": "Play"
+    },
+    {
+      "id": "2026-10-14-player-layer",
+      "date": "2026-10-14",
+      "title": "Your own layer as a player",
+      "text": "As a player, you get your own layer in each campaign you join: your character, notes and everything you create land there, just under the campaign layer. The account page marks it as your default; when a player leaves, the GM can take over what is in it.",
+      "area": "Campaign",
+      "link": "/account"
+    },
+    {
+      "id": "2026-10-14-whats-new-since-account",
+      "date": "2026-10-14",
+      "title": "What's new starts with your account",
+      "text": "What's new now lists only what changed since your account was created, so a new player is not handed the whole history. Admins can still show everything.",
+      "area": "Navigation",
+      "link": "/whats-new"
+    },
+    {
+      "id": "2026-10-14-image-loading",
+      "date": "2026-10-14",
+      "title": "Large images show they are loading",
+      "text": "Maps and full-size article images show a spinning circle until the picture has arrived, instead of an empty frame that looks broken.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-14-polish-reading",
+      "date": "2026-10-14",
+      "title": "Easier to read",
+      "text": "Long single texts such as \"On arrival\" or \"Goal\" read like prose, sortable values stay in the edit form, same-named links on a board say what they are, and a book without imported text says so when you open it to read.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-14-whats-new",
+      "date": "2026-10-14",
+      "title": "What's new",
+      "text": "This page: what changed on the site, newest first, with a link to the place. A dot next to \"What's new\" in the header says there is something you have not seen yet — on any device you sign in with.",
+      "area": "Navigation",
+      "link": "/whats-new"
+    },
+    {
+      "id": "2026-10-14-campaign-in-header",
+      "date": "2026-10-14",
+      "title": "Campaign and layers in the header",
+      "text": "Under the brand, the header shows the running campaign and how many layers are in play. A click opens a popup to switch layers and groups on or off and to compare them.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-14-item-copies",
+      "date": "2026-10-14",
+      "title": "Every item given is its own copy",
+      "text": "Whatever a character receives — bought, looted, crafted, starting equipment, or given with \"Add an item\" on the inventory — is a copy of the item article: change one without touching the rest, while fixes to the article still reach every copy.",
+      "area": "Play"
+    },
+    {
+      "id": "2026-10-14-board-areas",
+      "date": "2026-10-14",
+      "title": "Board areas",
+      "text": "A board can be split into named areas that fold away and show up as tabs along the top. They work by touch on phones and tablets too.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-14-filter-groups",
+      "date": "2026-10-14",
+      "title": "Filter groups",
+      "text": "Save a filter as a group on a page and reach it as a sub-tab or from the ▾ next to the page in the header. The GM keeps the campaign's groups, everyone their own; a group can be the page's default.",
+      "area": "Navigation",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-14-search",
+      "date": "2026-10-14",
+      "title": "Search from anywhere",
+      "text": "Press Ctrl+K or / on any page: results appear while you type, closest first, and can be narrowed by type, layer, publisher and area. The \"+\" on a result shows more of it.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-14-crafting",
+      "date": "2026-10-14",
+      "title": "Crafting at the recipe",
+      "text": "Start a crafting order from a recipe: its material stays reserved in the inventory of the character or party until the order is done. How crafting works is set per campaign.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-14-shops",
+      "date": "2026-10-14",
+      "title": "Shops: buy and sell",
+      "text": "A shop lists its goods with quantities, discounts and derived prices. Characters buy and sell there; what they buy becomes their own copy of the item.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-14-inventory",
+      "date": "2026-10-14",
+      "title": "Inventory",
+      "text": "Characters, parties and containers carry an inventory: a grid where items can be rotated, zones that say how fast you reach something, weight or slots as the campaign decides, coins, and moving items between them.",
+      "area": "Play"
+    },
+    {
+      "id": "2026-10-14-transfer",
+      "date": "2026-10-14",
+      "title": "Transfer between installations",
+      "text": "The workbench moves articles and registry rows between two installations with a preview, a list of conflicts and an undo.",
+      "area": "Workbench",
+      "link": "/werkbank"
+    },
+    {
+      "id": "2026-10-14-quick-create",
+      "date": "2026-10-14",
+      "title": "Create from a selection",
+      "text": "When the article you want to pick in a field does not exist yet, create it right there in a small popup — it is filled in at once.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-14-creature-statblock",
+      "date": "2026-10-14",
+      "title": "Creature and statblock",
+      "text": "A creature page shows its statblock. Without one it offers \"Create\" or \"From a template\" in its place.",
+      "area": "World",
+      "link": "/world"
+    },
+    {
+      "id": "2026-10-14-images",
+      "date": "2026-10-14",
+      "title": "Images",
+      "text": "Upload images and attach them to articles; they show in lists, cards and on the article page. The gallery filters by class, tag, layer and \"unused\", and an image's source can be replaced.",
+      "area": "Images",
+      "link": "/images"
+    },
+    {
+      "id": "2026-10-14-map",
+      "date": "2026-10-14",
+      "title": "Maps in Play",
+      "text": "Play › Map shows the session's map with grid, measuring, markers and sub-maps to zoom into. Fog of war, a player view, a turn indicator and token images came along.",
+      "area": "Play",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-14-live",
+      "date": "2026-10-14",
+      "title": "Live updates",
+      "text": "Open articles follow changes made elsewhere without reloading. The dot in the header shows whether this device is listening.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-14-views",
+      "date": "2026-10-14",
+      "title": "Views in the registry",
+      "text": "Define your own views in the registry and adjust each one per article type. Every article type can now print the way a book page looks, and there is a handout view.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-14-print",
+      "date": "2026-10-14",
+      "title": "Print an article",
+      "text": "\"Print\" on an article opens it on a single A4 sheet.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-14-edges-explained",
+      "date": "2026-10-14",
+      "title": "Edges explained",
+      "text": "The registry says what each kind of connection between articles means and what it does.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-14-layer-publishers",
+      "date": "2026-10-14",
+      "title": "Layers by publisher",
+      "text": "Layers are grouped by publisher and category. A layer's publisher is shown on its page and can be changed there.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-partial-layers",
+      "date": "2026-10-14",
+      "title": "Activate part of a layer",
+      "text": "A layer can be switched on for some areas or article types only.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-write-per-layer",
+      "date": "2026-10-14",
+      "title": "Your own layers",
+      "text": "Every account can create its own layer. GMs write the campaign's layer; editing something you cannot write saves your version in a layer of yours.",
+      "area": "Campaign",
+      "link": "/account"
+    },
+    {
+      "id": "2026-10-14-versions",
+      "date": "2026-10-14",
+      "title": "Versions at every field",
+      "text": "Where another version of an article says something different, its value stands next to the field, marked with its layer. Which layers are compared is up to you.",
+      "area": "Articles",
+      "link": "/compendium"
+    },
+    {
+      "id": "2026-10-14-reveal-to-players",
+      "date": "2026-10-14",
+      "title": "Reveal to players and the party",
+      "text": "\"Revealed to\" and \"Hidden from\" offer players and the party. Every campaign has its party, and characters join it when a player gets them.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-14-starting-equipment",
+      "date": "2026-10-14",
+      "title": "Starting equipment",
+      "text": "Character creation hands out starting equipment the way the campaign's rule says.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-14-character-creation",
+      "date": "2026-10-14",
+      "title": "Character creation and level up",
+      "text": "A step-by-step assistant builds a character from the class, ancestry and background articles: standard array, languages, choices, and the same assistant again for each level up.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
+      "id": "2026-10-14-take-into-story",
+      "date": "2026-10-14",
+      "title": "Take chapters into your story",
+      "text": "Chapters, scenes and single text parts of an adventure can be taken into your own story — as your version, or used as they are.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-14-item-effects",
+      "date": "2026-10-14",
+      "title": "Item effects",
+      "text": "Items carry effects that are calculated when an article is read, not typed in by hand.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
+      "id": "2026-10-14-quick-view",
+      "date": "2026-10-14",
+      "title": "Quick view everywhere",
+      "text": "Click any named article to see its card in a popup; \"Open article\" takes you there. Breadcrumbs show where you are.",
+      "area": "Navigation"
+    },
+    {
+      "id": "2026-10-13-reading-view",
+      "date": "2026-10-13",
+      "title": "Reading view",
+      "text": "Read a layer like a book, with a table of contents, search inside it and your reading position kept per account.",
+      "area": "Story",
+      "link": "/story"
+    },
+    {
+      "id": "2026-10-13-view-as",
+      "date": "2026-10-13",
+      "title": "View as a member",
+      "text": "The GM can look at the campaign through a member's eyes, read only, from the campaign page.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-13-safe-saving",
+      "date": "2026-10-13",
+      "title": "Safe saving",
+      "text": "When two people change the same article, the second save merges instead of silently overwriting the first.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-13-export",
+      "date": "2026-10-13",
+      "title": "Export your campaign",
+      "text": "\"Export campaign\" saves the campaign as a file.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-13-link-fields",
+      "date": "2026-10-13",
+      "title": "Link fields as a selection",
+      "text": "Fields that point to another article offer only articles of the right type, show them as chips and link to them by name.",
+      "area": "Articles"
+    },
+    {
+      "id": "2026-10-13-players-create",
+      "date": "2026-10-13",
+      "title": "Players create articles",
+      "text": "Players of the campaign create and edit their own articles. Only the GM marks an article \"ready\", and players see what is ready — plus their own characters in any state.",
+      "area": "Campaign"
+    },
+    {
+      "id": "2026-10-13-workbench",
+      "date": "2026-10-13",
+      "title": "Workbench",
+      "text": "Checks over all articles and bulk changes with a preview and an undo, for GMs and admins. API tokens are created and revoked there too.",
+      "area": "Workbench",
+      "link": "/werkbank"
+    },
+    {
+      "id": "2026-10-13-boards",
+      "date": "2026-10-13",
+      "title": "Boards",
+      "text": "Every story article can have a board: a canvas with cards for the articles placed on it.",
+      "area": "Boards",
+      "link": "/boards"
+    },
+    {
+      "id": "2026-10-13-registry",
+      "date": "2026-10-13",
+      "title": "Edit the registry",
+      "text": "Create and change article types, edges, lists and views in the registry. What a change would touch is counted first.",
+      "area": "Registry",
+      "link": "/registry"
+    },
+    {
+      "id": "2026-10-13-classes",
+      "date": "2026-10-13",
+      "title": "Classes",
+      "text": "Each class shows its table, its features per level, and its subclasses side by side.",
+      "area": "Rules",
+      "link": "/classes"
+    },
+    {
+      "id": "2026-10-13-campaign-members",
+      "date": "2026-10-13",
+      "title": "Campaign members",
+      "text": "The campaign page manages members, their roles and invitations.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
+      "id": "2026-10-13-book-style",
+      "date": "2026-10-13",
+      "title": "Articles like a book",
+      "text": "The new site: header with the areas, a compendium with filters in the sidebar, \"New article\", and articles laid out like a book page — statblocks, spells and items included, on the phone as well.",
+      "area": "Compendium",
+      "link": "/compendium"
+    }
+  ]
+}

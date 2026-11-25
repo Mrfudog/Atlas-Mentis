@@ -1350,6 +1350,23 @@ var DERIVED_FN={
       summe+=z; n++;
     });
     return n?summe:null; },
+  /* Der Übungsbonus aus einer Summe über Kanten und der Bonus auf eine
+     Probe (T-275): `profBonus(hasClass.level)`, `check(wis.Perception)`.
+     Wie im Paket — das Register nennt sie, also rechnet sie auch hier. */
+  profBonus:function(raw,look,key,kanten){
+    var l=DERIVED_FN.sum(raw,look,key,kanten); if(l==null||l<1)return null;
+    return Math.ceil(Math.floor(l)/4)+1; },
+  check:function(raw,look,key){
+    var i=String(key).indexOf("."); if(i<=0)return null;
+    var at=key.slice(0,i), sk=key.slice(i+1).toLowerCase(); if(!ABIL_KEYS[at])return null;
+    function w(k){ var v=look(k); return v===AMBIG?undefined:v; }
+    function hat(l){ return Array.isArray(l)?l.filter(function(x){return String(x).toLowerCase()===sk;})[0]:undefined; }
+    var exp=hat(w("expertise")), ge=exp||hat(w("proficient")), bon=w("bonuses")||{};
+    if(ge){ var f=Object.keys(bon).filter(function(k){return k.toLowerCase()===sk;})[0];
+      if(f!=null&&bon[f]!==""&&bon[f]!=null&&isFinite(Number(bon[f])))return Number(bon[f]); }
+    var sc=w(at); if(sc==null||sc===""||!isFinite(Number(sc)))return null;
+    var p=Number(w("prof")); p=isFinite(p)?p:0;
+    return Math.floor((Number(sc)-10)/2)+(ge?p*(exp?2:1):0); },
   rowCount:function(raw){ return asRows(raw).length; },
   colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
   cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
@@ -15350,8 +15367,9 @@ var BEGRIFFE=[
    "is nothing about them to configure. Abstract means no article is one "+
    "directly: nobody writes an article called “Identity”. A subtype that "+
    "declares nothing of its own is a word and not a row — that is what "+
-   "Creature.kind, Story.kind (arc, chapter) and Event.kind (era, "+
-   "milestone) are, and each becomes a row the day it needs fields."],
+   "Creature.kind, Story.kind (adventure, prologue) and Event.kind (era, "+
+   "milestone) are, and each becomes a row the day it needs fields — as "+
+   "Arc did, when it got a level range, a hook and an outcome."],
   ["Part",
    "A type another type is made of. The first one named draws the tree and "+
    "decides the area; the rest only bring their fields and edges along. You "+
@@ -15376,7 +15394,12 @@ var BEGRIFFE=[
    "hit points, the travel counters) instead of waiting for “edit”. It is "+
    "said at the FIELD and nowhere else: at the type it was one switch for "+
    "twenty fields, and on a creature the hit points are a state while the "+
-   "list of conditions is a set of ticks. A shape is painted, not typed "+
+   "list of conditions is a set of ticks. The edit form shows the "+
+   "required fields and those with a value; every other field is one "+
+   "click away under “+ Add field”, grouped by type, with the field's "+
+   "description; a value that is only the default does not count. A "+
+   "field may ask to stand there even when empty (an article's "+
+   "description and status). A shape is painted, not typed "+
    "(one character per cell). A "+
    "link names the article types it may point at, subtypes included — "+
    "without that it held the id of anything, and “Scene in play” took an "+
@@ -15402,11 +15425,27 @@ var BEGRIFFE=[
   ["Article",
    "A thing in the campaign: an id, the types it is, the cards with its "+
    "values, and its edges. What it records is said by its type, never by "+
-   "code."],
+   "code. A book is made of chapters, and a chapter of parts — headings, "+
+   "paragraphs, read-aloud texts, embedded articles, scenes —, each an "+
+   "article of its own, in the order kept on its “part of” edge (the same "+
+   "read-aloud text may be third in the chapter and first in your scene). "+
+   "A chapter of an official adventure is there twice and its parts once: "+
+   "a Chapter for reading and an Arc for playing, both pointing at the same "+
+   "scenes. Parts stand in no list and are no link target by name — a "+
+   "heading called “Surprise” would make every [[Surprise]] ambiguous. "+
+   "A part is taken into your story on its own — as your version of it, "+
+   "which you may change — or used as it is: a link to the original, so a "+
+   "correction to the book reaches it. An uploaded image is an article too "+
+   "(an Asset) with a file beside it: an image field holds the asset's id, "+
+   "never an address, and the server hands the file only to whoever may see "+
+   "the asset — uploaded from a hidden NPC, it is hidden like the NPC. The "+
+   "file is named after its content, so the same picture lies there once."],
   ["View",
    "How an article is drawn. Three of them, and where you are decides which: "+
    "Overview for a reference in the text, Quick for a card, Full for the "+
-   "article page. There is no picker — except on a board tile, where the "+
+   "article page — an image is a thumbnail beside the name in a list, a "+
+   "preview on the card and the whole picture on the page. There is no "+
+   "picker — except on a board tile, where the "+
    "size is the question: unless the placement or the board says otherwise, "+
    "a flat tile is a line (Overview) and a taller one a card (Quick). The "+
    "arrangement lives at the type, and subtypes inherit it."],
@@ -15416,7 +15455,9 @@ var BEGRIFFE=[
    "view show the same blocks, so you do not have to hold two pictures of "+
    "one thing in your head. It no longer means a piece of prose sitting "+
    "beside the fields: that is a field with a long input, and several of "+
-   "them is “one or more”."],
+   "them is “one or more”. Book text is the exception: a paragraph of a "+
+   "book is a part article, because you take it into your own story on "+
+   "its own."],
   ["Edge",
    "A typed, directed connection between two articles, which may carry "+
    "properties of its own. Stored forward only; the other direction is "+
@@ -15449,8 +15490,11 @@ var BEGRIFFE=[
    "charges in the staff. An item may carry an inventory of its own (a "+
    "backpack), and each container adds a draw step to what lies in it; "+
    "a creature's own inventory without a shape takes the carry grid from "+
-   "its size and its statblock. The piece at the table may be an instance of the item "+
-   "in the book (the +1 longsword stores only what differs). A character "+
+   "its size and its statblock. The piece at the table is an instance of the item "+
+   "in the book — bought, looted, crafted or handed out, it stores only what "+
+   "differs (an engraving, a name, spent charges), keeps its own contents, "+
+   "and a loose stack of the same grows instead of a new piece; a recipe "+
+   "counts it as the item it is a piece of. A character "+
    "has its classes as edges, each with its level (hasClass: Fighter 3, "+
    "Wizard 2 with the subclass on the edge), and one ancestry and one "+
    "background; its level is the sum of those edges, worked out on read. "+
@@ -15465,7 +15509,24 @@ var BEGRIFFE=[
    "starting it binds the materials: they leave the pack and sit on the "+
    "edge, so they cannot go into a second piece of work. What comes back "+
    "is the edge's business too — what is not consumed always, the rest "+
-   "on a failure or a stop as the recipe's onFailure says. On a "+
+   "on a failure or a stop as the recipe's onFailure says. The tool, "+
+   "ability and DC are the recipe's, as its source prints them; a "+
+   "campaign, a party or a character that works differently says so with "+
+   "an edge (craftsWith) to the recipe or to the tool — herbalism with "+
+   "Wisdom for the whole table, one character brewing with Dexterity — "+
+   "and the more particular one wins, without a copy of the recipe. A "+
+   "recipe may also say how many successful checks the work takes "+
+   "(checks), for rulebooks that count progress in rolls rather than days. A "+
+   "shop is a place that sells: each ware is a sells edge to the item, with "+
+   "the quantity, the shop's own price instead of the list price and a "+
+   "modifier for this ware (−1 gp, −10 %). Discounts are edges too, from the "+
+   "shop, a faction that controls it or its shopkeeper to a character, a "+
+   "party or a faction from a rank on; the price is worked out on read and "+
+   "says where every step comes from. Buying and selling happen on the "+
+   "server: the counted quantity falls, an instance of the item (it stores "+
+   "only what differs) goes into the inventory the character carries and "+
+   "the coins come off; selling pays half the "+
+   "list price and never takes a reserved piece. On a "+
    "map, a token is an edge with coordinates, and whether it is hidden "+
    "from the players and how stealthy it is sit on that edge too — the same "+
    "trap lies open on one map and under leaves on the next. A zone is an "+
@@ -15871,6 +15932,54 @@ function renderHowto(v){
     "Odd beast     prof 2 · STR 18 (+4)        edge: toHit 7 (book)\n"+
     "  to hit "+sgn(nB.toHit)+" fixed — the sum would give "+sgn(nB.toHitComputed)}));
 
+  /* ---- Ein Laden, durchgerechnet (T-129) ----
+     Die Rechnung selbst steht in `packages/model/src/shop.ts`
+     (`shopWares`); hier dieselben Schritte mit den Beschriftungen aus dem
+     Register. Prozent rechnen auf den Grundpreis, nicht aufeinander. */
+  var slP=((REG.relations.sells||{}).props||{}).properties||{};
+  var dcP=((REG.relations.discount||{}).props||{}).properties||{};
+  if(slP.qty&&dcP.rank){
+    v.appendChild(el("div",{class:"rsec",text:"A shop, its wares, and a discount by faction rank"}));
+    v.appendChild(el("p",{class:"hint"},
+      "The price of a ware is never stored. It starts from the shop's own "+
+      "price on the sells edge or the item's list price, then every modifier "+
+      "is applied: the shop's for everyone, the ware's own, and each discount "+
+      "edge that reaches the buyer — from the shop, from a faction that "+
+      "controls it, from its shopkeeper; to the character, their party, or a "+
+      "faction they belong to at the rank on the edge or higher. Percentages "+
+      "count on the base price and add up; a modifier that cannot be read "+
+      "counts as nothing and is shown as such."));
+    var lp=1000, sp=Math.round(lp*-10/100), ware=-100, gilde=Math.round(lp*-10/100);
+    v.appendChild(el("pre",{class:"code",text:
+      "Lantern          Item.copperPrice 1000              list 10 gp\n"+
+      "The Wick & Wire  Shop.priceMod −10 %                "+(sp/100)+" gp\n"+
+      "  sells → Lantern  "+slP.qty.title+" 3 · mod −1 gp       "+(ware/100)+" gp\n"+
+      "Lamplighters     controls → The Wick & Wire\n"+
+      "  discount → Lamplighters  mod −10 % · "+dcP.rank.title+" Flame\n"+
+      "  ranks Wick < Flame < Beacon\n\n"+
+      "Tam     memberOf Lamplighters (Wick)    10 − 1 − 1       = "+((lp+sp+ware)/100)+" gp\n"+
+      "Ysolde  memberOf Lamplighters (Beacon)  10 − 1 − 1 − 1   = "+((lp+sp+ware+gilde)/100)+" gp\n"+
+      "        −10 % Lamplighters for Lamplighters from Flame (−1 gp)"}));
+    /* Kaufen und Verkaufen (T-133): `buyWare`, `sellPiece`, `buybackPrice`. */
+    v.appendChild(el("p",{class:"hint"},
+      "Buying sends the ware, the quantity and the character — never a "+
+      "price; the server works it out again. Two lanterns for Ysolde: the "+
+      "quantity on the sells edge falls from 3 to 1, a new instance of the "+
+      "Lantern (instanceOf, nothing else of its own) lands in her inventory "+
+      "on a holds edge — or a plain one already there grows by two — and "+
+      "Inventory.copper drops by twice the price. Too little money, more than "+
+      "the shop has, or a quantity of 0 is a no. Selling pays half the list "+
+      "price, discounts or not; a reserved piece or a container that still "+
+      "holds something stays put, and a ware the shop counts gets one more. "+
+      "A plain instance sold off is deleted; an engraved one goes over the "+
+      "counter as itself and the shop sells that very piece. Loot and gifts "+
+      "from the GM, a crafted draught and starting equipment arrive the same "+
+      "way (T-150), and a recipe that needs a Lantern takes Ysolde’s."));
+    v.appendChild(el("pre",{class:"code",text:
+      "Ysolde buys 2 × Lantern   purse 20 gp → "+((2000-2*(lp+sp+ware+gilde))/100)+" gp   "+slP.qty.title+" 3 → 1\n"+
+      "Ysolde sells 1 × Lantern  purse +"+(Math.floor(lp/2)/100)+" gp           "+slP.qty.title+" 1 → 2"}));
+  }
+
   /* ---- Ein Zug auf der Karte, durchgerechnet (D56) ----
      Mit demselben Rechner, den die Karte nimmt, und dem Faktor, den die
      Zonenart im Register trägt: ändert jemand die Regel, ändert sich das
@@ -15965,7 +16074,112 @@ function renderHowto(v){
     "of the creature, not of the inventory. Letting go has a fixed price "+
     "wherever it goes (setting handActions): dropping leaves the item in the "+
     "inventory, on the ground at the creature's feet; stowing puts it from "+
-    "the hand at a free slot or into the grid."));
+    "the hand at a free slot or into the grid. How a campaign counts is a "+
+    "word on the campaign (Campaign.inventory): grid, weight with load "+
+    "stages, or slots per stack. Giving an item to the party moves its "+
+    "holds edge into the party's inventory and leaves its place in the grid "+
+    "behind; a stack reserved for something (holds.reservedFor) stays put — "+
+    "the site's server refuses to sell, move, use up or delete it while its "+
+    "crafting order runs, unless the GM releases it. What arrives — bought, "+
+    "looted, a gift — lies in front of the character first (holds.unstowed, "+
+    "T-140) and is stowed by putting it into the grid, at a slot or into a "+
+    "container. How long it may lie there is a word on the campaign "+
+    "(Campaign.stowing): any time, until the session ends, or until the "+
+    "table moves on (the session's scene, fight or map changes). Then what "+
+    "is still unstowed leaves the inventory and stays at the session as a "+
+    "leftBehind edge, with its quantity and where it came from — nothing is "+
+    "deleted, and whoever goes back picks it up, unstowed again."));
+  /* Sichtbarkeit je Gruppe (T-252, E-098): steht nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Who sees what, per group"}));
+  v.appendChild(el("p",{class:"hint"},
+    "An article that says nothing about its audience takes it from its "+
+    "group. The order is the rule: Visibility.hiddenFrom, then revealedTo, "+
+    "then the article's own audience, then the campaign's rule for its "+
+    "group (Campaign › VisibilityRules.visibilityRules — the most specific "+
+    "key wins, 'layer:dnd|type:Spell' over 'layer:dnd'), then the default "+
+    "of its layer (Layer.defaultAudience, the narrowest of several), then "+
+    "public. A rule may also show or hide its group for single characters "+
+    "(show, hide — characters, parties, factions, never accounts). Nothing "+
+    "is written into the articles: a rule holds for tomorrow's articles "+
+    "too, and a shared layer stays shared. Worked through: D&D 5e has no "+
+    "default, Basil's homebrew says gm, the campaign says 'layer:brew → "+
+    "campaign' and 'layer:dnd|type:Item → show to Rook'. A homebrew rule "+
+    "is seen by the whole table (the campaign beats the layer), a D&D spell "+
+    "by everyone (public), a D&D item that says gm itself only by the GM — "+
+    "the article's own field beats the rule, and Rook's freedom with it. "+
+    "On the site the campaign page shows this under Visibility, counted per "+
+    "column (Public · Table · each player · GM) and grouped with the "+
+    "transformations (T-253)."));
+  /* Nebel je Figur, Züge, Aufdecken beim Zug (T-204): steht nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Fog per party or per character, and how players move"}));
+  v.appendChild(el("p",{class:"hint"},
+    "On the site the campaign says how the map behaves at the table "+
+    "(Rules & options › On the map). Campaign.fog: 'party' — everything "+
+    "revealed is seen by every player — or 'player': a revealed shape may "+
+    "name whom it is for (Map.reveal[].for, a character or a party), and "+
+    "then only that character, its party and the GM see it; a shape without "+
+    "'for' is for everyone. The server sends each player only the shapes "+
+    "they see and drops the markers under the rest (redactMap with "+
+    "revealFor). Example: Rook reveals a corridor, Mira stands at the other "+
+    "end — Rook's player sees the corridor and the goblin in it, Mira's "+
+    "player sees neither. Campaign.moves: outside an encounter a player "+
+    "drags their own token freely ('free') or leaves a dashed proposal the "+
+    "GM confirms ('confirm'), stored as a one-step turn plan; in an "+
+    "encounter the turn plan applies anyway. Campaign.revealOnMove (a map "+
+    "may override it with Map.revealOnMove): a move uncovers its way two "+
+    "squares wide, for the character that moved; movement is spent either "+
+    "way, and without it the GM reveals afterwards."));
+  /* Sperren, Türen, Sichtlinie (T-118): steht nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Walls, doors and line of sight"}));
+  v.appendChild(el("p",{class:"hint"},
+    "Map.walls is one list, and each entry says its kind: wall, door, "+
+    "secret, window, chasm (obstacle) or invisible, with x1/y1/x2/y2 in "+
+    "fractions of the map and, on a door, state open, closed or locked. "+
+    "What a kind blocks — movement, sight, light — is data (WALL_KINDS), "+
+    "not a list per kind; an open door blocks nothing. The server sends "+
+    "players only the walls at the edge of what they have revealed, a "+
+    "closed secret door as a plain wall and a locked door as closed "+
+    "(redactWalls). A move blocked by a wall is refused for players; the "+
+    "turn plan routes around walls. With walls on the map, a move reveals "+
+    "the sight polygon from where the token went (revealAlong), and "+
+    "POST /api/maps/:id/door opens a door — a player only next to their "+
+    "own token, if Campaign.doors says 'players' — and reveals what the "+
+    "party members who see the door now see through it. Example: Rook "+
+    "stands at a closed door; opening it uncovers the hall behind it up to "+
+    "the far wall, for Rook, and the goblin standing there appears."));
+  /* Glossar und Handbuch (T-242, T-225): stehen nur auf der Seite. */
+  v.appendChild(el("div",{class:"rsec",text:"Glossary terms and the handbook"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A glossary term is an article of type GlossaryTerm (extends Rule): its "+
+    "definition is Description.description (titled 'Definition' there), "+
+    "aliases are Identity.aliases, and GlossaryTerm adds sort, effect (how "+
+    "it affects play), examples and translations. The edge 'explains' points "+
+    "from the term to the article it explains — a condition, a property, a "+
+    "rule. Rule.autolink says whether its name is spotted in prose. The words "+
+    "of the app itself (Type, Field, Edge, Layer … and one entry per article "+
+    "type) are not articles but code (packages/registry glossar.ts); the "+
+    "server merges both (GET /api/glossary). Example: the term 'Glum' "+
+    "explains the condition Glum; in 'The bard looks gloomy' the alias is "+
+    "underlined with dots, hovering shows its quick view, Ctrl/⌘+click opens "+
+    "it beside the page with 'Used in 2 places' — counted after the sieve, "+
+    "so a mention in a secret the player does not know does not count. The "+
+    "handbook (/handbook) puts every explanation on one page: the help of "+
+    "each page, Rules & options from RULE_OPTIONS, the article types and the "+
+    "glossary; the '?' of the header opens its section for the page."));
+  /* Würfe im Protokoll (T-172): steht nur auf der Seite, der Prototyp würfelt weiter selbst. */
+  v.appendChild(el("div",{class:"rsec",text:"A roll lands in the article's log"}));
+  v.appendChild(el("p",{class:"hint"},
+    "On the site the server rolls (POST /api/rolls), not the browser, and "+
+    "every roll is an entry 'roll' in the event log — no new store — with "+
+    "the article it was rolled on as its subject, the dice, the modifier, "+
+    "advantage, the natural d20, a label, who rolled and as whom, the "+
+    "campaign and the session. An article's Rolls section reads them back; "+
+    "a creature's includes its statblock's (belongsTo), a session's every "+
+    "roll made during it. Whoever does not see the article does not see its "+
+    "rolls; the GM may roll hidden, and Campaign.playerRolls: gm hides every "+
+    "player roll from the rest of the table. Rolls are play, not content: "+
+    "they are in no export or transfer, and deleting an article leaves them "+
+    "standing as a roll on a deleted article."));
   var hkB=handActionsCost();
   var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
   var sbB={size:"medium"}, abB={str:16};
@@ -15983,7 +16197,10 @@ function renderHowto(v){
     "  "+drawPath(pack)+"\n\n"+
     "Dagger at the belt                    slotDraw     →  "+(plB.belt||"—")+"\n"+
     "Longsword in the right hand: Drop     handActions  →  "+(hkB.drop||"—")+", then tier ground, still carried\n"+
-    "Longsword in the right hand: Stow     handActions  →  "+(hkB.stow||"—")+", to a free slot or the grid"}));
+    "Longsword in the right hand: Stow     handActions  →  "+(hkB.stow||"—")+", to a free slot or the grid\n\n"+
+    "Bought 2 × Lantern, 1 already in the pack   pack 1 · in front of her 2 (unstowed)\n"+
+    "Campaign.stowing bySessionEnd, session ends  pack 1 · session: leftBehind 2 × Lantern from her pack\n"+
+    "Picked up again                             pack 1 · in front of her 2 (unstowed)"}));
   /* ---- Ein Kampf, durchgerechnet (REQ-211–213, D53) ----
      Mit denselben Funktionen, die die Initiative nimmt (`expiresAt`,
      `hpWord`), und den Eigenschaften der Kante aus dem Register: ändert
@@ -16051,7 +16268,34 @@ function renderHowto(v){
       "level it comes at. Proficiencies live on the statblock with the "+
       "other numbers, and they are names: of skill and language articles, "+
       "of the items that are tools, of weapons, and the words of the weapon "+
-      "and armour groups. A skill says which ability it runs on."));
+      "and armour groups. A skill says which ability it runs on. What is to "+
+      "be chosen is a field on the article that asks (Choices: what kind, how "+
+      "many, from what, from which level); the character keeps only its "+
+      "answers, one chose edge per choice. What the answers give — skills, "+
+      "ability bonuses, feats — is worked out on read, so a change to the "+
+      "class reaches every character, and an answer to a choice that is gone "+
+      "shows as orphaned. A choice is titled by its source and its subject "+
+      "(Fighter · Skill proficiencies (choose 2)). An equipment option that "+
+      "names a kind instead of an item (two martial weapons of your choice) "+
+      "is an open slot: the answer fills it with item ids (chose.items), and "+
+      "only an ordinary item of that kind counts. A sub-ancestry brings its "+
+      "base (subraceOf): High Elf holds only what high elves have on top, and "+
+      "the Elf's +2 Dexterity, darkvision and its choices count for the "+
+      "character as well; the builder shows these effects of each option, "+
+      "worked out the same way. Each class level brings a hit die: what it "+
+      "gave stands on the class edge (hasClass.hp, one value per level, the "+
+      "first level of the first class always the maximum); rolled or the "+
+      "average, says the campaign (Campaign.hitPoints). The builder writes "+
+      "the maximum to the statblock from these values and CON, so a changed "+
+      "CON never rolls again. What an item changes on the character is a field "+
+      "too (Effects: target, kind, value, when — worn, attuned, carried); "+
+      "it counts while the inventory edge says the item is worn or attuned, "+
+      "and it is worked out on read, so taking the gauntlets off takes the "+
+      "19 Strength away at once. The effects count at the table: the AC "+
+      "comes from the armour and shield worn, every speed takes its bonuses "+
+      "and limits, resistances and the critical-hit threshold join the "+
+      "statblock as it reads — and a condition is a source too (Grappled "+
+      "limits every speed to 0), as is what a statblock equips."));
     var kantenBsp=[
       {type:"hasClass",to:"Fighter",props:{level:3,subclass:"Champion"}},
       {type:"hasClass",to:"Wizard",props:{level:2}},
@@ -16064,14 +16308,36 @@ function renderHowto(v){
       return "  "+g.name+(g.from==="type"?"  ("+g.values.length+" visible)":"  "+g.values.join(", "));
     }).join("\n");
     var rechnung2=
-      "hasClass → Fighter    level 3 · subclass Champion\n"+
-      "hasClass → Wizard     level 2\n"+
+      "hasClass → Fighter    level 3 · subclass Champion · hp 10, 7, 6\n"+
+      "hasClass → Wizard     level 2 · hp 4, 4\n"+
       "hasAncestry → Hill Dwarf   (subraceOf → Dwarf)\n"+
       "hasBackground → Acolyte\n\n"+
       "level        = "+pcP.level.derived+"  →  "+(lvB==null?"—":lvB)+"\n"+
       (pcP.proficiency?"proficiency  = "+pcP.proficiency.derived+"  →  "+fmtVal(pcP.proficiency,pfB)+"\n":"")+
+      "hit points   = (10+2)+(7+2)+(6+2)+(4+2)+(4+2)  →  Statblock.hp 41  (CON 14)\n"+
       "\nFighter  grants → Second Wind  at 1\n"+
-      "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n\n"+
+      "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n"+
+      (REG.interfaces.Choices?
+        "Fighter  choices: skills — choose 2 from Athletics, Perception, …  (start only)\n"+
+        "                  martial-archetype — a Subclass of Fighter  from 3\n"+
+        "Hill Dwarf  choices: tools — choose 1 from Smith's tools, Mason's tools\n"+
+        "chose → Fighter     skills: Athletics, Perception\n"+
+        "chose → Fighter     martial-archetype: Champion\n"+
+        "chose → Hill Dwarf  tools: Smith's tools\n"+
+        "  → proficient (worked out on read): Athletics, Perception, Smith's tools\n"+
+        "Hill Dwarf  wis +1 · subraceOf → Dwarf  con +2, speed 25, darkvision 60\n"+
+        "  → ability bonus (worked out on read): CON +2, WIS +1\n"+
+        "Fighter  equipment-2: (a) a martial weapon and a shield or (b) two martial weapons\n"+
+        "chose → Fighter     equipment-2: b · items: Longsword, Warhammer\n"+
+        "  → open slot (b): 2 × Weapon, category martial, ordinary → both fit\n":"")+
+      (REG.interfaces.Effects?
+        "Gauntlets of Ogre Power  effects: ability.str set 19  (attuned)\n"+
+        "holds → Gauntlets  tier: worn, attuned: yes\n"+
+        "  → STR 10 → 19 (worked out on read; off again when taken off)\n"+
+        "holds → Chain Mail  tier: worn (heavy, AC 16) · Shield  tier: held (+2)\n"+
+        "  → AC 18 (armour worn, not the number typed on the statblock)\n"+
+        "Vitals.conditions → Grappled  effects: speed.* limit 0\n"+
+        "  → speed 0 ft. until the condition goes\n":"")+"\n"+
       "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
     v.appendChild(el("pre",{class:"code",text:rechnung2}));
   }
@@ -16127,6 +16393,90 @@ function renderHowto(v){
      überhaupt an ihn geht. Die Stufen werden aus der Zeile gelesen und
      nicht abgetippt — eine Liste von Hand stimmte am Tag ihrer
      Entstehung. */
+  /* ---- Fassungen und Vergleichsebenen (T-092, E-021 d) ----
+     Kein Umschalter zwischen 2014 und 2024: die Fassungen bleiben eigene
+     Artikel, und an jedem Feld, an dem eine abweicht, steht ihr Wert
+     dabei. Gerechnet wird in packages/model/src/versions.ts. */
+  v.appendChild(el("div",{class:"rsec",text:"Versions of one thing, and compare layers"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A version is another article about the same thing: the same type, the "+
+    "same name once a trailing \u201c(BOOK)\u201d naming its own source is cut "+
+    "off, joined by variantOf (either direction) or by overrides. variantOf "+
+    "alone is not enough \u2014 it also joins a magic item to its base item "+
+    "and a copy with a name of its own, and those are different things. "+
+    "There is no switch between versions. The article in play is shown, and "+
+    "next to every field where another version says something else, that "+
+    "value stands with the short name of its layer (the full name on hover); "+
+    "long texts open as a comparison. The reader turns this on and off and "+
+    "picks the layers, and the account remembers it."));
+  v.appendChild(el("p",{class:"hint"},
+    "Besides the layers in play, a campaign names compare layers "+
+    "(activates with mode: compare): not in play, never in a list, but their "+
+    "versions show on demand \u2014 to the lead by default, to the players if "+
+    "the campaign says so (Campaign.compareFor). A version from a compare "+
+    "layer can be taken over: \u201cuse this in my campaign\u201d puts a copy into "+
+    "the campaign\u2019s own layer that overrides the version in play. A copy "+
+    "and not an edge on the book: an override in a shared layer would count "+
+    "in every campaign that runs that book. Undo removes the copy. The "+
+    "compendium shows the versions of one thing as one row, headed by the "+
+    "one from the highest layer in play."));
+  v.appendChild(el("pre",{class:"code",text:
+    "Stack:    PHB (in play) \u00b7 XGE (in play, higher) \u00b7 XPHB (compare)\n"+
+    "Fireball         PHB   range 150\n"+
+    "Fireball (XGE)   XGE   range 120   variantOf \u2192 Fireball\n"+
+    "Fireball         XPHB  range 150   variantOf \u2192 Fireball, higherLevels differs\n\n"+
+    "Compendium       one row \u201cFireball (XGE)\u201d (XGE is higher), PHB below it\n"+
+    "Article Fireball range 150  \u00b7 XGE 120;  At higher levels \u00b7 XPHB [compare]\n"+
+    "Use XPHB         copy \u201cFireball\u201d in the campaign layer, overrides \u2192 Fireball (PHB)"}));
+
+  /* ---- Gruppen von Ebenen (T-088, E-022 b) ----
+     Eine Gruppe ist selbst eine Ebene (Layer.kind group), ihre Mitglieder
+     hängen mit partOf an ihr. Gerechnet wird in packages/model/src/stack.ts
+     (resolvedStack). */
+  v.appendChild(el("div",{class:"rsec",text:"Groups of layers"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A group is a layer that holds other layers (Layer.kind: group): Core "+
+    "rules, Supplements, Settings, Adventures, Unearthed Arcana, 2024 rules, "+
+    "Screens & other \u2014 and any group the lead makes. A member hangs on "+
+    "its group with partOf; a layer may sit in several groups, and a group "+
+    "in a group. A campaign that turns a group on has every member in play, "+
+    "nested ones too (never in a circle). The group gives the rank; inside "+
+    "it the members stand by publication date, the newer one higher. An "+
+    "edge of the campaign to the single layer beats the group: a layer the "+
+    "campaign turns on itself stands where that edge puts it, and one it "+
+    "turns off (activates with mode: off) is out although its group is on "+
+    "\u2014 off beats on."));
+  v.appendChild(el("p",{class:"hint"},
+    "A layer describes itself: its name is the full title, beside it the "+
+    "abbreviation its articles name as their source (XGE), publication "+
+    "date, author and rules version, for an adventure the levels and the "+
+    "storyline. What it holds per type is counted when read, never stored. "+
+    "Wherever an article names its source, the full title shows on hover "+
+    "and on a tap."));
+  v.appendChild(el("pre",{class:"code",text:
+    "Stack:    Core rules (group) \u00b7 Supplements (group), XGE off\n"+
+    "Resolved: Core rules \u00b7 PHB 2014-08 \u00b7 MM 2014-09 \u00b7 DMG 2014-12 \u00b7 Supplements \u00b7 VGM \u00b7 TCE \u2026\n"+
+    "Article in XGE    not in play (off beats the group)\n"+
+    "Article in TCE    in play, rank from Supplements"}));
+  /* ---- Herausgeber (T-094) ---- Gruppen mit Layer.groupBy publisher;
+     gerechnet in packages/model/src/stack.ts (publisherOf). */
+  v.appendChild(el("p",{class:"hint"},
+    "Groups sort by category or by publisher (Layer.groupBy: publisher): "+
+    "Official (Wizards of the Coast), Partnered, Third party, Homebrew. A "+
+    "book sits in one group of each kind, and either turns it on the same "+
+    "way. A layer's publisher is not stored: it is the name of the "+
+    "publisher group it hangs on. A layer in none is Homebrew if it was "+
+    "made here (by an account or with a campaign) and Unassigned if it was "+
+    "imported (T-109). The layer's page shows the publisher with the reason "+
+    "and, for the admin and the layer's owner, a choice that hangs it under "+
+    "another publisher group. The mark shows on the campaign page (the "+
+    "reason on hover), in lists and in the preview."));
+  v.appendChild(el("pre",{class:"code",text:
+    "EGW  partOf Settings (category) \u00b7 Partnered (publisher)  \u2192 mark Partnered\n"+
+    "XGE  partOf Supplements \u00b7 Official \u00b7 D&D 5e (2014)     \u2192 mark Official\n"+
+    "Ebene: Nebelwacht  in no publisher group, made here   \u2192 mark Homebrew\n"+
+    "Imported book      in no publisher group              \u2192 mark Unassigned"}));
+
   v.appendChild(el("div",{class:"rsec",text:"Who gets to see an article"}));
   v.appendChild(el("p",{class:"hint"},
     "Two questions, and the coarse one comes first: visibility decides "+

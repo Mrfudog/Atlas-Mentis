@@ -7,10 +7,12 @@
  */
 
 import { isInstance } from './instance.js';
+import { isBookPart } from './parts.js';
 import type {
   Backlink,
   Entity,
   EntityId,
+  LinkTarget,
   PropertySchema,
   Registry,
   RelationDef,
@@ -18,6 +20,9 @@ import type {
 
 export function entityName(entity: Entity | undefined): string {
   if (!entity) return 'Ohne Namen';
+  /* Ein Stück mit Enhancements heisst, wie es gerechnet wird (T-300):
+     „+1 Silvered Dagger", nicht „Dagger". Nur am ausgelieferten Artikel. */
+  if (entity.enhanced?.name) return entity.enhanced.name;
   const ausKarte = entity.components?.['Identity']?.['name'];
   return entity.name || (typeof ausKarte === 'string' ? ausKarte : '') || 'Ohne Namen';
 }
@@ -216,6 +221,27 @@ export function fieldTitle(
 }
 
 /**
+ * **Wohin ein Feld an dieser Art zeigen soll** (T-119): `targets` am Typ
+ * oder an einem, von dem er erbt, sonst das `target` des Feldes. Wie
+ * `fieldTitle` die `extends`-Kette hoch — die Karte bietet beim Bild
+ * Kartenbilder an, ohne dass `Image` dafür zweimal da wäre.
+ */
+export function fieldTarget(
+  registry: Pick<Registry, 'interfaces'>,
+  type: string | undefined,
+  field: Pick<TypedField, 'type' | 'key' | 'prop'>,
+): LinkTarget | undefined {
+  const ref = `${field.type}.${field.key}`;
+  if (type) {
+    for (const t of typeChain(registry, type)) {
+      const eigen = registry.interfaces[t]?.targets?.[ref];
+      if (eigen) return eigen;
+    }
+  }
+  return field.prop.target;
+}
+
+/**
  * **Die Typen, deren Felder dieser Typ über eine Kante mitbringt** — die
  * Verbindungen, die sich an diesem Ende wie ein Feld lesen (`asField`).
  *
@@ -261,7 +287,7 @@ export function linkedTypes(
 }
 
 /** Was ein Feld mit `enumRef` liest — die Felder, die dafür zählen. */
-type EnumProp = Pick<PropertySchema, 'enum' | 'enumRef' | 'enumWhere'>;
+type EnumProp = Pick<PropertySchema, 'enum' | 'enumRef' | 'enumWhere' | 'suggest'>;
 
 /** Eine Werteliste je genanntem Namen, mit ihrer Herkunft. */
 export interface EnumGroup {
@@ -326,6 +352,11 @@ export function enumHolds(
   prop: EnumProp | undefined,
 ): boolean {
   if (!prop) return false;
+  /* **Frei mit Vorschlag** (T-423): sagt das Feld `suggest`, schlägt auch
+     eine Liste nur vor — die Sorten einer Begegnung, die Art eines Orts
+     sind Kampagneninhalt, und ein neues Wort ist ein Eintrag und kein
+     Fehler. */
+  if (prop.suggest) return false;
   if (prop.enum?.length) return true;
   return enumRefs(prop).every((n) => enumRefKind(registry, n) !== 'type');
 }
@@ -378,7 +409,7 @@ export function enumGroups(
       const filter = prop?.enumWhere?.[n];
       const werte: string[] = [];
       for (const e of bestand) {
-        if (!articleOfType(registry, e, n) || isInstance(e)) continue;
+        if (!articleOfType(registry, e, n) || isInstance(e) || isBookPart(e)) continue;
         if (filter && !matchesWhere(e, filter)) continue;
         const name = e.name || String(e.components?.['Identity']?.['name'] ?? '');
         if (name && !werte.includes(name)) werte.push(name);
@@ -505,7 +536,7 @@ export function relationsFrom(
   );
 }
 
-/** May this relation point at that entity? `same` means the source's own interface. */
+/** May this relation point at that entity? `same` means the source's own interface or one of its supertypes. */
 export function relationAccepts(
   def: RelationDef,
   sourceInterface: string,
@@ -515,6 +546,9 @@ export function relationAccepts(
   const to = def.to ?? ['*'];
   if (to.includes('*')) return true;
   if (to.includes('same') && targetInterface === sourceInterface) return true;
+  /* `same` nimmt die Obertypen der Quelle mit (T-128): ein Fertigungsauftrag
+     ist ein Rezept und darf eines als Vorlage nennen. */
+  if (to.includes('same') && registry && interfaceInList(registry, [targetInterface], sourceInterface)) return true;
   if (registry) return interfaceInList(registry, to, targetInterface);
   return to.includes(targetInterface);
 }
@@ -638,7 +672,9 @@ export function linkCandidates(entities: Iterable<Entity>, target: string): Enti
   for (const entity of alle) {
     /* Eine Instanz ist kein Verweisziel (D82); sie hiesse wie ihre Vorlage
        und machte jeden Namen mehrdeutig. */
-    if (isInstance(entity)) continue;
+    /* Ein Teil eines Buchs (T-108) ebensowenig: ein Absatz heisst nach
+       seinen ersten Worten, eine Überschrift wie die Regel darunter. */
+    if (isInstance(entity) || isBookPart(entity)) continue;
     if (entityName(entity).toLowerCase() === needle) {
       namen.push(entity);
       continue;
@@ -668,7 +704,7 @@ export function linkFinder(entities: Iterable<Entity>): (target: string) => Enti
     if (nummer && !nachNummer.has(nummer)) nachNummer.set(nummer, { at, e: entity });
     if (!nachPeg.has(entity.id)) nachPeg.set(entity.id, { at, e: entity });
     at += 1;
-    if (isInstance(entity)) continue;
+    if (isInstance(entity) || isBookPart(entity)) continue;
     const schluessel = new Set<string>([entityName(entity).toLowerCase()]);
     const aliases = entity.components?.['Identity']?.['aliases'];
     if (Array.isArray(aliases)) for (const a of aliases) schluessel.add(String(a).toLowerCase());

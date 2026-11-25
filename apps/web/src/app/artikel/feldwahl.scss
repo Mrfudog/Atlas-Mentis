@@ -1,0 +1,76 @@
+/* T-195: „+ Add field“ und seine Auswahl, unter der Maske. */
+.feldwahl-anker {
+  position: relative;
+  margin: -0.4rem 0 1rem;
+}
+.feldwahl-anker .zahl {
+  color: var(--dim);
+  font-size: 0.75em;
+  margin-left: 0.2rem;
+}
+.feldwahl {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  width: min(28rem, 100%);
+  max-height: min(26rem, 70vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+}
+.feldwahl .fwkopf {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+.feldwahl .fwkopf input {
+  flex: 1;
+  min-width: 0;
+}
+.feldwahl .fwliste {
+  overflow-y: auto;
+  padding: 0.2rem 0.5rem 0.5rem;
+}
+.feldwahl h4 {
+  margin: 0.6rem 0 0.2rem;
+  font-family: var(--caps);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.feldwahl .fweintrag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.feldwahl .fweintrag:hover,
+.feldwahl .fweintrag:focus-visible {
+  background: var(--bg);
+}
+.feldwahl .fwtitel {
+  font-weight: 600;
+}
+.feldwahl .fwtext {
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+.feldwahl .leer {
+  color: var(--dim);
+  font-style: italic;
+}

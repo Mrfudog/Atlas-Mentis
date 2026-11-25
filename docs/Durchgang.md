@@ -1,5 +1,7 @@
 # Durchgang durch die Typen
 
+↑ [Modell](Themen/Modell.md) · [Einstieg](README.md) · Herkunft: der Abgleich vom September; die Entscheidungen darin gelten und stehen als Regel in [Datenmodell.md](Datenmodell.md).
+
 Stand 2026-09-20, nach Block 1. Was hier steht, ist **gemessen** und nicht
 geschätzt: die Zahlen kommen aus dem Register und dem Prüfbestand (70
 Artikel), und „— nie" heisst, dass kein einziger Artikel das Feld füllt.
@@ -82,8 +84,8 @@ aufschalten, gehörte welcher?
 
 **Offen und benannt:** ohne Ebenenkante gehört ein Artikel niemandem besonders
 (65 von 75 heute — richtig bei *einer* Kampagne, falsch bei zweien);
-`mayWrite` kennt die Leitung noch nicht; die laufende Kampagne ist eine
-globale Einstellung.
+die laufende Kampagne ist eine globale Einstellung. (`mayWrite` kennt die
+Leitung seit T-098: sie schreibt die Ebene ihrer Kampagne, E-001.)
 
 ### Die Rolle steht am Konto — entschieden am 1.10.
 
@@ -181,8 +183,32 @@ Kante auf einen unbekannten Typ; jeder Standardwert steht in seiner Auswahl.
 
 **Bekannt offen, nicht neu:** mehrere Kampagnen (die laufende ist eine
 globale Einstellung, 65 von 75 Artikeln ohne Ebene, `gmFields` gilt
-installationsweit); `mayWrite` kennt die Leitung nicht; Rollen setzt am
-Server nur die Kommandozeile.
+installationsweit); `mayWrite` kannte die Leitung nicht (seit T-098: die
+Ebene ihrer Kampagne); Rollen setzt am Server nur die Kommandozeile.
+
+### Wahlen als Feld — entschieden am 13.10. (E-015 a, T-079)
+
+| Was | Entscheidung |
+|---|---|
+| `ProficiencyChoice` (`chooseFrom`, `chooseCount`, `chooseNote`) trug **eine** Wahl; jede weitere stand als Satz im Text | **`Choices.choices`**: je Wahl ein Eintrag mit Form (`entry`), `{id, kind, level, when, from, count, bonus, note}`. Klasse, Unterklasse, Abstammung, Hintergrund und **Talent** nehmen es. Migration 028 macht aus jeder alten Karte einen Eintrag `proficiencies`. |
+| Wo die Figur ihre Entscheide hält | **Kante `chose`** (PlayerCharacter → der fragende Artikel), `props.choice` = die `id`, `props.picks` = die Antworten. Keine Karte an der Figur: die Kante sagt schon, welcher Artikel fragte, und ihre Gegenrichtung („wer hat das gewählt") ist eine Abfrage. |
+| Was die Antworten ergeben | **beim Lesen** (`chosenResult`, D8). Eine Änderung am Artikel wirkt auf jede Figur; eine Antwort auf eine verschwundene Wahl ist verwaist (`orphanAnswers`). |
+| `Ancestry.abilityNote` | bleibt, hält aber nur noch, was keine Wahl ist (`lineage`); die Wahl „+1 auf zwei" ist ein Eintrag. |
+| Attributsverfahren (E-016) | nicht hier: sie sind Artikel/Zeilen der Leitung (T-080). Ein Verfahren kann dieselbe Form nutzen (Feld mit `entry`). |
+
+### Wirkungen als Feld — entschieden am 14.10. (E-025 a, T-085)
+
+| Was | Entscheidung |
+|---|---|
+| Wirkungen magischer Gegenstände (`resist`, `ability`, `modifySpeed`, `bonusSpellSaveDc` …) standen nur im Text | **`Effects.effects`**: je Wirkung ein Eintrag mit Form, `{id, target, op, value, when, note}`. Der Gegenstand nimmt es; Klasse, Abstammung, Talent und Merkmal können es nehmen, die Rechnung liest sie schon mit. Migration 038 trägt die Zeile ins Register und `Effects` in `Item.extends`. |
+| Wann eine Wirkung zählt | **an der Inventarkante gelesen**: `holds.tier`/`slot` (getragen), `holds.attuned` (eingestimmt), `stored`/`ground` (nicht dabei). Ohne `when`: eingestimmt, wenn verlangt, sonst getragen. |
+| Was die Wirkungen ergeben | **beim Lesen** (`effectsAt`, `effectTotals`, `abilityWithEffects`, D8) — nichts wird in den Statblock geschrieben. |
+| `bonusAc`, `bonusWeapon`, `bonusSpellAttack`, `bonusSave` | bleiben vorerst und zählen als Wirkung (`effectsOf`); eine Überführung per Migration kann später folgen. |
+| Geschwindigkeit verdoppeln (`modifySpeed.multiply`), ein Attribut nach Wahl (`ability.choose`) | keine Wirkung: Notiz am Artikel bzw. im Bericht. |
+
+Offen: der Bogen der Oberfläche zeigt kein Inventar und rechnet die
+Wirkungen noch nicht zu den Werten der Figur — die Gegenstandsseite nennt
+sie als Satz („Strength becomes 19").
 
 ---
 

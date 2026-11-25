@@ -34,7 +34,7 @@ import { Api, type ListenZeile } from '../kern/api';
             <ul class="kacheln">
               @for (k of g.klassen; track k.id) {
                 <li>
-                  <a [routerLink]="['/classes', k.id]">
+                  <a [routerLink]="['/artikel', k.id]">
                     <span class="name">{{ k.name }}</span>
                     <span class="quelle">{{ k.quelle }}</span>
                   </a>

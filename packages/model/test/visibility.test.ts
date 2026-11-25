@@ -4,9 +4,18 @@ import {
   audienceAllows,
   campaignOf,
   campaignsOf,
+  isReady,
+  seesUnfinished,
+  leadsArticle,
   tableRole,
+  effectiveAudience,
+  layerDefaultAudience,
+  visibilityRulesOf,
+  type CampaignVisibility,
   type Viewer,
+  type VisibilityRule,
 } from '../src/visibility.js';
+import { articleDimensions } from '../src/transform.js';
 import type { Entity, EntityId } from '../src/types.js';
 
 /* Zwei Runden auf einer Installation. Sie teilen das Grundregelwerk und
@@ -250,5 +259,140 @@ describe('die Rolle zählt in der Kampagne, der der Artikel gehört', () => {
     const e = artikel({ audience: 'gm', hiddenFrom: ['pc_sela'] }, ['ly_nebel']);
     expect(articleVisible(entities, e, { actors: ['pc_sela'], roles: { camp_nebel: 'gm' } }))
       .toBe(false);
+  });
+});
+
+/* REQ-237, E-011: Unfertiges sieht nur die Leitung — und wer es angelegt
+   hat oder schreiben darf. Ein Artikel ohne Stand gilt als fertig. */
+describe('der Vorbereitungsstand als grobe Frage', () => {
+  const mitStand = (status: string | undefined, ebenen = ['ly_nebel']): Entity => ({
+    ...artikel(undefined, ebenen),
+    components: status ? { Status: { status } } : {},
+  });
+
+  it('zählt einen Artikel ohne Stand als fertig', () => {
+    expect(isReady(mitStand(undefined))).toBe(true);
+    expect(isReady(mitStand('ready'))).toBe(true);
+    expect(isReady(mitStand('prepared'))).toBe(false);
+  });
+
+  it('hält Unfertiges von Spielenden und Zuschauern fern, nicht von der Leitung', () => {
+    const idee = mitStand('idea');
+    expect(articleVisible(entities, idee, sela)).toBe(false);
+    expect(articleVisible(entities, idee, gast)).toBe(false);
+    expect(articleVisible(entities, idee, basil)).toBe(true);
+    expect(articleVisible(entities, idee)).toBe(true);
+    /* Die Leitung der anderen Runde ist hier niemand. */
+    expect(articleVisible(entities, idee, mira)).toBe(false);
+  });
+
+  it('zeigt Eigenes in jedem Stand', () => {
+    const idee = mitStand('idea');
+    expect(articleVisible(entities, idee, { ...sela, own: ['npc_baron'] })).toBe(true);
+    expect(articleVisible(entities, idee, { ...rook, own: new Set(['npc_baron']) })).toBe(true);
+  });
+
+  it('lässt Fertiges und Standloses durch wie bisher', () => {
+    expect(articleVisible(entities, mitStand('ready'), sela)).toBe(true);
+    expect(articleVisible(entities, mitStand(undefined), sela)).toBe(true);
+  });
+});
+
+/* E-014 d: die eigene Figur eines Spielers ist vom Status-Gate ausgenommen
+   — für die Mitspielenden gilt die gewöhnliche Sichtbarkeit. */
+describe('die eigene Figur ist vom Stand ausgenommen', () => {
+  const figur = (audience?: string): Entity => ({
+    ...artikel(undefined, ['ly_nebel']),
+    id: 'npc_baron',
+    components: { Status: { status: 'prepared' }, ...(audience ? { Visibility: { audience } } : {}) },
+  });
+
+  it('zeigt eine unfertige Figur den Mitspielenden, wenn sie ausgenommen ist', () => {
+    expect(articleVisible(entities, figur(), sela)).toBe(false);
+    expect(articleVisible(entities, figur(), { ...sela, ungated: ['npc_baron'] })).toBe(true);
+  });
+
+  it('fragt danach die gewöhnliche Sichtbarkeit', () => {
+    expect(articleVisible(entities, figur('gm'), { ...sela, ungated: new Set(['npc_baron']) })).toBe(false);
+  });
+
+  it('sagt, wer den Arbeitsstand sieht: Leitung und Eigenes, sonst niemand', () => {
+    const a = figur();
+    expect(seesUnfinished(entities, a, basil)).toBe(true);
+    expect(seesUnfinished(entities, a, sela)).toBe(false);
+    expect(seesUnfinished(entities, a, { ...sela, own: ['npc_baron'] })).toBe(true);
+    expect(seesUnfinished(entities, a)).toBe(true);
+  });
+
+  /* T-447, T-455 (E-204 a, E-208 a): die Leitung der Kampagne des Artikels
+     bekommt ihn ungesiebt — nur über die Rolle, nicht über Eigenes. */
+  it('sagt, wer den Artikel ungesiebt liest: die Leitung seiner Kampagne, auch ohne Figur', () => {
+    const a = figur();
+    expect(leadsArticle(entities, a, basil)).toBe(true);
+    expect(leadsArticle(entities, a, { roles: { camp_nebel: 'co-gm' } })).toBe(true);
+    expect(leadsArticle(entities, a, sela)).toBe(false);
+    /* Eigenes macht nicht zur Leitung: der Verfasser sieht den Arbeitsstand, nicht die Felder der Leitung. */
+    expect(leadsArticle(entities, a, { ...sela, own: ['npc_baron'] })).toBe(false);
+    /* Wer anderswo leitet, ist hier Betrachter. */
+    expect(leadsArticle(entities, a, { roles: { camp_salz: 'gm' } })).toBe(false);
+    expect(leadsArticle(entities, a)).toBe(true);
+  });
+});
+
+/* T-252, E-098: Feld am Artikel > Regel der Kampagne (genaueste) > Vorgabe der Ebene > public. */
+describe('Sichtbarkeit je Gruppe (T-252)', () => {
+  const dims = articleDimensions({ interfaces: { Creature: { name: 'Creature', label: 'Creature', area: 'world' } } } as never);
+  const mitVorgabe = new Map(entities);
+  mitVorgabe.set('ly_salz', { id: 'ly_salz', name: 'Ebene: Salzpfad', interfaces: ['Layer'], components: { Layer: { defaultAudience: 'gm' } } } as Entity);
+  mitVorgabe.set('ly_system', { id: 'ly_system', name: 'Grundregelwerk', interfaces: ['Layer'], components: { Layer: { defaultAudience: 'campaign' } } } as Entity);
+  const regeln = (rules: VisibilityRule[]): CampaignVisibility => ({ campaign: 'camp_nebel', rules, dims });
+  const mit = (v: Viewer, rules: VisibilityRule[]): Viewer => ({ ...v, campaignRules: regeln(rules) });
+
+  it('liest die Vorgabe der Ebene, die engste bei mehreren', () => {
+    expect(layerDefaultAudience(mitVorgabe, artikel(undefined, ['ly_system']))).toBe('campaign');
+    expect(layerDefaultAudience(mitVorgabe, artikel(undefined, ['ly_system', 'ly_salz']))).toBe('gm');
+    expect(layerDefaultAudience(mitVorgabe, artikel(undefined, ['ly_nebel']))).toBeNull();
+    expect(articleVisible(mitVorgabe, artikel(undefined, ['ly_system']), niemand)).toBe(false);
+    expect(articleVisible(mitVorgabe, artikel(undefined, ['ly_system']), gast)).toBe(true);
+  });
+
+  it('die Regel der Kampagne schlägt die Ebene, die genaueste zuerst', () => {
+    const e = artikel(undefined, ['ly_system']);
+    expect(articleVisible(mitVorgabe, e, mit(niemand, [{ id: 'layer:ly_system', audience: 'public' }]))).toBe(true);
+    const zwei = [{ id: 'layer:ly_system', audience: 'public' as const }, { id: 'layer:ly_system|type:Creature', audience: 'gm' as const }];
+    expect(articleVisible(mitVorgabe, e, mit(sela, zwei))).toBe(false);
+    expect(articleVisible(mitVorgabe, e, mit(basil, zwei))).toBe(true);
+    expect(effectiveAudience(mitVorgabe, e, regeln(zwei))).toEqual({ audience: 'gm', source: 'campaign', rule: 'layer:ly_system|type:Creature' });
+    expect(effectiveAudience(mitVorgabe, e)).toEqual({ audience: 'campaign', source: 'layer' });
+    expect(effectiveAudience(mitVorgabe, artikel())).toEqual({ audience: 'public', source: 'default' });
+  });
+
+  it('das Feld am Artikel schlägt die Regel, auch ein ausdrückliches public', () => {
+    const r = [{ id: 'layer:ly_system', audience: 'gm' as const }];
+    expect(articleVisible(mitVorgabe, artikel({ audience: 'public' }, ['ly_system']), mit(sela, r))).toBe(true);
+    expect(effectiveAudience(mitVorgabe, artikel({ audience: 'players' }, ['ly_system']), regeln(r)).source).toBe('article');
+  });
+
+  it('zeigt und verbirgt je Träger; eine Regel nur für Rook sagt über Sela nichts', () => {
+    const e = artikel(undefined, ['ly_nebel']);
+    const r: VisibilityRule[] = [
+      { id: 'layer:ly_nebel', audience: 'gm' },
+      { id: 'layer:ly_nebel|type:Creature', show: ['pc_rook'] },
+    ];
+    expect(articleVisible(mitVorgabe, e, mit(rook, r))).toBe(true);
+    expect(articleVisible(mitVorgabe, e, mit(sela, r))).toBe(false);
+    /* Die Gruppe zählt als Träger, und Verbergen schlägt die Stufe. */
+    expect(articleVisible(mitVorgabe, e, mit(sela, [{ id: 'type:Creature', hide: ['pa_wacht'] }]))).toBe(false);
+    expect(articleVisible(mitVorgabe, e, mit(gast, [{ id: 'type:Creature', hide: ['pa_wacht'] }]))).toBe(true);
+    /* Das Verbot am Artikel bleibt das Verbot. */
+    expect(articleVisible(mitVorgabe, artikel({ hiddenFrom: ['pc_rook'] }, ['ly_nebel']), mit(rook, r))).toBe(false);
+  });
+
+  it('liest die Regeln an der Kampagne und lässt Formloses weg', () => {
+    const k = { id: 'c', name: 'c', interfaces: ['Campaign'], components: { VisibilityRules: { visibilityRules: [
+      { id: 'layer:a', audience: 'gm' }, { id: 'layer:b', audience: 'kaiser', show: ['x', 3] }, { audience: 'gm' }, 'unsinn',
+    ] } } } as unknown as Entity;
+    expect(visibilityRulesOf(k)).toEqual([{ id: 'layer:a', audience: 'gm' }, { id: 'layer:b', show: ['x'] }]);
+    expect(visibilityRulesOf(undefined)).toEqual([]);
   });
 });

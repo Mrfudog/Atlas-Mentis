@@ -1,11 +1,23 @@
 import type { Registry } from '@nw/model';
-import { interfaces } from './interfaces.js';
+import { interfaces as grundtypen } from './interfaces.js';
+import { typeViews } from './ansichten.js';
 import { relations } from './relations.js';
 import { views } from './views.js';
 import { units } from './units.js';
 import { enums } from './enums.js';
+import { tokens } from './tokens.js';
 
-export { interfaces, relations, views, units, enums };
+/* Die Ansichten je Art (T-110 Schritt 7) an ihre Art gehängt — was eine
+   Art in `interfaces.ts` selbst sagt, bleibt und geht vor. */
+const interfaces: Registry['interfaces'] = Object.fromEntries(
+  Object.entries(grundtypen).map(([name, def]) => {
+    const dazu = typeViews[name];
+    return [name, dazu ? { ...def, views: { ...dazu, ...(def.views ?? {}) } } : def];
+  }),
+);
+
+export { interfaces, relations, views, units, enums, typeViews };
+export { APP_TERMS, GAME_TERMS, type AppTerm } from './glossar.js';
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {
@@ -34,15 +46,23 @@ export const settings: Record<string, string> = {
      ohne eigene Form: Seitenlänge des Grundquadrats je Grösse (eine
      Grösse, die hier fehlt, behält das Rechteck oben), und die Zonen nach
      Spalten. Das Zusatzquadrat rechnet der Statblock (`carryExtra`). */
+  /* **Das Tragblatt aus Bausteinen** (REQ-356): JSON, gemalt unter Rules &
+     options › Inventory. Leer heisst noch nicht gemalt — dann gilt das
+     Blatt aus den beiden Zeilen darunter (`legacyCarrySheet`). */
+  carrySheet: '',
   carrySquares: 'tiny:3, small:4, medium:5, large:6',
   carryZones: '0-1:bonus action, 2-4:action, 5-8:turn, 9-10:round',
   /* Wie schnell etwas von einem Körperplatz kommt — und ein Behälter an
      diesem Platz gibt seinem Inhalt eine Stufe dazu. Ein Platz, der hier
      fehlt, hat keine Stufe. */
-  /* Der Gurt ist eine freie Aktion (REQ-225, D58), wie die Holster. */
+  /* Der Gurt ist eine freie Aktion (REQ-225, D58), wie die Holster.
+     **Ein Rüstungsplatz** statt Kopf, Torso, Handschuhen und Stiefeln
+     (T-365, E-153 V5): die Kleidung einzeln kommt mit T-388; `-` heisst,
+     von dort wird nichts gezogen. Die Schultern bleiben, bis T-367 den
+     Rücken bringt — ein Rucksack dort gibt seinem Inhalt eine Stufe. */
   slotDraw: 'mainHand:free action, offHand:free action, holster1:free action, holster2:free action, '
-    + 'belt:free action, shoulders:bonus action, head:action, torso:action, hands:action, '
-    + 'legs:action, feet:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, '
+    + 'belt:free action, shoulders:bonus action, armor:-, '
+    + 'legs:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, '
     + 'ringL1:action, ringL2:action, ringL3:action, ringL4:action, '
     + 'neck1:action, neck2:action, neck3:action, neck4:action',
   /* Was die Gegenrichtung kostet (REQ-225, D58): **Fallenlassen** (was in
@@ -51,6 +71,9 @@ export const settings: Record<string, string> = {
      wie `slotDraw` und keine Zeile: sie ist das Blatt der Kampagne und
      rechnet nichts; die Werte kommen aus `DrawTime`. */
   handActions: 'drop:free action, stow:bonus action',
+  /* Wie viele Stücke eine Figur zugleich eingestimmt haben darf
+     (T-365, E-153 V5) — 3 in 5e; eine Hausregel ist eine andere Zahl. */
+  attunementLimit: '3',
   /* Vorlagen beim Anlegen eines Behälters, `container:<Name>`: Zeilen mit
      `/`, nach dem Strich die Zonen nach Spalten. Eine neue Vorlage ist
      eine neue Einstellung. */
@@ -70,7 +93,7 @@ export const settings: Record<string, string> = {
      Information sie ausdrücklich freigibt. Als Einstellung, weil eine
      Kampagne das anders halten darf. Es hiess `gmBlockTypes` und nannte
      Blockarten — die gibt es nicht mehr, es sind Felder. */
-  gmFields: 'Secrets.secret,Tactics.tactics',
+  gmFields: 'Secrets.secret,Tactics.tactics,Encounter.solution,Encounter.hint',
   /* Welches Mass-System die Seite zeigt: `imperial`, `metric` oder `both`.
      Eine Artikelart darf es überschreiben (`InterfaceDef.units`) — eine
      Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
@@ -88,4 +111,6 @@ export const settings: Record<string, string> = {
 };
 
 /** The rows a fresh database is seeded with. */
-export const seedRegistry: Registry = { interfaces, relations, views, units, enums, vars, settings };
+export const seedRegistry: Registry = { interfaces, relations, views, units, enums, tokens, vars, settings };
+export { RULE_SYSTEM_LAYERS } from './regelsysteme.js';
+export { START_LAYERS, UNASSIGNED_LAYER_ROW } from './startebenen.js';

@@ -31,6 +31,17 @@
   --sub-4: #4c6b2a;
   --sub-5: #6b3d75;
   --sub-6: #2e6e64;
+  /* Die Spielerseite (T-247): Trefferpunkte, Heilung, Magie, Reaktion —
+     dieselben Töne wie die Unterklassen, mit Namen, die sagen, wofür. */
+  --hp: #a3241a;
+  --good: #4c6b2a;
+  --magic: #6b3d75;
+  --blue: #2f5d7c;
+  --accent-soft: rgba(140, 28, 19, 0.08);
+  /* Bewegung (T-334): der Zugwechsel im Tracker leuchtet kurz auf. Still
+     bei `prefers-reduced-motion` und, wenn das Konto es abschaltet. */
+  --motion-turn: 900ms;
+  --turn-flash: rgba(200, 130, 46, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +69,12 @@
     --sub-4: #9cc070;
     --sub-5: #c49ad0;
     --sub-6: #74c2b5;
+    --hp: #e08a74;
+    --good: #9cc070;
+    --magic: #c49ad0;
+    --blue: #7fb0d4;
+    --accent-soft: rgba(208, 103, 90, 0.14);
+    --turn-flash: rgba(183, 122, 51, 0.35);
   }
 }
 
@@ -124,4 +141,153 @@ a.knopf {
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
+}
+
+/* Creator oder Full edit an einer Figur (T-194): zwei Masken derselben
+   Figur, als Segmentschalter — das Aktive ist kein Link. */
+.umschalter {
+  display: inline-flex;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.umschalter > a,
+.umschalter > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.8rem;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.umschalter > .an {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+/* Der Info-Knopf der Kurzansicht (T-093): wo ein Name schon etwas anderes
+   tut — ein Häkchen setzt, eine Zeile wählt —, öffnet dieser kleine Knopf
+   daneben die Karte des Artikels. Klein, aber am Telefon antippbar. */
+button.quick-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+button.quick-info:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* **Der Druck** (T-110): ein Blatt A4, weiss, schwarz — auch im dunklen
+   Modus, denn Papier ist hell. Kopfleiste, Bänder und Knöpfe gehören zum
+   Bildschirm; was nur dorthin gehört, trägt `nichtdrucken`. */
+@page {
+  size: A4;
+  margin: 16mm 15mm;
+}
+/* Die Basis-Leiste der Spielenden (T-342) liegt am Telefon unten: die
+   Seite rückt ab, und feste Leisten am unteren Rand stellen sich darüber. */
+@media (max-width: 640px) {
+  body.mit-basis {
+    --basis-unten: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+}
+
+@media print {
+  :root,
+  :root:not([data-theme='light']) {
+    --bg: #fff;
+    --surface: #fff;
+    --paper: #fff;
+    --bar: #fff;
+    --line: #999;
+    --line2: #eee;
+    --ink: #000;
+    --dim: #444;
+    --heading: #000;
+    --accent: #000;
+    --link: #000;
+    --rule: #000;
+    --gold: #888;
+  }
+  html,
+  body {
+    background: #fff;
+    font-size: 11pt;
+  }
+  header.leiste,
+  .umgebung,
+  .sicht,
+  .nichtdrucken {
+    display: none !important;
+  }
+}
+
+/* Ein Glossarbegriff (T-242, `nwBegriff`): gepunktet unterstrichen wie im
+   Design-Canvas, in der Farbe des Textes — ein Hinweis, kein Sprung. Global,
+   weil er im Text, in Masken und im Handbuch steht. */
+.begriff {
+  text-decoration: underline dotted var(--accent);
+  text-underline-offset: 0.18em;
+  cursor: help;
+}
+.begriff:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+button.begriff {
+  font: inherit;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+/* Die Klappleiste (T-220) steht am Telefon unten fest; die Seite lässt
+   darunter Platz, damit das Letzte nicht hinter ihr verschwindet. */
+@media (max-width: 719.98px) {
+  body:has(nw-klappleiste.fest) {
+    padding-bottom: calc(3.75rem + var(--basis-unten, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Design eines Elements (T-425, E-170 a, `muster/stil.ts`): die Hülle ist
+   unsichtbar, ihr Inhalt nimmt die Tokens an den Stellen, die gesetzt sind. */
+.el-hut {
+  display: contents;
+}
+.el-hut.mit-surface > * {
+  background: var(--el-surface);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.el-hut.mit-frame > * {
+  border: 2px solid var(--el-frame);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.el-hut.mit-text > * {
+  color: var(--el-text);
+}
+.el-hut.mit-head > * :is(h2, h3, h4, summary),
+.el-hut.mit-head > :is(h2, h3, h4) {
+  color: var(--el-head);
 }

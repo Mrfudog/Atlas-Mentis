@@ -96,6 +96,21 @@ describe('API tokens', () => {
     expect(JSON.stringify(liste)).not.toContain(klar);
   });
 
+  it('takes an expiry date instead of days, and refuses one that has passed (T-112)', async () => {
+    const admin = await konto('basil', { admin: true });
+    const tag = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    const res = await app.inject({ method: 'POST', url: '/api/tokens', headers: admin, payload: { name: 'dev', scope: 'write', expiresAt: tag } });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().expiresAt).toBe(`${tag}T23:59:59.999Z`);
+    const alt = await app.inject({ method: 'POST', url: '/api/tokens', headers: admin, payload: { name: 'alt', expiresAt: '2020-01-01' } });
+    expect(alt.statusCode).toBe(400);
+    const unsinn = await app.inject({ method: 'POST', url: '/api/tokens', headers: admin, payload: { name: 'x', expiresAt: 'bald' } });
+    expect(unsinn.statusCode).toBe(400);
+    /* Weiter als 365 Tage wird gekürzt, nicht abgelehnt. */
+    const weit = await app.inject({ method: 'POST', url: '/api/tokens', headers: admin, payload: { name: 'weit', expiresAt: '2999-01-01' } });
+    expect(new Date(weit.json().expiresAt).getTime() - Date.now()).toBeLessThanOrEqual(365 * 86400000);
+  });
+
   it('acts as its account, limited to its scope', async () => {
     const admin = await konto('basil', { admin: true });
     const lesen = await token(admin, 'read');

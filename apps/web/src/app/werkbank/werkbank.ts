@@ -11,9 +11,12 @@ import {
   type CheckResult,
   type ChecksAntwort,
   type UndoAntwort,
+  type Wartend,
 } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { ApiTokens } from '../konto/api-tokens';
 import { Session } from '../kern/session';
+import { Uebernahme } from './uebernahme';
 import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formular } from './auftrag';
 
 /**
@@ -31,7 +34,7 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
  */
 @Component({
   selector: 'nw-werkbank',
-  imports: [FormsModule, RouterLink],
+  imports: [ApiTokens, FormsModule, RouterLink, Uebernahme],
   template: `
     <div class="seite">
       <header class="kopf">
@@ -45,6 +48,43 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
       @if (!session.leitung()) {
         <p class="leer">The workbench is for game masters and the administration.</p>
       } @else {
+        <!-- REQ-237: was Spielende angelegt haben und nicht ready ist. Die
+             eigene Figur wartet auf niemanden (E-014 d) und steht nicht da. -->
+        <section class="block" aria-labelledby="h-wartet">
+          <div class="titel">
+            <h2 id="h-wartet">Not ready, by players</h2>
+            <span class="dim">{{ wartend().length }}</span>
+          </div>
+          @if (wartetFehler()) {
+            <p class="fehler" role="alert">{{ wartetFehler() }}</p>
+          }
+          @if (wartend().length) {
+            <ul class="treffer wartet">
+              @for (w of wartend(); track w.id) {
+                <li>
+                  <a [routerLink]="['/artikel', w.id]">{{ w.name || w.id }}</a>
+                  <span class="art">{{ w.type }}</span>
+                  <span class="grund">
+                    {{ w.status || 'no status' }} · by {{ w.authors.join(', ') || '?' }}
+                    @if (w.readyAt) {
+                      · the version from {{ datum(w.readyAt) }} applies
+                    } @else {
+                      · never ready
+                    }
+                  </span>
+                  @if (w.canReady) {
+                    <button type="button" class="klein" [disabled]="setzt() === w.id" (click)="fertigNennen(w)">
+                      {{ setzt() === w.id ? 'Saving…' : 'ready' }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else if (!wartetFehler()) {
+            <p class="leer">Nothing waits — every article players made is ready.</p>
+          }
+        </section>
+
         <section class="block" aria-labelledby="h-checks">
           <div class="titel">
             <h2 id="h-checks">Checks</h2>
@@ -80,7 +120,11 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
                     <ul class="treffer">
                       @for (h of t.hits; track h.id) {
                         <li>
-                          <a [routerLink]="['/artikel', h.id]">{{ h.name || h.id }}</a>
+                          @if (h.registry) {
+                            <a routerLink="/registry" [queryParams]="h.registry">{{ h.name }}</a>
+                          } @else {
+                            <a [routerLink]="['/artikel', h.id]">{{ h.name || h.id }}</a>
+                          }
                           <span class="art">{{ h.type }}</span>
                           <span class="grund">{{ h.reason }}</span>
                           @if (h.group) {
@@ -105,9 +149,11 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
                           Show all {{ c.count }}
                         </button>
                       }
-                      <button type="button" class="klein" (click)="alsAuswahl(c)">
-                        Use as selection
-                      </button>
+                      @if (c.key !== 'registryDrift') {
+                        <button type="button" class="klein" (click)="alsAuswahl(c)">
+                          Use as selection
+                        </button>
+                      }
                     </div>
                   } @else {
                     <p class="leer">Loading…</p>
@@ -233,6 +279,12 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
                       </select>
                     </label>
                     <label>Keep (id, optional) <input name="keep" [(ngModel)]="f.keep" placeholder="oldest" /></label>
+                  }
+                  @case ('delete') {
+                    <p class="dim">
+                      Deletes the selection with its parts (own statblock instance, inventory, pieces) and removes
+                      edges pointing at it. Undo brings everything back.
+                    </p>
                   }
                   @default {
                     <label>
@@ -407,6 +459,15 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
             }
           </ul>
         </section>
+
+        <!-- T-130: Übernahme dev ↔ prod — nur die Verwaltung der Installation. -->
+        @if (session.isAdmin()) {
+          <nw-uebernahme class="block" id="uebernahme" [arten]="arten()" [ebenen]="ebenen()" />
+        }
+
+        <!-- T-112: das Token für eine Claude-Sitzung entsteht hier, wo die
+             Leitung mit der Werkbank arbeitet — es ist trotzdem ihr eigenes. -->
+        <nw-api-tokens kennung="werkbank-tokens" />
       }
     </div>
   `,
@@ -709,6 +770,37 @@ export class Werkbank {
   protected readonly offen = signal<string | null>(null);
   protected readonly treffer = signal<CheckResult | null>(null);
 
+  /* ------------------------------------------- Was wartet (REQ-237) */
+  protected readonly wartend = signal<Wartend[]>([]);
+  protected readonly wartetFehler = signal<string | null>(null);
+  protected readonly setzt = signal<string | null>(null);
+
+  async wartendLaden(): Promise<void> {
+    try {
+      this.wartend.set((await this.api.unready()).rows);
+      this.wartetFehler.set(null);
+    } catch (error) {
+      this.wartetFehler.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** „ready" per Knopf: der neue Stand gilt, die Zeile geht. */
+  async fertigNennen(w: Wartend): Promise<void> {
+    this.setzt.set(w.id);
+    try {
+      await this.api.setReady(w.id);
+      await this.wartendLaden();
+    } catch (error) {
+      this.wartetFehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.setzt.set(null);
+    }
+  }
+
+  protected datum(at: string): string {
+    return new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   /* ------------------------------------------------------ Massenänderung */
   protected f: Formular = leeresFormular();
   protected readonly jsonText = signal<string | null>(null);
@@ -735,17 +827,19 @@ export class Werkbank {
       .map(([n]) => n)
       .sort();
   });
-  /** Die Ebenen — eine Handvoll, aus der Liste am Server. */
+  /** Die Ebenen — alle, auch nicht aufgeschaltete (T-207: die Werkbank sieht alles). */
   protected readonly ebenen = signal<{ id: string; name: string }[]>([]);
   protected readonly kantenarten = computed(() => Object.keys(this.bestand.registry()?.relations ?? {}).sort());
 
   constructor() {
     void this.bestand.load();
-    void this.bestand
-      .liste({ type: 'Layer', limit: 200 })
+    /* Am Bestand vorbei: dessen Namen gelten für jede Seite, und die übrigen nennen nur den Stapel. */
+    void this.api
+      .list({ type: 'Layer', limit: 1000, allLayers: true })
       .then((l) => this.ebenen.set(l.rows.map((z) => ({ id: z.id, name: z.name }))))
       .catch(() => undefined);
     if (this.session.leitung()) {
+      void this.wartendLaden();
       void this.pruefen();
       void this.laeufeLaden();
     }

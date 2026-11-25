@@ -1,11 +1,15 @@
 ---
 tags: [vtt, glossary]
-status: living
+status: superseded
 version: 0.5
-updated: 2026-09-05
+updated: 2026-10-16
 ---
 
 # Glossary
+
+> [!warning] Superseded (2026-10-16, T-242)
+> This table is the vocabulary of concept 0.5 (Entity, Component, ContentBlock …) and is kept for history only — do not extend it.
+> The glossary now lives in the app: **Handbook › Glossary** (`/handbook#glossary`). Words of the app come from `packages/registry/src/glossar.ts` (with a test that every article type and every word of `docs/Begriffe.md` has an entry); rule terms are `GlossaryTerm` articles in their rulebook's layer. Why things are named as they are: `docs/Begriffe.md`.
 
 Every project term with a one-line description, where it is mentioned in the vault, and its state in the data-definitions registry ([[Data Definitions]]; renames pending under [[Decision Log#AD-16]]). Mentions are counted automatically over the vault notes — regenerate rather than hand-edit.
 

@@ -1,0 +1,918 @@
+import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { MAX_ADD, enumOptions, type QuickAction, type TrackerOp, type TrackerRow, type TrackerView } from '@nw/model';
+import { Api } from '../kern/api';
+import { Bestand } from '../kern/bestand';
+import { BegriffLink, Glossar } from '../kern/glossar';
+import { KurzLink } from '../kern/kurzansicht';
+import { Live } from '../kern/live';
+import { Session } from '../kern/session';
+import { Wahl } from '../artikel/wahl';
+import { Text } from '../artikel/text';
+
+/** Die Animation beim Zugwechsel, je Konto abschaltbar (T-334). Vorgabe an. */
+export const TRACKER_MOTION_PREF = 'tracker.motion';
+
+/** Was gerade an einer Zeile offen ist: eine Zahl für Schaden oder Heilung, oder der Effekt. */
+type Offen = { edge: string; was: 'damage' | 'heal' | 'effect' } | null;
+
+/**
+ * **Der Initiative-Tracker** (T-022, REQ-115, REQ-128, REQ-211–213):
+ * eine eigene Komponente in Play und auf der Seite der Begegnung (Element
+ * `initiative`). Die Reihe kommt gerechnet und gesiebt vom Server
+ * (`GET /api/encounters/:id/tracker`) — die Leitung sieht sie ganz, alle
+ * anderen, was die Kampagne ihnen zeigt (Rules & options › Combat). Hier
+ * wird nichts zurückgehalten und nichts gerechnet.
+ *
+ * Die Leitung führt die Züge, Trefferpunkte und Effekte; eine Spielerin
+ * beendet ihren eigenen Zug. Jede Änderung kommt über den Live-Kanal
+ * (T-116) als Ereignis der Begegnung zurück, und der Tracker fragt neu —
+ * der Beamer und das Telefon zeigen dasselbe. Der Ring am Token (T-117)
+ * steht auf der Karte und bleibt dort.
+ *
+ * **Runde 2** (T-334): die Leitung setzt den Zug frei („Make current",
+ * „Skip", „Back to top" — gezählt wird nur bei „Next turn"), der Kopf
+ * zählt Runde und Zug, eine Zeile klappt auf und zeigt, was der Teilnehmer
+ * kann (gesiebt am Server), und ein Zugwechsel blinkt kurz auf — aus den
+ * Marken `--motion-turn` und `--turn-flash`, je Konto abschaltbar und still
+ * bei `prefers-reduced-motion`.
+ */
+@Component({
+  selector: 'nw-initiative',
+  imports: [RouterLink, KurzLink, BegriffLink, Wahl, Text],
+  template: `
+    <section class="tracker" aria-label="Initiative" [class.gross]="gross()">
+      <header class="kopf">
+        <h2>Initiative</h2>
+        @if (sicht(); as v) {
+          <a class="name" [routerLink]="['/artikel', v.id]" [nwQuick]="v.id">{{ v.name }}</a>
+          <span class="marke" [class.laeuft]="v.round > 0" [attr.title]="v.round > 0 ? spielzeit(v.round) : null">{{ v.round > 0 ? 'Round ' + v.round : v.phase }}</span>
+          @if (v.turn && v.turns) {
+            <span class="marke zaehler" title="Turn in this round">Turn {{ v.turn }}/{{ v.turns }}</span>
+          }
+        }
+        <span class="frei"></span>
+        @if (sicht(); as v) {
+          @if (!v.off) {
+            @if (v.gm) {
+              @if (v.round < 1) {
+                <!-- Vorplatzieren von der Begegnung aus (T-333, T-203): die Karte öffnet und setzt die Beteiligten verborgen. -->
+                @if (v.map) {
+                  <a class="knopf" [routerLink]="['/artikel', v.map]" [queryParams]="{ prepare: v.id }" title="Open the map and set the combatants there, hidden from the players until the encounter starts">Prepare on map</a>
+                }
+                <button type="button" class="haupt" (click)="starten()" [disabled]="laeuft()" title="Roll initiative for who has none and run this encounter">▶ Start</button>
+              } @else {
+                <button type="button" (click)="tue({ op: 'previous' })" [disabled]="laeuft()" aria-label="Previous turn" title="Previous turn — expired effects do not come back">◀</button>
+                <button type="button" class="haupt" (click)="tue({ op: 'next' })" [disabled]="laeuft()" title="End this turn: effects count down, the next combatant starts">Next turn ▶</button>
+                <button type="button" (click)="tue({ op: 'skip' })" [disabled]="laeuft()" title="Skip the current combatant — nothing counts down">Skip</button>
+                <button type="button" (click)="tue({ op: 'top' })" [disabled]="laeuft()" aria-label="Back to top" title="Back to the top of the order — the round stays, nothing counts down">⤒</button>
+                @if (v.phase !== 'done') {
+                  <button type="button" (click)="beenden()" [disabled]="laeuft()" title="Mark the encounter as done">End</button>
+                }
+              }
+            } @else if (eigenerZug()) {
+              <button type="button" class="haupt" (click)="tue({ op: 'next' })" [disabled]="laeuft()">End turn ▶</button>
+            }
+          }
+        }
+        <button type="button" class="klein" (click)="bewegungSchalten()" [attr.aria-pressed]="bewegung()" [attr.title]="bewegung() ? 'Turn change animation on — click to turn it off' : 'Turn change animation off — click to turn it on'">{{ bewegung() ? '✦' : '✧' }}</button>
+        <button type="button" class="klein" (click)="vollbild()" [attr.aria-label]="'Full screen'" title="Full screen — for the projector">⛶</button>
+      </header>
+
+      @if (fehler(); as f) {
+        <p class="fehler" role="alert">{{ f }}</p>
+      }
+      @if (ergebnis(); as e) {
+        <p class="dim" role="status">{{ e }}</p>
+      }
+      @if (!sicht()) {
+        <p class="dim">Loading…</p>
+      } @else if (sicht()!.off) {
+        <p class="dim">
+          The initiative tracker is off in this campaign.
+          @if (sicht()!.gm) {
+            Turn it on under <a routerLink="/campaign">Campaign › Rules &amp; options › Combat</a>.
+          }
+        </p>
+      } @else {
+        <ol class="reihe">
+          @for (r of sicht()!.rows; track r.edge) {
+            <li class="zeile" [class.dran]="r.current" [class.wechsel]="wechsel() === r.edge" [class.gruppe]="r.party" [class.verbuendet]="r.ally && !r.party" [class.unten]="unten(r)" [attr.aria-current]="r.current ? 'step' : null">
+              <div class="haupt-zeile">
+                @if (spalte('init')) {
+                  @if (sicht()!.gm && initEdit() === r.edge) {
+                    <input class="init" type="number" step="1" [value]="r.init ?? ''" aria-label="Initiative" (keydown.enter)="initSetzen(r, $any($event.target).value)" (blur)="initSetzen(r, $any($event.target).value)" />
+                  } @else {
+                    <button type="button" class="init" [disabled]="!sicht()!.gm" (click)="initEdit.set(r.edge)" [attr.title]="sicht()!.gm ? 'Change initiative' : 'Initiative'">{{ zahl(r.init) }}</button>
+                  }
+                }
+                <span class="wer">
+                  @if (r.to) {
+                    <a [routerLink]="['/artikel', r.to]" [nwQuick]="r.to">{{ r.name }}</a>
+                  } @else {
+                    <span>{{ r.name }}</span>
+                  }
+                  @if (r.current) {
+                    <span class="dran-marke">{{ r.own ? 'your turn' : 'turn' }}</span>
+                  } @else if (sicht()!.gm && sicht()!.round > 0) {
+                    <button type="button" class="schalter setzen" [disabled]="laeuft()" (click)="tue({ op: 'turn', edge: r.edge })" [attr.aria-label]="'Make ' + r.name + ' current'" title="Make current — nothing counts down">▸</button>
+                  }
+                  @if (sicht()!.gm && !r.party) {
+                    <button type="button" class="schalter" [class.an]="r.revealed" (click)="tue({ op: 'flags', edge: r.edge, revealed: !r.revealed })"
+                            [attr.aria-pressed]="!!r.revealed" [attr.title]="r.revealed ? 'Shown to the players — click to hide' : 'Hidden from the players — click to show'">
+                      {{ r.revealed ? '👁' : '◌' }}
+                    </button>
+                  }
+                </span>
+                @if (spalte('ac') && r.ac !== undefined) {
+                  <span class="ac" title="Armour class">AC {{ r.ac }}</span>
+                }
+                @if (spalte('hp')) {
+                  <span class="tp" [attr.title]="tpTitel(r)">
+                    @if (r.hp !== undefined || r.hpMax !== undefined) {
+                      <span class="balken" aria-hidden="true"><span [style.width.%]="anteil(r)" [class.tief]="anteil(r) <= 50"></span></span>
+                      <span class="zahl">{{ r.hp ?? '?' }}/{{ r.hpMax ?? '?' }}</span>
+                    } @else if (r.hpState) {
+                      <span class="wort" [class]="'wort ' + r.hpState">{{ r.hpState }}</span>
+                    }
+                  </span>
+                }
+                @if (r.options) {
+                  <button type="button" class="klein auf" (click)="aufklappen(r.edge)" [attr.aria-expanded]="offenZeilen().has(r.edge)" [attr.aria-label]="(offenZeilen().has(r.edge) ? 'Hide options of ' : 'Show options of ') + r.name" title="What this combatant can do">{{ offenZeilen().has(r.edge) ? '▴' : '▾' }}</button>
+                }
+              </div>
+
+              @if (r.options && offenZeilen().has(r.edge)) {
+                <div class="optionen">
+                  @for (s of r.options.sections; track s.key) {
+                    @if (s.title) {
+                      <h3>{{ s.title }}</h3>
+                    }
+                    @if (s.intro) {
+                      <p class="eintrag">{{ s.intro }}</p>
+                    }
+                    @for (e of s.entries; track e.id) {
+                      <nw-text class="eintrag" [text]="e.text" [scopes]="e.scopes" [vorspann]="e.name + '.'" [vorspannZiel]="e.target" />
+                    }
+                  }
+                  @if (r.options.spells.length) {
+                    <h3>Spells</h3>
+                    <p class="zauber">
+                      @for (z of r.options.spells; track z.id; let letzter = $last) {
+                        <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id">{{ z.name }}</a>@if (z.level !== null) {<span class="dim"> ({{ z.level === 0 ? 'cantrip' : z.level }})</span>}@if (!letzter) {<span class="dim"> · </span>}
+                      }
+                    </p>
+                  }
+                </div>
+              }
+
+              @if (spalte('effects') && r.effects.length) {
+                <ul class="effekte" aria-label="Effects">
+                  @for (x of r.effects; track x.index) {
+                    <li [class.verborgen]="x.hidden" [attr.title]="effektTitel(x)">
+                      @if (x.rule) {
+                        <a [routerLink]="['/artikel', x.rule]" [nwQuick]="x.rule" [nwBegriff]="begriff(x.rule, x.name)">{{ x.name }}</a>
+                      } @else {
+                        <span>{{ x.name }}</span>
+                      }
+                      @if (x.rounds !== undefined) {
+                        <span class="runden">{{ x.rounds }}</span>
+                      }
+                      @if (sicht()!.gm) {
+                        <button type="button" class="weg" (click)="tue({ op: 'removeEffect', edge: r.edge, index: x.index })" [attr.aria-label]="'Remove ' + x.name">×</button>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+              @if (spalte('actions') && r.actions?.length) {
+                <p class="aktionen"><span class="dim">Actions:</span> {{ r.actions!.join(' · ') }}</p>
+              }
+              @if (sicht()!.gm && r.note) {
+                <p class="notiz dim">{{ r.note }}</p>
+              }
+
+              @if (sicht()!.gm && schnell().length) {
+                <div class="knoepfe">
+                  @for (q of schnell(); track q) {
+                    @if (q !== 'delay' || r.current) {
+                      <button type="button" class="klein" [disabled]="laeuft()" (click)="schnellTun(q, r)">{{ schnellText[q] }}</button>
+                    }
+                  }
+                </div>
+              }
+
+              @if (offen(); as o) {
+                @if (o.edge === r.edge && (o.was === 'damage' || o.was === 'heal')) {
+                  <form class="eingabe" (submit)="$event.preventDefault(); tpAendern(r, o.was, betrag.value)">
+                    <label>{{ o.was === 'damage' ? 'Damage' : 'Healing' }} <input #betrag type="number" min="0" step="1" inputmode="numeric" autofocus /></label>
+                    @if (o.was === 'damage') {
+                      <!-- Die Art entscheidet über Resistenz, Immunität, Verwundbarkeit (T-355). -->
+                      <label>
+                        Type
+                        <select aria-label="Damage type" (change)="schadensArt.set($any($event.target).value)">
+                          <option value="" [selected]="!schadensArt()">untyped</option>
+                          @for (a of schadensArten(); track a) {
+                            <option [value]="a" [selected]="a === schadensArt()">{{ a }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
+                    <button type="submit" class="klein">Apply</button>
+                    <button type="button" class="klein" (click)="offen.set(null)">Cancel</button>
+                  </form>
+                }
+                @if (o.edge === r.edge && o.was === 'effect') {
+                  <form class="eingabe effekt" (submit)="$event.preventDefault(); effektSetzen(r)">
+                    <div class="zustand">
+                      <nw-wahl label="Condition" [arten]="['Condition']" [anlegbar]="false" [wert]="zustand()" (wertChange)="zustand.set($event)" />
+                      <span class="dim">or</span>
+                      <input type="text" placeholder="Note (Bless, Hunter’s Mark …)" aria-label="Note" [value]="notiz()" (input)="notiz.set($any($event.target).value)" />
+                    </div>
+                    <label>Rounds <input type="number" min="1" step="1" inputmode="numeric" [value]="runden()" (input)="runden.set($any($event.target).value)" placeholder="until removed" /></label>
+                    <label>
+                      counts at the
+                      <select (change)="zeitpunkt.set($any($event.target).value)">
+                        <option value="end" [selected]="zeitpunkt() === 'end'">end</option>
+                        <option value="start" [selected]="zeitpunkt() === 'start'">start</option>
+                      </select>
+                      of
+                      <select (change)="anker.set($any($event.target).value)">
+                        @for (z of sicht()!.rows; track z.edge) {
+                          <option [value]="z.edge" [selected]="(anker() || r.edge) === z.edge">{{ z.edge === r.edge ? 'its own' : z.name + '’s' }} turn</option>
+                        }
+                      </select>
+                    </label>
+                    <label class="haken"><input type="checkbox" [checked]="verborgen()" (change)="verborgen.set($any($event.target).checked)" /> hidden from players</label>
+                    <button type="submit" class="klein" [disabled]="!zustand() && !notiz().trim()">Add effect</button>
+                    <button type="button" class="klein" (click)="offen.set(null)">Cancel</button>
+                  </form>
+                }
+              }
+            </li>
+          } @empty {
+            <li class="dim">{{ sicht()!.gm ? 'No combatants yet — add one below.' : 'Nobody has shown up yet.' }}</li>
+          }
+        </ol>
+
+        @if (sicht()!.gm) {
+          <form class="dazu" (submit)="$event.preventDefault(); dazu()">
+            <!-- Anlegen aus der Auswahl (T-333, T-131): „Create … as …" für eine Kreatur oder einen Statblock, der noch fehlt. -->
+            <nw-wahl label="Add a combatant" [arten]="['Creature', 'Statblock', 'Party']" [wert]="neu()" (wertChange)="neu.set($event)" />
+            <label class="haken" title="How many — each gets its own row, numbered">×<input type="number" class="anzahl" min="1" [max]="maxDazu" step="1" aria-label="How many" [value]="neuAnzahl()" (input)="neuAnzahl.set($any($event.target).value)" /></label>
+            <input type="number" step="1" aria-label="Initiative of the new combatant" placeholder="Init (roll)" [value]="neuInit()" (input)="neuInit.set($any($event.target).value)" />
+            <label class="haken"><input type="checkbox" [checked]="neuVerbuendet()" (change)="neuVerbuendet.set($any($event.target).checked)" /> ally</label>
+            <button type="submit" class="klein" [disabled]="!neu() || laeuft()">Add</button>
+          </form>
+        }
+      }
+    </section>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .tracker {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      padding: 0.6rem 0.75rem;
+    }
+    :host(:fullscreen) .tracker,
+    .tracker.gross {
+      font-size: 1.35rem;
+      min-height: 100%;
+      box-sizing: border-box;
+    }
+    :host(:fullscreen) {
+      background: var(--bg);
+      overflow: auto;
+      padding: 1rem;
+    }
+    .kopf {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem 0.6rem;
+      margin-bottom: 0.4rem;
+    }
+    h2 {
+      margin: 0;
+      font-family: var(--caps);
+      font-size: 1.1em;
+      color: var(--accent);
+    }
+    .kopf .name {
+      color: var(--ink);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .frei {
+      flex: 1;
+    }
+    button {
+      min-height: 36px;
+      min-width: 36px;
+    }
+    button.klein {
+      min-height: 30px;
+      min-width: 30px;
+      padding: 0 0.5rem;
+      font-size: 0.85em;
+    }
+    button.haupt {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .marke {
+      font-size: 0.75em;
+      padding: 0 0.35rem;
+      border-radius: 3px;
+      background: var(--chip);
+      color: var(--dim);
+      white-space: nowrap;
+    }
+    .marke.laeuft {
+      background: var(--accent);
+      color: var(--surface);
+    }
+    .reihe {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .zeile {
+      padding: 0.4rem 0.4rem;
+      border-top: 1px solid var(--line);
+      border-left: 4px solid transparent;
+    }
+    .zeile.dran {
+      border-left-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    /* Der Zugwechsel (T-334): kurz aufleuchten, aus den Marken der Seite. */
+    .zeile.wechsel {
+      animation: zugwechsel var(--motion-turn, 900ms) ease-out;
+    }
+    .zeile.wechsel .dran-marke {
+      animation: marke-auf var(--motion-turn, 900ms) ease-out;
+    }
+    @keyframes zugwechsel {
+      from {
+        background: var(--turn-flash, var(--accent-soft));
+        box-shadow: inset 0 0 0 2px var(--accent);
+      }
+    }
+    @keyframes marke-auf {
+      from {
+        transform: scale(1.35);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .zeile.wechsel,
+      .zeile.wechsel .dran-marke {
+        animation: none;
+      }
+    }
+    .marke.zaehler {
+      font-variant-numeric: tabular-nums;
+    }
+    .setzen {
+      font-size: 0.9em;
+    }
+    .auf {
+      margin-left: auto;
+    }
+    .optionen {
+      margin: 0.35rem 0 0.1rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      background: var(--paper);
+      font-size: 0.9em;
+    }
+    .optionen h3 {
+      margin: 0.35rem 0 0.15rem;
+      font-family: var(--caps);
+      font-size: 1em;
+      color: var(--heading);
+      border-bottom: 1px solid var(--line2);
+    }
+    .optionen h3:first-child {
+      margin-top: 0;
+    }
+    .optionen .eintrag {
+      display: block;
+      margin: 0.2rem 0;
+    }
+    .zauber {
+      margin: 0.2rem 0;
+    }
+    .zauber a {
+      color: var(--link);
+    }
+    .zeile.gruppe .wer a,
+    .zeile.verbuendet .wer a {
+      color: #3f7a4f;
+    }
+    .zeile.unten .wer {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+    .haupt-zeile {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.3rem 0.6rem;
+    }
+    .init {
+      width: 3.2em;
+      min-height: 32px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+    button.init:disabled {
+      opacity: 1;
+      color: var(--ink);
+      background: var(--chip);
+      border-color: transparent;
+    }
+    .wer {
+      flex: 1 1 10rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+    }
+    .wer a,
+    .wer > span:first-child {
+      font-weight: 600;
+      color: var(--ink);
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dran-marke {
+      font-size: 0.7em;
+      padding: 0 0.3rem;
+      border-radius: 3px;
+      background: var(--accent);
+      color: var(--surface);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .schalter {
+      min-height: 28px;
+      min-width: 28px;
+      padding: 0;
+      border-color: transparent;
+      background: none;
+      opacity: 0.6;
+    }
+    .schalter.an {
+      opacity: 1;
+    }
+    .ac {
+      font-variant-numeric: tabular-nums;
+      color: var(--dim);
+      white-space: nowrap;
+    }
+    .tp {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 7rem;
+    }
+    .balken {
+      flex: 1;
+      height: 6px;
+      min-width: 3rem;
+      border-radius: 3px;
+      background: var(--chip);
+      overflow: hidden;
+    }
+    .balken span {
+      display: block;
+      height: 100%;
+      background: #3f7a4f;
+    }
+    .balken span.tief {
+      background: var(--warn);
+    }
+    .zahl {
+      font-variant-numeric: tabular-nums;
+      color: var(--dim);
+    }
+    .wort {
+      font-size: 0.85em;
+      padding: 0 0.35rem;
+      border-radius: 3px;
+      background: var(--chip);
+    }
+    .wort.bloodied {
+      color: var(--warn);
+    }
+    .wort.down {
+      background: var(--warn);
+      color: var(--surface);
+    }
+    .effekte {
+      list-style: none;
+      margin: 0.3rem 0 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .effekte li {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0 0.15rem 0 0.35rem;
+      border-radius: 3px;
+      background: var(--chip);
+      font-size: 0.85em;
+    }
+    .effekte li.verborgen {
+      outline: 1px dashed var(--dim);
+      opacity: 0.8;
+    }
+    .effekte a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .runden {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      padding: 0 0.25rem;
+      border-radius: 2px;
+      background: var(--surface);
+    }
+    .weg {
+      min-height: 24px;
+      min-width: 24px;
+      padding: 0;
+      border: none;
+      background: none;
+    }
+    .aktionen,
+    .notiz {
+      margin: 0.25rem 0 0;
+      font-size: 0.85em;
+    }
+    .knoepfe {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-top: 0.3rem;
+    }
+    .eingabe,
+    .dazu {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem 0.6rem;
+      margin-top: 0.4rem;
+    }
+    .eingabe input[type='number'],
+    .dazu input[type='number'] {
+      width: 6rem;
+      min-height: 32px;
+    }
+    .zustand {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      flex: 1 1 100%;
+    }
+    .zustand input[type='text'] {
+      flex: 1 1 10rem;
+      min-height: 32px;
+    }
+    .haken {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .dazu input.anzahl {
+      width: 4rem;
+    }
+    .dazu {
+      border-top: 1px solid var(--line);
+      padding-top: 0.5rem;
+    }
+    .dim {
+      color: var(--dim);
+    }
+    .fehler {
+      color: var(--warn);
+      margin: 0.25rem 0;
+    }
+    @media (max-width: 640px) {
+      .tracker {
+        padding: 0.5rem;
+      }
+      .tp {
+        min-width: 0;
+        flex: 1 1 100%;
+      }
+    }
+  `,
+})
+export class Initiative {
+  /** Die Begegnung — in Play die der Sitzung (`activeEncounter`), auf ihrer Seite sie selbst. */
+  readonly begegnung = input.required<string>();
+  /** Gross gezeichnet, für den Beamer. */
+  readonly gross = input(false);
+
+  private readonly api = inject(Api);
+  private readonly router = inject(Router);
+  private readonly session = inject(Session);
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly glossar = inject(Glossar);
+
+  protected readonly sicht = signal<(TrackerView & { off?: boolean }) | null>(null);
+  protected readonly fehler = signal<string | null>(null);
+  /** Was der letzte Schaden ergab — Abwehr, Stand, Konzentrationsprobe (T-355). */
+  protected readonly ergebnis = signal<string | null>(null);
+  private readonly bestand = inject(Bestand);
+  /** Die Schadensarten aus der Zeile `DamageType`; die letzte gewählte bleibt für den nächsten Treffer. */
+  protected readonly schadensArten = computed(() => enumOptions(this.bestand.registry() ?? { enums: {}, interfaces: {} }, { enumRef: 'DamageType' }) ?? []);
+  protected readonly schadensArt = signal('');
+  protected readonly laeuft = signal(false);
+  protected readonly offen = signal<Offen>(null);
+  protected readonly initEdit = signal<string | null>(null);
+  /* Der Effekt in Arbeit. */
+  protected readonly zustand = signal('');
+  protected readonly notiz = signal('');
+  protected readonly runden = signal('1');
+  protected readonly zeitpunkt = signal<'start' | 'end'>('end');
+  protected readonly anker = signal('');
+  protected readonly verborgen = signal(false);
+  /* Ein neuer Teilnehmer. */
+  protected readonly neu = signal('');
+  /** Wie viele auf einmal (T-333) — je einer eine Zeile, durchgezählt. */
+  protected readonly neuAnzahl = signal('1');
+  protected readonly maxDazu = MAX_ADD;
+  protected readonly neuInit = signal('');
+  protected readonly neuVerbuendet = signal(false);
+
+  /** Aufgeklappte Zeilen (T-334). */
+  protected readonly offenZeilen = signal<ReadonlySet<string>>(new Set());
+  /** Die Zeile, deren Zug gerade begann — für die Animation. */
+  protected readonly wechsel = signal<string | null>(null);
+  protected readonly bewegung = signal(true);
+  private letzterDran: string | null | undefined = undefined;
+  private wechselUhr: ReturnType<typeof setTimeout> | undefined;
+
+  protected readonly schnell = computed<QuickAction[]>(() => this.sicht()?.rules.quickActions ?? []);
+  protected readonly eigenerZug = computed(() => !!this.sicht()?.rows.some((r) => r.current && r.own));
+  protected readonly schnellText: Record<QuickAction, string> = {
+    damage: '− Damage',
+    heal: '+ Heal',
+    effect: '+ Effect',
+    delay: 'Delay',
+    reroll: 'Reroll',
+    remove: 'Remove',
+  };
+  private lauf = 0;
+
+  constructor() {
+    effect(() => {
+      const id = this.begegnung();
+      untracked(() => {
+        this.sicht.set(null);
+        this.letzterDran = undefined;
+        this.offenZeilen.set(new Set());
+        void this.holen(id);
+      });
+    });
+    /* Live (T-116): die Begegnung ändert sich — ein Zug, ein Treffer, ein
+       Effekt — oder die Kampagne stellt anders ein. Dann neu fragen. */
+    const ab = inject(Live).onArtikel((ev) => {
+      if (ev.id === this.begegnung() || ev.type === 'Campaign') void this.holen(this.begegnung());
+    });
+    /* Etwas verpasst (`reset`, T-399): die Reihe neu fragen. */
+    const abNeu = inject(Live).onNeu((was) => {
+      if (was === 'reset') void this.holen(this.begegnung());
+    });
+    /* Wessen Zug begann? Beim ersten Laden keiner — sonst blinkte jede geöffnete Seite. */
+    effect(() => {
+      const v = this.sicht();
+      if (!v) return;
+      const dran = v.rows.find((r) => r.current)?.edge ?? null;
+      untracked(() => {
+        if (this.letzterDran !== undefined && dran && dran !== this.letzterDran && this.bewegung()) {
+          clearTimeout(this.wechselUhr);
+          this.wechsel.set(dran);
+          this.wechselUhr = setTimeout(() => this.wechsel.set(null), 1500);
+        }
+        this.letzterDran = dran;
+      });
+    });
+    void this.api
+      .prefs()
+      .then((p) => this.bewegung.set(p[TRACKER_MOTION_PREF] !== false))
+      .catch(() => undefined);
+    inject(DestroyRef).onDestroy(() => {
+      ab();
+      abNeu();
+      this.lauf += 1;
+      clearTimeout(this.wechselUhr);
+    });
+  }
+
+  protected aufklappen(edge: string): void {
+    const neu = new Set(this.offenZeilen());
+    if (neu.has(edge)) neu.delete(edge);
+    else neu.add(edge);
+    this.offenZeilen.set(neu);
+  }
+
+  protected async bewegungSchalten(): Promise<void> {
+    const an = !this.bewegung();
+    this.bewegung.set(an);
+    if (!an) this.wechsel.set(null);
+    try {
+      await this.api.setPref(TRACKER_MOTION_PREF, an ? null : false);
+    } catch {
+      /* Bleibt für diese Seite so; gespeichert wird beim nächsten Mal. */
+    }
+  }
+
+  /** Die Spielzeit: sechs Sekunden je Runde. */
+  protected spielzeit(runde: number): string {
+    const s = Math.max(0, runde - 1) * 6;
+    return `Round ${runde} — ${s < 60 ? `${s} seconds` : `${Math.floor(s / 60)} min ${s % 60} s`} of game time so far`;
+  }
+
+  private async holen(id: string): Promise<void> {
+    const n = ++this.lauf;
+    try {
+      const v = await this.api.tracker(id);
+      if (n === this.lauf) {
+        this.sicht.set(v);
+        this.fehler.set(null);
+      }
+    } catch (e) {
+      if (n === this.lauf) this.fehler.set(e instanceof Error ? e.message : 'The tracker did not load.');
+    }
+  }
+
+  protected spalte(c: string): boolean {
+    return !!this.sicht()?.rules.columns.includes(c as never);
+  }
+
+  protected async tue(op: TrackerOp): Promise<boolean> {
+    if (this.laeuft()) return false;
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      const r = await this.api.trackerOp(this.begegnung(), op);
+      this.ergebnis.set(r.text ?? null);
+      await this.holen(this.begegnung());
+      return true;
+    } catch (e) {
+      this.fehler.set(e instanceof Error ? e.message : 'That did not work.');
+      return false;
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  /** „Start" geht über den Kampfstart (T-203): er würfelt und nimmt eine Vorlage als Instanz ins Spiel (T-289). */
+  protected async starten(): Promise<void> {
+    if (this.laeuft()) return;
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      const r = await this.api.startEncounter(this.begegnung(), {});
+      await this.session.load(true);
+      if (r.encounter !== this.begegnung()) {
+        /* Begonnen hat eine Instanz: Play folgt dem Tisch, sonst ihre Seite. */
+        if (r.session) await this.router.navigate(['/play'], { queryParams: { session: r.session, map: null } });
+        else await this.router.navigate(['/artikel', r.encounter]);
+        return;
+      }
+      await this.holen(this.begegnung());
+    } catch (e) {
+      this.fehler.set(e instanceof Error ? e.message : 'The encounter did not start.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  protected beenden(): void {
+    if (confirm('End this encounter? The order stays as it is.')) void this.tue({ op: 'end' });
+  }
+
+  protected schnellTun(q: QuickAction, r: TrackerRow): void {
+    if (q === 'damage' || q === 'heal' || q === 'effect') {
+      const jetzt = this.offen();
+      if (jetzt?.edge === r.edge && jetzt.was === q) return this.offen.set(null);
+      if (q === 'effect') {
+        this.zustand.set('');
+        this.notiz.set('');
+        this.runden.set('1');
+        this.zeitpunkt.set('end');
+        this.anker.set('');
+        this.verborgen.set(false);
+      }
+      /* Die Schadensarten stehen im Register — einmal laden, dann liegt es da. */
+      if (q === 'damage') void this.bestand.load();
+      this.offen.set({ edge: r.edge, was: q });
+      return;
+    }
+    if (q === 'delay') void this.tue({ op: 'delay' });
+    else if (q === 'reroll') void this.tue({ op: 'init', edge: r.edge, reroll: true });
+    else if (q === 'remove' && confirm(`Remove ${r.name} from the encounter?`)) void this.tue({ op: 'remove', edge: r.edge });
+  }
+
+  protected async tpAendern(r: TrackerRow, was: 'damage' | 'heal', roh: string): Promise<void> {
+    const n = Math.abs(Number(roh));
+    if (!roh.trim() || !Number.isFinite(n)) return;
+    /* Schaden geht mit seiner Art an den Server, der nach der Abwehr abzieht (T-355). */
+    const op: TrackerOp = was === 'damage' ? { op: 'damage', edge: r.edge, amount: n, ...(this.schadensArt() ? { type: this.schadensArt() } : {}) } : { op: 'hp', edge: r.edge, delta: n };
+    if (await this.tue(op)) this.offen.set(null);
+  }
+
+  protected async effektSetzen(r: TrackerRow): Promise<void> {
+    const n = Number(this.runden());
+    const ok = await this.tue({
+      op: 'effect',
+      edge: r.edge,
+      entry: {
+        ...(this.zustand() ? { rule: this.zustand() } : { text: this.notiz().trim() }),
+        ...(this.runden().trim() && Number.isFinite(n) && n > 0 ? { rounds: n } : {}),
+        ...(this.anker() && this.anker() !== r.edge ? { anchor: this.anker() } : {}),
+        at: this.zeitpunkt(),
+        ...(this.verborgen() ? { hidden: true } : {}),
+      },
+    });
+    if (ok) this.offen.set(null);
+  }
+
+  protected initSetzen(r: TrackerRow, roh: string): void {
+    if (this.initEdit() !== r.edge) return;
+    this.initEdit.set(null);
+    const n = Number(roh);
+    if (roh.trim() && Number.isFinite(n) && n !== r.init) void this.tue({ op: 'init', edge: r.edge, value: n });
+  }
+
+  protected async dazu(): Promise<void> {
+    const init = Number(this.neuInit());
+    const ok = await this.tue({
+      op: 'add',
+      to: this.neu(),
+      ...(this.neuInit().trim() && Number.isFinite(init) ? { init } : {}),
+      ...(this.neuVerbuendet() ? { ally: true } : {}),
+      ...(Number(this.neuAnzahl()) > 1 ? { count: Number(this.neuAnzahl()) } : {}),
+    });
+    if (ok) {
+      this.neu.set('');
+      this.neuAnzahl.set('1');
+      this.neuInit.set('');
+      this.neuVerbuendet.set(false);
+    }
+  }
+
+  protected vollbild(): void {
+    const el = this.host.nativeElement as HTMLElement;
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void el.requestFullscreen?.();
+  }
+
+  protected zahl(n: number | null): string {
+    if (n === null) return '–';
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  protected anteil(r: TrackerRow): number {
+    if (r.hp === undefined || !r.hpMax) return 100;
+    return Math.max(0, Math.min(100, (r.hp / r.hpMax) * 100));
+  }
+
+  protected unten(r: TrackerRow): boolean {
+    return r.hpState === 'down' || (r.hp !== undefined && r.hp <= 0 && !r.party);
+  }
+
+  protected tpTitel(r: TrackerRow): string {
+    if (r.hp !== undefined || r.hpMax !== undefined) return `Hit points ${r.hp ?? '?'} of ${r.hpMax ?? '?'}`;
+    return r.hpState ? `Health: ${r.hpState}` : '';
+  }
+
+  protected effektTitel(x: TrackerRow['effects'][number]): string {
+    const teile = [x.name];
+    if (x.rounds !== undefined) teile.push(`${x.rounds} round${x.rounds === 1 ? '' : 's'} left`);
+    if (x.expires) teile.push(`ends at the ${x.expires.at} of ${x.expires.who}’s turn in round ${x.expires.round}`);
+    if (x.source) teile.push(`from ${x.source}`);
+    if (x.hidden) teile.push('hidden from players');
+    return teile.join(' — ');
+  }
+
+  protected begriff(id: string | undefined, name: string): string | null {
+    return this.glossar.begriffZu(id, name);
+  }
+}

@@ -87,15 +87,33 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Proficiencies.schema,
   },
 
-  /* Eine Wahl unter Übungen: Klasse, Unterklasse, Abstammung, Hintergrund (M3). */
-  ProficiencyChoice: {
-    name: 'ProficiencyChoice',
-    label: 'Proficiency choice',
+  /* Was zu wählen ist: Klasse, Unterklasse, Abstammung, Hintergrund,
+     Talent (REQ-238, E-015 a). Die Antworten stehen an der Figur (`chose`). */
+  Choices: {
+    name: 'Choices',
+    label: 'Choices',
     abstract: true,
-    schema: g.ProficiencyChoice.schema,
+    schema: g.Choices.schema,
+  },
+
+  /* Was ein Artikel an der Figur verändert (REQ-238, REQ-063, E-025 a):
+     heute nimmt ihn der Gegenstand; gerechnet wird beim Lesen (`effectsAt`). */
+  Effects: {
+    name: 'Effects',
+    label: 'Effects',
+    abstract: true,
+    schema: g.Effects.schema,
   },
 
   /* Eine Stufe von 1 bis 20, die Begegnung und Szene teilen. */
+  /** Wann und wo eine Karte oder Begegnung gespielt wurde (T-289) — nur an der Instanz gefüllt. */
+  Played: {
+    name: 'Played',
+    label: 'Played',
+    abstract: true,
+    schema: g.Played.schema,
+  },
+
   Difficulty: {
     name: 'Difficulty',
     label: 'Difficulty',
@@ -144,6 +162,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Visibility',
     abstract: true,
     schema: g.Visibility.schema,
+  },
+
+  /* Die Regeln je Gruppe an der Kampagne (T-252, E-098). Ein eigener
+     Typ und kein Feld von CampaignInfo: das sind die Regeloptionen, und
+     wer sieht was ist keine Option, wie gespielt wird. */
+  VisibilityRules: {
+    name: 'VisibilityRules',
+    label: 'Visibility by group',
+    abstract: true,
+    schema: g.VisibilityRules.schema,
   },
 
   /** Marken — ein Bestandteil und keine Eigenschaft der Entität. */
@@ -208,6 +236,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Creature: {
     name: 'Creature',
+    icon: 'user',
     area: 'world',
     label: 'Creature',
     /**
@@ -257,7 +286,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
     views: {
       /* Die Spalten im Kompendium (W7, `listColumns`). */
-      overview: [{ id: 'c-ov', el: 'fields', fields: ['Creature.kind', 'Creature.species', 'Creature.role'] }],
+      overview: [{ id: 'c-ov-img', el: 'image' }, { id: 'c-ov', el: 'fields', fields: ['Creature.kind', 'Creature.species', 'Creature.role'] }],
       full: [
         { id: 'c-sheet', el: 'sheet' },
         {
@@ -278,6 +307,8 @@ export const interfaces: Record<string, InterfaceDef> = {
               label: 'Overview',
               layout: [
                 { id: 'c-img', el: 'image' },
+                /* Das Token ihres Statblocks, zum Einstellen (T-297). */
+                { id: 'c-token', el: 'token' },
                 { id: 'c-desc', el: 'description' },
                 /* **Der Statblock steht hier und nicht hinter einem
                    Sprung.** Seine Felder gehören zu dem, was man gerade
@@ -302,9 +333,16 @@ export const interfaces: Record<string, InterfaceDef> = {
             },
             /* Was im Kampf zählt. Die Zahlen stehen oben im Bogen; hier
                steht, was man mit ihnen tut. */
-            { id: 'combat', label: 'Combat', layout: [{ id: 'c-c', el: 'composed' }] },
+            /* „Your turn" vor den Abschnitten (T-247): eine Liste nach
+               Aktionsart, und was die Hände sperren, steht mit Grund da. */
+            { id: 'combat', label: 'Combat', layout: [{ id: 'c-turn', el: 'turn' }, { id: 'c-c', el: 'composed' }] },
+            /* Die Zauber (T-246), nur an einer Kreatur, die zaubert. */
+            { id: 'spells', label: 'Spells', layout: [{ id: 'c-spells', el: 'spells', when: { relation: 'casts' } }] },
             { id: 'gear', label: 'Gear', layout: [{ id: 'c-inv', el: 'inventory' }] },
-            { id: 'craft', label: 'Craft', layout: [{ id: 'c-craft', el: 'crafting' }] },
+            { id: 'craft', label: 'Crafting', layout: [{ id: 'c-craft', el: 'crafting' }] },
+            /* Was die Kampagne der Figur gezeigt hat (T-247) — an der
+               Spielerfigur, nicht an jedem NSC; gesiebt am Server. */
+            { id: 'campaign', label: 'Campaign', layout: [{ id: 'c-camp', el: 'campaign', when: { type: 'PlayerCharacter' } }] },
             /* Wer wie zu wem steht, und woran sie sonst hängt. */
             {
               id: 'ties',
@@ -326,13 +364,21 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Player character',
     extends: ['Creature'],
     schema: merge(g.CharacterInfo),
+    /* Anlegen führt in den Assistenten (T-425, REQ-433, E-169): Abstammung,
+       Hintergrund und Klasse sind Kanten mit Wahlen, die keine Feldmaske
+       fragen kann. */
+    views: {
+      create: [{ id: 'pc-builder', el: 'builder' }],
+    },
   },
 
   Place: {
     name: 'Place',
+    icon: 'map-pin',
     area: 'world',
     label: 'Place',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'ReadAloud', 'Secrets'],
+    /* `Source`: ein Ort aus einem Buch nennt Quelle und Seite (T-175). */
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'ReadAloud', 'Secrets', 'Source'],
     schema: merge(g.LocationInfo, g.Explored),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -348,13 +394,39 @@ export const interfaces: Record<string, InterfaceDef> = {
         /* Worauf man hier würfelt. Die Tabelle gehört nicht dem Ort — sie
            gilt für ihn, und das steht an der Kante `tableFor`. */
         { id: 'o-table', el: 'table' },
+        /* Was in diesem Ort liegt und wer hier lebt (T-425): je in der
+           Ansicht seiner Art — die Unterorte als Liste, die Bewohner als
+           Karten. */
+        { id: 'o-within', el: 'collection', text: 'Places within', path: [{ relation: 'partOf', dir: 'in' }], types: ['Place'], show: 'list', sort: { by: 'name' } },
+        { id: 'o-residents', el: 'collection', text: 'Residents', path: [{ relation: 'livesIn', dir: 'in' }], types: ['Creature'], show: 'tiles', sort: { by: 'name' } },
         { id: 'o-r', el: 'relations' },
       ],
     },
   },
 
+  /**
+   * **Ein Laden ist ein Ort** (T-129): er liegt in einer Gasse, hat ein
+   * Bild und Geheimnisse, und eine Fraktion kann ihn kontrollieren
+   * (`controls`). Dazu führt er Waren (`sells`) und gibt Rabatte
+   * (`discount`); wer ihn hält, steht an `shopkeeper`.
+   */
+  Shop: {
+    name: 'Shop',
+    area: 'world',
+    label: 'Shop',
+    extends: ['Place'],
+    schema: merge(g.ShopInfo),
+    /* Die Anordnung des Orts und die Waren davor: wer einen Laden
+       aufschlägt, will wissen, was er führt — die Punktreise und die
+       Würfeltabelle des Orts bleiben dabei, wenn er sie hat. */
+    views: {
+      full: { adjust: { extra: [{ id: 'shop-wares', el: 'wares' }], order: ['o-img', 'o-desc', 'o-f', 'shop-wares'] } },
+    },
+  },
+
   Faction: {
     name: 'Faction',
+    icon: 'flag',
     area: 'world',
     label: 'Faction',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Secrets'],
@@ -363,6 +435,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Article: {
     name: 'Article',
+    icon: 'sticky-note',
     area: 'world',
     label: 'Article',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Todos', 'Lore', 'Secrets'],
@@ -374,6 +447,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** The reuse pool: the shared root of conditions, actions, features, feats … (D48). */
   Rule: {
     name: 'Rule',
+    icon: 'book',
     area: 'rules',
     label: 'Rule Element',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Vars'],
@@ -391,9 +465,12 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Feat: {
     name: 'Feat',
+    icon: 'star',
     area: 'rules',
     label: 'Feat',
-    extends: ['Rule'],
+    /* Ein Talent fragt selbst (+1 auf welches Attribut?, REQ-238) und
+       wirkt wie ein Gegenstand (T-180, `effectsAt` liest es schon). */
+    extends: ['Rule', 'Choices', 'Effects'],
     schema: merge(g.FeatInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
@@ -402,6 +479,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Skill: {
     name: 'Skill',
+    icon: 'target',
     area: 'rules',
     label: 'Skill',
     extends: ['Rule'],
@@ -411,6 +489,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Eine Sprache (M6): war ein Wort in einer Aufzählungszeile. */
   Language: {
     name: 'Language',
+    icon: 'languages',
     area: 'rules',
     label: 'Language',
     extends: ['Rule'],
@@ -425,13 +504,14 @@ export const interfaces: Record<string, InterfaceDef> = {
      Feldern, also Arten unter `Rule`. Was sie gewähren, steht dreifach
      getrennt da, je nach Sorte: Übungen in `Proficiencies` (dieselbe Gruppe
      wie am Statblock, nur heisst sie hier „gewährt"), Wahlen in
-     `ProficiencyChoice`, Merkmale an der Kante `grants` mit Stufe. Die
+     `Choices` (die Antworten an der Figur, `chose`), Merkmale an der Kante `grants` mit Stufe. Die
      Figur zeigt über `hasClass`, `hasAncestry`, `hasBackground` darauf. */
   Class: {
     name: 'Class',
+    icon: 'graduation-cap',
     area: 'rules',
     label: 'Class',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.ClassInfo, g.ClassCasting),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -439,14 +519,14 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'cla-ov', el: 'fields', fields: ['Class.hitDie', 'Class.primaryAbility', 'Class.casterProgression'] }] },
+    views: { overview: [{ id: 'cla-ov-img', el: 'image' }, { id: 'cla-ov', el: 'fields', fields: ['Class.hitDie', 'Class.primaryAbility', 'Class.casterProgression'] }] },
   },
 
   Subclass: {
     name: 'Subclass',
     area: 'rules',
     label: 'Subclass',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.SubclassInfo, g.ClassCasting),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -454,14 +534,15 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'sub-ov', el: 'fields', fields: ['Subclass.shortName', 'Subclass.casterProgression'] }] },
+    views: { overview: [{ id: 'sub-ov-img', el: 'image' }, { id: 'sub-ov', el: 'fields', fields: ['Subclass.shortName', 'Subclass.casterProgression'] }] },
   },
 
   Ancestry: {
     name: 'Ancestry',
+    icon: 'dna',
     area: 'rules',
     label: 'Ancestry',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.AncestryInfo),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -469,14 +550,15 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'anc-ov', el: 'fields', fields: ['Ancestry.size', 'Ancestry.speed'] }] },
+    views: { overview: [{ id: 'anc-ov-img', el: 'image' }, { id: 'anc-ov', el: 'fields', fields: ['Ancestry.size', 'Ancestry.speed'] }] },
   },
 
   Background: {
     name: 'Background',
+    icon: 'id-card',
     area: 'rules',
     label: 'Background',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.BackgroundInfo),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -484,12 +566,36 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
   },
 
+  /** Wie Spielende zu ihren Attributswerten kommen (E-016 a): ein Artikel je Verfahren. */
+  AbilityMethod: {
+    name: 'AbilityMethod',
+    area: 'rules',
+    label: 'Ability score method',
+    extends: ['Rule'],
+    schema: merge(g.AbilityMethodInfo),
+    views: { overview: [{ id: 'abm-ov', el: 'fields', fields: ['AbilityMethod.method', 'AbilityMethod.scope'] }] },
+  },
+
+  /** Wie Spielende zu ihrer Startausrüstung kommen (REQ-250, T-096): ein Artikel je Verfahren. */
+  EquipmentMethod: {
+    name: 'EquipmentMethod',
+    area: 'rules',
+    label: 'Starting equipment method',
+    extends: ['Rule'],
+    schema: merge(g.EquipmentMethodInfo),
+    views: { overview: [{ id: 'eqm-ov', el: 'fields', fields: ['EquipmentMethod.method', 'EquipmentMethod.gold', 'EquipmentMethod.budget'] }] },
+  },
+
   /** Ein Zustand, den man hat — und die Art, die `Vitals.conditions` verlangt (D48). */
   Condition: {
     name: 'Condition',
+    icon: 'heart',
     area: 'rules',
     label: 'Condition',
-    extends: ['Rule'],
+    /* Ein Zustand wirkt wie ein Gegenstand (T-275): gepackt deckelt das
+       Tempo auf 0, geblendet gibt Nachteil auf eigene Angriffe —
+       `effectsAt` liest `Vitals.conditions` und die Initiative. */
+    extends: ['Rule', 'Effects'],
     schema: merge(g.ConditionInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
@@ -531,20 +637,56 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Feature',
     area: 'rules',
     label: 'Feature',
-    extends: ['Rule'],
+    /* Ein Merkmal fragt selbst (Fighting Style, Ability Score
+       Improvement); gewährt eine Klasse es mehrmals, fragt es jedes Mal
+       (T-107, E-027). Seine Wirkungen gelten, sobald es gewährt ist
+       (T-180, `effectsAt`). */
+    extends: ['Rule', 'Choices', 'Effects'],
     schema: merge(g.FeatureInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
     views: { overview: [{ id: 'ftr-ov', el: 'fields', fields: ['Feature.featureType'] }] },
   },
 
-  /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48). */
+  /**
+   * **Gegenstandsmerkmal** (T-324, E-163): die Regel, die an einen
+   * Gegenstand kommt — wie ein Monstermerkmal an den Statblock. Am
+   * Grundgegenstand steht davon nichts; er zeigt mit einer Kante darauf,
+   * und welche Kante, sagt die Sorte: `hasProperty` auf eine Eigenschaft,
+   * `enchantedWith` (am Stück) auf ein Enhancement.
+   */
+  ItemFeature: {
+    name: 'ItemFeature',
+    area: 'rules',
+    label: 'Item feature',
+    abstract: true,
+    /* Bild, Begleittext, Geheimnisse und Fakten, weil eine Variante wie
+       Flame Tongue sie als Gegenstand trug — Migration 163 zieht sie mit. */
+    extends: ['Rule', 'Effects', 'Image', 'Lore', 'Secrets', 'Facts'],
+    schema: merge(g.ItemFeatureInfo),
+  },
+
+  /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48), seit T-324 ein Gegenstandsmerkmal. */
   ItemProperty: {
     name: 'ItemProperty',
     area: 'rules',
     label: 'Item property',
-    extends: ['Rule'],
+    extends: ['ItemFeature'],
     schema: merge(g.ItemPropertyInfo),
+  },
+
+  /**
+   * **Enhancement** (T-300, T-324): +1 Weapon, Silvered, Adamantine — kommt
+   * mit `enchantedWith` an ein Stück; Name, Preis, Seltenheit und Boni des
+   * Stücks rechnet das Lesen (`enhanceItem`, D8).
+   */
+  Enhancement: {
+    name: 'Enhancement',
+    area: 'rules',
+    label: 'Enhancement',
+    extends: ['ItemFeature'],
+    schema: merge(g.EnhancementInfo),
+    views: { overview: [{ id: 'enh-ov', el: 'fields', fields: ['Enhancement.rarity', 'ItemFeature.appliesTo'] }] },
   },
 
   /**
@@ -553,6 +695,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Spell: {
     name: 'Spell',
+    icon: 'sparkles',
     area: 'rules',
     label: 'Spell',
     extends: ['Rule'],
@@ -580,13 +723,14 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Falle oder Gefahr (M7). Auf der Karte über `marker`. */
   Hazard: {
     name: 'Hazard',
+    icon: 'target',
     area: 'world',
     label: 'Hazard',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Secrets'],
     schema: merge(g.HazardInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'haz-ov', el: 'fields', fields: ['Hazard.kind', 'Hazard.category', 'Hazard.threat'] }] },
+    views: { overview: [{ id: 'haz-ov-img', el: 'image' }, { id: 'haz-ov', el: 'fields', fields: ['Hazard.kind', 'Hazard.category', 'Hazard.threat'] }] },
   },
 
   /**
@@ -604,18 +748,20 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** Gottheit (M7); Anhänger über die Kante `worships`. */
   Deity: {
     name: 'Deity',
+    icon: 'star',
     area: 'world',
     label: 'Deity',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets'],
     schema: merge(g.DeityInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'dei-ov', el: 'fields', fields: ['Deity.pantheon', 'Deity.alignment', 'Deity.domains'] }] },
+    views: { overview: [{ id: 'dei-ov-img', el: 'image' }, { id: 'dei-ov', el: 'fields', fields: ['Deity.pantheon', 'Deity.alignment', 'Deity.domains'] }] },
   },
 
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',
+    icon: 'heart',
     area: 'rules',
     label: 'Statblock',
     /* M5: `Proficiencies` (von der Kreatur herüber), `Lore` und `Image`
@@ -629,12 +775,15 @@ export const interfaces: Record<string, InterfaceDef> = {
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
       /* Die Spalten im Kompendium (W7, `listColumns`). */
-      overview: [{ id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType', 'Statblock.alignment'] }],
-      /* Der Statblock neben der Initiative (REQ-211, D53) ist `quick`: die
-         Zahlen und was er kann, ohne Beziehungen und Fliesstext. Die
-         Grundanordnung von `quick` (Bild, Beschreibung, Passagen) zeigte an
-         einem Statblock nichts. */
-      quick: [{ id: 's-q-sb', el: 'statblock' }],
+      /* Ein Verweis sagt, was man vor sich hat: Herausforderung, Grösse,
+         Art (T-206). Die Gesinnung steht im Bogen. */
+      overview: [{ id: 's-ov-img', el: 'image' }, { id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType'] }],
+      /* **Die Kurzansicht sind die Kennzahlen** (T-206, Leitung 15.10.):
+         AC, HP, Bewegung, Initiative, passive Wahrnehmung, CR in einer
+         Reihe — Karte, Popup und Token. Bis dahin stand hier der ganze
+         Bogen (REQ-211), und die Kurzansicht war länger als die Seite
+         daneben; der Bogen gehört zu `full`. Das Bild zuletzt (T-346). */
+      quick: [{ id: 's-q-stats', el: 'stats' }, { id: 's-q-img', el: 'image' }],
       /* **Wie im Monster Manual** (W2, Leitung 13.10.): das Element
          `statblock` zeichnet Kopf, Werte und die Abschnitte aus
          `composedOf` — es ersetzt Feldtabelle und `composed` für die
@@ -642,6 +791,11 @@ export const interfaces: Record<string, InterfaceDef> = {
          Statblock sonst trägt (Marken, Stand, Quelle …), steht weiter in
          der Feldtabelle darunter. */
       full: [
+        /* Das Bild obenan (T-211): seit dem Lauf der 5e.tools-Bilder hat
+           fast jeder Statblock eins, und der Bogen zeigt es nicht. */
+        { id: 's-img', el: 'image' },
+        /* Das Token, wie es auf der Karte steht, zum Einstellen (T-297). */
+        { id: 's-token', el: 'token' },
         { id: 's-sb', el: 'statblock' },
         { id: 's-f', el: 'fields', fields: 'all', except: ['Statblock', 'Abilities', 'Proficiencies'] },
         { id: 's-b', el: 'prose', fields: 'all' },
@@ -658,9 +812,10 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Item: {
     name: 'Item',
+    icon: 'box',
     area: 'world',
     label: 'Item',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts', 'Effects'],
     schema: merge(g.ItemInfo, g.Footprint),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
@@ -669,15 +824,21 @@ export const interfaces: Record<string, InterfaceDef> = {
        als Kopfzeilen. Waffe, Rüstung und Material erben die Anordnung;
        das Element zeichnet ihre Karten mit. */
     views: {
-      overview: [{ id: 'ite-ov', el: 'fields', fields: ['Item.itemType', 'Item.rarity', 'Item.attunement'] }],
+      overview: [{ id: 'ite-ov-img', el: 'image' }, { id: 'ite-ov', el: 'fields', fields: ['Item.itemType', 'Item.rarity', 'Item.attunement'] }],
       full: [
         { id: 'it-img', el: 'image' },
         { id: 'it-book', el: 'item' },
+        /* Form, Stapelgrösse und Inventarbild (T-142): das Element malt
+           und zeigt sie, das Buch nimmt sie nicht in seine Zusatzzeilen. */
+        { id: 'it-shape', el: 'shape' },
         { id: 'it-desc', el: 'description' },
         { id: 'it-f', el: 'fields', fields: 'all', except: ['Item', 'Weapon', 'Armor', 'Material'] },
         { id: 'it-linked', el: 'linked' },
         { id: 'it-b', el: 'prose', fields: 'all' },
         { id: 'it-c', el: 'composed' },
+        /* Was man mit einem Werkzeug fertigt (T-196) — an jedem anderen
+           Gegenstand zeichnet das Element nichts. */
+        { id: 'it-craft', el: 'crafting' },
         { id: 'it-used', el: 'usedBy' },
         { id: 'it-stand', el: 'standing' },
         { id: 'it-r', el: 'relations' },
@@ -687,24 +848,26 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Weapon: {
     name: 'Weapon',
+    icon: 'sword',
     area: 'world',
     label: 'Weapon',
     extends: ['Item'],
     schema: merge(g.WeaponInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'wea-ov', el: 'fields', fields: ['Weapon.category', 'Weapon.damage', 'Weapon.damageType', 'Item.rarity'] }] },
+    views: { overview: [{ id: 'wea-ov-img', el: 'image' }, { id: 'wea-ov', el: 'fields', fields: ['Weapon.category', 'Weapon.damage', 'Weapon.damageType', 'Item.rarity'] }] },
   },
 
   Armor: {
     name: 'Armor',
+    icon: 'shield',
     area: 'world',
     label: 'Armor',
     extends: ['Item'],
     schema: merge(g.ArmorInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'arm-ov', el: 'fields', fields: ['Armor.armorType', 'Armor.ac', 'Armor.strength', 'Armor.stealthDisadvantage'] }] },
+    views: { overview: [{ id: 'arm-ov-img', el: 'image' }, { id: 'arm-ov', el: 'fields', fields: ['Armor.armorType', 'Armor.ac', 'Armor.strength', 'Armor.stealthDisadvantage'] }] },
   },
 
   Material: {
@@ -721,6 +884,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Party: {
     name: 'Party',
+    icon: 'users',
     area: 'world',
     label: 'Party',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Notes'],
@@ -731,7 +895,11 @@ export const interfaces: Record<string, InterfaceDef> = {
      dieselben Beziehungen wie eine Figur. */
     views: {
       full: [
+        /* Die Gruppe nimmt `Image` und zeigte es nirgends (T-211). */
+        { id: 'p-img', el: 'image' },
         { id: 'p-desc', el: 'description' },
+        /* Die Reise (T-350, REQ-170): was die Zähler heissen, und die zwei Schritte. */
+        { id: 'p-travel', el: 'travel' },
         { id: 'p-f', el: 'fields', fields: 'all' },
         { id: 'p-inv', el: 'inventory' },
         { id: 'p-craft', el: 'crafting' },
@@ -742,6 +910,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Inventory: {
     name: 'Inventory',
+    icon: 'backpack',
     area: 'rules',
     label: 'Inventory',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
@@ -765,23 +934,142 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
-   * Die Sprosse der Erzählung. Kampagne, Sitzung und Szene sind eigene
-   * Arten, weil sie eigene Felder und Ansichten tragen; **Arc und Kapitel
-   * sind Wörter** in `Story.kind` (Abgleich A5, Regel T2, 7.10.) — sie
-   * trugen als Zeilen kein eigenes Feld und keine Kante. Darum ist `Story`
-   * nicht mehr abstrakt: ein Arc *ist* eine Story mit `kind: 'arc'`.
-   * Braucht eine Sprosse einmal eigene Felder, wird sie eine Zeile, die von
-   * `Story` erbt — wie `Session`. Die Hierarchie trägt `partOf`.
+   * Die Sprosse der Erzählung. Kampagne, Arc, Sitzung und Szene sind eigene
+   * Arten, weil sie eigene Felder und Ansichten tragen; was darüber hinaus
+   * eine Sprosse ist (das Abenteuer selbst, ein Prolog), ist ein Wort in
+   * `Story.kind` (Abgleich A5, Regel T2). Darum ist `Story` nicht
+   * abstrakt. **Der Arc war bis 14.10. ein Wort** (`kind: 'arc'`) — mit
+   * E-026 bekam er eigene Felder (Stufen, Hook, Ausgang) und ist eine
+   * Zeile, die von `Story` erbt, wie `Session`; ein Kapitel eines
+   * Abenteuers ist ein Arc. Die Hierarchie trägt `partOf`.
    */
   /* Bereich `story` (bis 13.10. `history`): was nur die Kampagne
      betrifft — sie, ihre Sitzungen, Szenen und Aufträge. Die Weltgeschichte
      (`World`, `Event`) steht unter `world`. */
   Story: {
     name: 'Story',
+    icon: 'book-open',
     area: 'story',
     label: 'Story',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
+    /* **Was ohne Rang zu einer Geschichte gehört** (T-425, löst „Contains"
+       aus T-422 ab): die Szenen eines Arcs, die Begegnungen einer Szene —
+       als Kacheln in der Kurzansicht ihrer Art, gleich nach den Teilen
+       (Position 65 liegt zwischen `l-parts` und `l-c`). Was mit Rang
+       dasteht, zeigt der Lesefluss. */
+    views: {
+      full: {
+        adjust: {
+          extra: [
+            {
+              id: 'st-contains',
+              el: 'collection',
+              text: 'Contains',
+              path: [{ relation: 'partOf', dir: 'in' }],
+              types: ['Story', 'Encounter'],
+              unranked: true,
+              show: 'tiles',
+              groupBy: 'type',
+              pos: 65,
+            },
+          ],
+        },
+      },
+    },
+  },
+
+  /**
+   * **Ein Arc ist ein Kapitel der Geschichte** (E-026, REQ-252): eine
+   * Kampagne hat Arcs, ein Arc Sitzungen und Szenen. Ein Kapitel eines
+   * importierten Abenteuers ist dieselbe Art — so lässt es sich mit allen
+   * Szenen darunter in die eigene Kampagne holen (`take`, als Fassung
+   * in der Kampagnenebene, E-018 a), und es steht dort, wo ein eigener Arc
+   * stünde.
+   */
+  Arc: {
+    name: 'Arc',
+    area: 'story',
+    label: 'Arc',
+    extends: ['Story'],
+    schema: merge(g.ArcInfo),
+  },
+
+  /**
+   * **Ein Kapitel ist die Lesestruktur eines Buchs** (T-108, E-029 a): ein
+   * Regelbuch („Chapter 9: Combat") und ein Abenteuer haben Kapitel, eine
+   * Kampagne hat Arcs. Ein Kapitel besteht aus **Teilen** — Überschriften,
+   * Absätzen, Vorlesetexten, Verweisen, Szenen —, jeder ein eigener Artikel,
+   * in der Reihenfolge von `partOf.rank`. **Ein Kapitel eines offiziellen
+   * Abenteuers gibt es zweimal, und seine Teile einmal:** als Chapter zum
+   * Lesen und als Arc zum Spielen (`chapterOf`), beide über denselben
+   * Szenen. Ohne Bereich: Kapitel liest man in der Leseansicht, nicht in
+   * einer Liste.
+   */
+  Chapter: {
+    name: 'Chapter',
+    icon: 'book-open',
+    label: 'Chapter',
+    extends: ['Identity', 'Prose', 'Description', 'Visibility', 'Tags', 'Source', 'Notes'],
+    schema: merge(g.ChapterInfo),
+  },
+
+  /**
+   * **Ein Teil eines Kapitels** (T-108, E-028): was ein Buch Absatz für
+   * Absatz sagt. Jeder Teil ist ein Artikel, damit man ihn einzeln
+   * wiederverwendet — einen Vorlesetext in die eigene Szene holt. Teile
+   * stehen **in keiner Liste und sind kein Verweisziel nach Namen**
+   * (`isBookPart`): hundertfünfzigtausend Absätze, die „Surprise" heissen
+   * können, machten jeden `[[Verweis]]` mehrdeutig. Gefunden werden sie in
+   * der Leseansicht und über ihr Kapitel.
+   */
+  BookPart: {
+    name: 'BookPart',
+    label: 'Book part',
+    abstract: true,
+    extends: ['Identity', 'Visibility', 'Tags', 'Source', 'Notes'],
+  },
+
+  Heading: {
+    name: 'Heading',
+    label: 'Heading',
+    extends: ['BookPart'],
+    schema: merge(g.HeadingInfo),
+  },
+
+  Paragraph: {
+    name: 'Paragraph',
+    label: 'Paragraph',
+    extends: ['BookPart', 'Prose'],
+    schema: merge(g.ParagraphInfo),
+  },
+
+  /** Der Vorlesetext als eigener Teil (E-028); sein Text steht in `ReadAloud.readaloud`. */
+  ReadAloudText: {
+    name: 'ReadAloudText',
+    label: 'Read-aloud text',
+    extends: ['BookPart', 'ReadAloud'],
+  },
+
+  Embed: {
+    name: 'Embed',
+    label: 'Embedded article',
+    extends: ['BookPart'],
+    schema: merge(g.EmbedInfo),
+  },
+
+  /**
+   * **Ein Bild im Buchtext** (T-210): ein Teil wie ein Absatz, mit
+   * Bildunterschrift und Alternativtext aus `Image`. Kein `Embed` auf das
+   * Asset: dessen Ziel ist Pflicht, und das Bild kommt erst mit dem
+   * Hochladen (T-284) — bis dahin steht die Unterschrift an ihrer Stelle.
+   * Die Unterschrift gehört zur Stelle im Buch und nicht zur Datei, und das
+   * Bild erbt beim Hochladen Ebene und Sichtbarkeit seines Teils.
+   */
+  Illustration: {
+    name: 'Illustration',
+    label: 'Illustration',
+    extends: ['BookPart', 'Image'],
   },
 
   /**
@@ -799,6 +1087,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   World: {
     name: 'World',
+    icon: 'globe',
     area: 'world',
     label: 'World',
     extends: ['Identity', 'Prose', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Notes'],
@@ -807,9 +1096,12 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Campaign: {
     name: 'Campaign',
+    icon: 'compass',
     area: 'story',
     label: 'Campaign',
-    extends: ['Story'],
+    extends: ['Story', 'VisibilityRules'],
+    /* Wer die Vergleichsebenen sieht (T-092, E-021 d). */
+    schema: merge(g.CampaignInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Die Kampagne trägt, was über ihr Ganzes geht: welche Ebenen laufen,
@@ -818,6 +1110,10 @@ export const interfaces: Record<string, InterfaceDef> = {
     views: {
       full: [
         { id: 'k-desc', el: 'description' },
+        /* Die eigenen Felder der Kampagne sind Regeloptionen: sie stehen
+           gruppiert und erklärt unter dem Reiter „Rules & options" (T-190),
+           hier nur der Verweis; bearbeitet werden sie mit den übrigen. */
+        { id: 'k-rules', el: 'rules', fields: ['Campaign'] },
         { id: 'k-f', el: 'fields', fields: 'all' },
         { id: 'k-stack', el: 'stack' },
         /* Wer an diesem Tisch sitzt. Die Rollen stehen am Konto; gepflegt
@@ -835,6 +1131,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Session: {
     name: 'Session',
+    icon: 'calendar',
     area: 'story',
     label: 'Session',
     extends: ['Story'],
@@ -853,16 +1150,52 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'se-f', el: 'fields', fields: 'all' },
         { id: 'se-b', el: 'prose', fields: 'all' },
         { id: 'se-r', el: 'relations' },
+        /* Was zur Sitzung gehört (T-422, REQ-427): die Szenen und
+           Begegnungen, die `partOf` auf sie zeigen — nur ihre, nicht das
+           ganze Kapitel. Seit T-425 (REQ-430) eine Collection: jede in
+           ihrer eigenen Kurzansicht, als Kacheln, nach Art gruppiert. Sie
+           ersetzt `parts` (Migration 144), das hier nur „Contains" zeigte. */
+        {
+          id: 'se-contains',
+          el: 'collection',
+          text: 'Scenes and encounters',
+          path: [{ relation: 'partOf', dir: 'in' }],
+          types: ['Scene', 'Encounter'],
+          show: 'tiles',
+          groupBy: 'type',
+        },
       ],
     },
   },
 
   Scene: {
     name: 'Scene',
+    icon: 'clapperboard',
     area: 'story',
     label: 'Scene / Encounter',
     extends: ['Story', 'Tactics', 'Difficulty'],
     schema: merge(g.SceneInfo),
+    /* Die Begegnungen einer Szene als Liste (T-425): dasselbe `st-contains`
+       wie an `Story`, an Ort und Stelle anders eingestellt. */
+    views: {
+      full: {
+        adjust: {
+          extra: [
+            {
+              id: 'st-contains',
+              el: 'collection',
+              text: 'Contains',
+              path: [{ relation: 'partOf', dir: 'in' }],
+              types: ['Story', 'Encounter'],
+              unranked: true,
+              show: 'list',
+              groupBy: 'type',
+              pos: 65,
+            },
+          ],
+        },
+      },
+    },
   },
 
   /**
@@ -871,6 +1204,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Quest: {
     name: 'Quest',
+    icon: 'scroll-text',
     area: 'story',
     label: 'Quest',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets'],
@@ -904,6 +1238,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Information: {
     name: 'Information',
+    icon: 'lock',
     area: 'rules',
     label: 'Information',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Secrets', 'Facts'],
@@ -926,9 +1261,14 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Knowledge: {
     name: 'Knowledge',
+    icon: 'brain',
     area: 'rules',
     label: 'Knowledge',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags'],
+    /* **Was es vereint, ausgeschrieben** (T-287, REQ-353): je Information
+       die Artikel mit genau ihren Feldern, gesiebt am Server — die Stelle,
+       an der Spielende ihr Wissen abrufen. */
+    views: { full: { adjust: { extra: [{ id: 'kn-contents', el: 'knowledgeContents' }] } } },
   },
 
   /**
@@ -938,9 +1278,13 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Asset: {
     name: 'Asset',
+    icon: 'image',
     label: 'Asset',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source'],
     schema: merge(g.AssetInfo),
+    /* In einer Liste und in der Galerie (T-119): das Bild und seine Klasse
+       — die Klasse als Spalte, damit die Liste nach ihr filtert. */
+    views: { overview: [{ id: 'as-ov-img', el: 'image' }, { id: 'as-ov', el: 'fields', fields: ['Asset.kind'] }] },
   },
 
   /**
@@ -952,10 +1296,14 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Map: {
     name: 'Map',
+    icon: 'map',
     area: 'play',
     label: 'Map',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud', 'Played'],
     schema: merge(g.MapInfo),
+    /* Das Kartenbild wählt aus Kartenbildern (T-119): `Image.image` bietet
+       sonst allgemeine Bilder an. */
+    targets: { 'Image.image': { where: { component: 'Asset', property: 'kind', value: 'map' } } },
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Karte, Board und Begegnung gehören in den Bereich **Play** und
@@ -981,6 +1329,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Recipe: {
     name: 'Recipe',
+    icon: 'flask-conical',
     area: 'rules',
     label: 'Recipe',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets', 'Lore'],
@@ -999,6 +1348,146 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Ein Beruf** (T-196) ist eine Regel: er trägt den Text des Regelwerks,
+   * Quelle und Marken wie jede, und dazu seine Werkzeuge. Seine Seite ist
+   * die Handwerksübersicht — Beschreibung, Rezepte mit SG und Zeit, die
+   * Materialien —, gezeichnet vom Element `crafting`, das am Rezept die
+   * Werkbank ist: ein Element, das am Server fragt, was hier zu zeigen ist.
+   */
+  Trade: {
+    name: 'Trade',
+    icon: 'hammer',
+    area: 'rules',
+    label: 'Trade',
+    extends: ['Rule'],
+    schema: merge(g.TradeInfo),
+    /* Als Anpassung: die Karte nennt die Werkzeuge, die Seite die
+       Übersicht unter Bild und Beschreibung (wie `uebersicht` in
+       ansichten.ts, nur mit der Art angelegt, Migration 087). */
+    views: {
+      quick: { adjust: { add: { 'q-f': ['Trade.tools'] } } },
+      full: { adjust: { extra: [{ id: 'l-crafting', el: 'crafting' }], order: ['l-img', 'l-desc', 'l-crafting'] } },
+    },
+  },
+
+  /**
+   * **Ein Material nach Eigenschaft** (T-197): ein Rezept braucht „ein
+   * Reagenz, mindestens ungewöhnlich" — die `needs`-Kante zeigt auf diese
+   * Gruppe statt auf einen Gegenstand. Eine Regel, kein Gegenstand: man
+   * trägt sie nicht, man erfüllt sie.
+   */
+  /**
+   * **Eine Collection** (T-425, REQ-438, E-174): eine Gruppe von Artikeln
+   * des Regelwerks — Simple Melee Weapons, Damage Types, Creature Types.
+   * Mitglieder kommen nach Regel (Arten, Marken, Feldbedingungen, wie im
+   * Kompendium) und von Hand über `inCollection`; dieselbe Kante mit
+   * `exclude` nimmt aus. Unterkollektionen hängen über `partOf`. Gezeigt
+   * werden die Mitglieder mit dem Element `collection` (Quelle `members`).
+   */
+  Collection: {
+    name: 'Collection',
+    icon: 'tags',
+    area: 'rules',
+    label: 'Collection',
+    extends: ['Rule'],
+    schema: merge(g.CollectionInfo),
+    views: {
+      full: {
+        adjust: {
+          extra: [{ id: 'col-members', el: 'collection', text: 'Members', source: 'members', show: 'list', groupBy: 'type', sort: { by: 'name' }, pos: 25 }],
+        },
+      },
+    },
+  },
+
+  /* Eine Materialgruppe ist eine Collection mit eigener Regel (E-174): sie
+     nimmt Stücke nach Materialart und Seltenheit, und von Hand dazu kommt,
+     was über `inCollection` hineinzeigt. Die Karte `MaterialGroup` bleibt. */
+  MaterialGroup: {
+    name: 'MaterialGroup',
+    area: 'rules',
+    label: 'Material group',
+    extends: ['Collection'],
+    schema: merge(g.MaterialGroupInfo),
+  },
+
+  /**
+   * **Eine Ersatzregel** (T-197): welche Materialien für welche einspringen
+   * dürfen. Gilt, wo die Kampagne sie nennt (`allowsSubstitution`).
+   */
+  Substitution: {
+    name: 'Substitution',
+    area: 'rules',
+    label: 'Material substitution',
+    extends: ['Rule'],
+    schema: merge(g.SubstitutionInfo),
+  },
+
+  /**
+   * **Ein Begriff im Glossar** (T-242): ein Wort mit Definition, Wirkung,
+   * Beispielen und Übersetzungen. Erbt von `Rule`, weil er wie eine Regel
+   * nachgeschlagen wird und `Rule.autolink` sagt, ob sein Name im
+   * Fliesstext erkannt wird (REQ-175). Worauf er sich bezieht — den
+   * Zustand, die Eigenschaft, die Aktion —, sagt die Kante `explains`.
+   * Spielbegriffe liegen als Artikel in der Ebene ihres Regelwerks, eigene
+   * in der Kampagne; die Wörter der App selbst stehen im Repo
+   * (`packages/registry/src/glossar.ts`), weil sie zum Code gehören.
+   */
+  /**
+   * **Eine Notiz auf der Karte** (T-214, E-070 a): ein eigener Artikel und
+   * kein Text an der Kante — so hat sie Sichtbarkeit, Stand, Ebene und
+   * Verweise wie alles andere, und zurückgehalten wird sie am Server wie
+   * jeder Artikel. Auf der Karte steht ein Marker, der auf sie zeigt; der
+   * Text ist `Description.description`. Gelesen wird sie als Karte
+   * (`markerView: 'card'`).
+   */
+  Note: {
+    name: 'Note',
+    icon: 'sticky-note',
+    area: 'play',
+    label: 'Note',
+    extends: ['Identity', 'Description', 'Status', 'Visibility', 'Tags'],
+    titles: { 'Description.description': 'Text' },
+    markerView: 'card',
+  },
+
+  GlossaryTerm: {
+    name: 'GlossaryTerm',
+    icon: 'book',
+    area: 'rules',
+    label: 'Glossary term',
+    extends: ['Rule'],
+    schema: merge(g.GlossaryTermInfo),
+    titles: { 'Description.description': 'Definition' },
+    views: { overview: [{ id: 'glo-ov', el: 'fields', fields: ['GlossaryTerm.sort', 'Description.description'] }] },
+  },
+
+  /**
+   * **Ein Fertigungsauftrag** (T-128) ist eine Instanz des Rezepts: er
+   * erbt von `Recipe` und zeigt mit `instanceOf` auf das Rezept, liest dort
+   * Werkzeug, SG, Zeit, Material und Ertrag und speichert nur, was abweicht
+   * (ein anderer SG für diesen einen Auftrag). Eigen sind ihm Fortschritt,
+   * Ausgang und Proben. Nicht das Endprodukt: ein Ertrag von drei Tränken
+   * ist ein Stapel im Inventar, keine Instanz, und eine Instanz ist kein
+   * Verweisziel — ein Gegenstand im Inventar ist eines.
+   */
+  CraftingOrder: {
+    name: 'CraftingOrder',
+    area: 'play',
+    label: 'Crafting order',
+    extends: ['Recipe'],
+    schema: merge(g.CraftingOrderInfo),
+    views: {
+      full: [
+        { id: 'co-craft', el: 'crafting' },
+        { id: 'co-f', el: 'fields', fields: 'all' },
+        { id: 'co-b', el: 'prose', fields: 'all' },
+        { id: 'co-r', el: 'relations' },
+      ],
+    },
+  },
+
+  /**
    * Ein Board ist ein Artikel, und was darauf liegt, sind Kanten. Damit
    * beantwortet „wo liegt dieser NSC überall?" derselbe Rückbezug wie
    * überall sonst — und ein Board kann geteilt, versioniert und mit Wissen
@@ -1006,6 +1495,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Board: {
     name: 'Board',
+    icon: 'layout-grid',
     area: 'play',
     label: 'Board',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
@@ -1017,6 +1507,9 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'b-board', el: 'board' },
         { id: 'b-f', el: 'fields', fields: 'all', except: ['Board.shapes', 'Board.anchors'] },
       ],
+      /* Klein, wie ein Bild am Ende der Karte (T-425): wo die Kacheln liegen und wie sie heissen —
+         Position 35, vor dem Bild (`q-img`), das in `quick` zuletzt steht (T-346). */
+      quick: { adjust: { extra: [{ id: 'bq-board', el: 'board', pos: 35 }] } },
     },
   },
 
@@ -1028,16 +1521,49 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Encounter: {
     name: 'Encounter',
+    icon: 'swords',
     area: 'play',
     label: 'Encounter',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty', 'Played'],
     schema: merge(g.EncounterInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
+      overview: [{ id: 'e-ov', el: 'fields', fields: ['Encounter.kind', 'Encounter.phase'] }],
+      /* Anzeige je Art (T-184): die Initiative bei einem Kampf, bei
+         Teilnehmenden oder wenn die Art nicht gesagt ist — so stand sie
+         vor T-178 an jeder Begegnung; die übrigen Gruppen nur bei ihrer
+         Art. Was ein ausgelassenes Element gezeichnet hätte, nehmen
+         `e-f` und `e-b`. */
       full: [
-        { id: 'e-init', el: 'initiative' },
+        { id: 'e-init', el: 'initiative', when: { field: 'Encounter.kind', has: ['combat'], empty: true, relation: 'participates' } },
         { id: 'e-desc', el: 'description' },
+        { id: 'e-read', el: 'prose', fields: ['ReadAloud.readaloud'], when: { field: 'Encounter.kind', has: ['story', 'social', 'exploration'] } },
+        { id: 'e-puzzle', el: 'fields', fields: ['Encounter.solution'], when: { field: 'Encounter.kind', has: ['puzzle'] } },
+        { id: 'e-hints', el: 'prose', fields: ['Encounter.hint'], when: { field: 'Encounter.kind', has: ['puzzle'] } },
+        { id: 'e-social', el: 'fields', fields: ['Encounter.goal'], when: { field: 'Encounter.kind', has: ['social'] } },
+        /* Begegnungen Teil 3 (T-215): im Gespräch die Haltung der
+           Beteiligten zur Gruppe (`refs.encounter`, gerechnet am Server);
+           bei Falle und Gefahr die beteiligten `Hazard` in Kurzansicht. */
+        { id: 'e-stand', el: 'standing', text: 'Who stands where', when: { field: 'Encounter.kind', has: ['social'] } },
+        {
+          id: 'e-hazards',
+          el: 'collection',
+          text: 'Hazards',
+          path: [{ relation: 'features' }],
+          types: ['Hazard'],
+          show: 'tiles',
+          view: 'quick',
+          when: { field: 'Encounter.kind', has: ['trap', 'hazard'] },
+        },
+        { id: 'e-yield', el: 'fields', fields: ['Encounter.check'], when: { field: 'Encounter.kind', has: ['resource', 'exploration', 'hazard', 'trap'] } },
+        /* Was vorbereitet ist (T-333): Ort, Karte und Beute als Gruppen —
+           Elemente wie jedes andere, also im Ansichtsdesigner verschieb-
+           und abschaltbar. Leer steht keine da („kein Treffer, kein
+           Kasten"); angelegt werden sie unter „Edit" › Relations. */
+        { id: 'e-place', el: 'collection', text: 'Place', path: [{ relation: 'happensAt' }], show: 'tiles', view: 'quick' },
+        { id: 'e-map', el: 'collection', text: 'Map', path: [{ relation: 'onMap' }], show: 'list' },
+        { id: 'e-loot', el: 'collection', text: 'Loot', path: [{ relation: 'loot' }], show: 'table', props: ['qty', 'chance'] },
         { id: 'e-f', el: 'fields', fields: 'all' },
         { id: 'e-b', el: 'prose', fields: 'all' },
       ],
@@ -1049,8 +1575,8 @@ export const interfaces: Record<string, InterfaceDef> = {
    * ohne das ist es kein Ereignis, sondern eine Notiz. Sortiert wird nach
    * `Time.sort`, gelesen wird `Time.display`.
    */
-  /* `Story` ist die Geschichte des *Spiels* — Kampagne, Arc, Kapitel,
-     Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
+  /* `Story` ist die Geschichte des *Spiels* — Kampagne, Arc (auch ein
+     Abenteuerkapitel), Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
      hängt dagegen an `Event`: eine Ära dauert Jahrhunderte, ein Kataklysmus
      Tage, ein Meilenstein einen Nachmittag. `Era`, `Cataclysm` und
      `Milestone` waren drei Zeilen ohne ein eigenes Feld — jetzt sind sie
@@ -1059,6 +1585,7 @@ export const interfaces: Record<string, InterfaceDef> = {
      `story` ist nur, was die Kampagne betrifft. */
   Event: {
     name: 'Event',
+    icon: 'calendar',
     area: 'world',
     label: 'Event',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
@@ -1073,6 +1600,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Table: {
     name: 'Table',
+    icon: 'layout-grid',
     area: 'rules',
     label: 'Table',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets'],
@@ -1099,9 +1627,38 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Layer: {
     name: 'Layer',
+    icon: 'layers',
     label: 'Layer',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.LayerInfo),
+  },
+
+  /**
+   * **Regelsystem und Regelmechanik sind Ebenen** (E-166): eigene Arten,
+   * damit „ist ein Regelsystem“ keine Bedeutung eines `kind`-Wortes wird.
+   * Sie erben alles von `Layer` — aufschalten, ordnen, schreiben — und
+   * stehen in `LAYER_TYPES` (`packages/model/src/stack.ts`).
+   */
+  RuleSystem: {
+    name: 'RuleSystem',
+    label: 'Rule system',
+    extends: ['Layer'],
+    schema: merge(g.RuleSystemInfo),
+  },
+
+  /* Die Karte der Vorgabeformen (T-394, E-165): nur an Regelmechaniken. */
+  ShapeDefaults: {
+    name: 'ShapeDefaults',
+    label: 'Default shapes',
+    abstract: true,
+    schema: g.ShapeDefaults.schema,
+  },
+
+  RuleMechanic: {
+    name: 'RuleMechanic',
+    label: 'Rule mechanic',
+    extends: ['Layer', 'ShapeDefaults'],
+    schema: merge(g.RuleMechanicInfo),
   },
 
   /**

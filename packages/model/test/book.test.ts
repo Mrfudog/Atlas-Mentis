@@ -5,7 +5,9 @@ import {
   creatureRef,
   fieldText,
   itemBook,
+  keyStats,
   ordinal,
+  passivePerception,
   spellBook,
   statblockBook,
   xpForCr,
@@ -98,7 +100,7 @@ describe('Der Statblock wie im Buch (W2)', () => {
     expect(book.top).toEqual([
       { label: 'Armor Class', text: '15 (leather armor, shield)', ref: 'Statblock.ac' },
       { label: 'Hit Points', text: '7 ({{2d6}})', ref: 'Statblock.hp' },
-      { label: 'Speed', text: '30 ft', ref: 'Statblock.speed' },
+      { label: 'Speed', text: '30 ft', ref: 'Statblock.speed' },
     ]);
   });
 
@@ -111,10 +113,24 @@ describe('Der Statblock wie im Buch (W2)', () => {
   it('rechnet Fertigkeiten mit Expertise, die passive Wahrnehmung und die Erfahrung', () => {
     const zeile = (l: string) => book.details.find((d) => d.label === l)?.text;
     expect(zeile('Skills')).toBe('Stealth +6');
-    expect(zeile('Senses')).toBe('darkvision 60 ft, passive Perception 9');
+    expect(zeile('Senses')).toBe('darkvision 60 ft, passive Perception 9');
     expect(zeile('Languages')).toBe('Common, Goblin');
     expect(zeile('Challenge')).toBe('1/4 (50 XP)');
     expect(zeile('Proficiency Bonus')).toBe('+2');
+  });
+
+  it('sagt je Fertigkeit, Rettungswurf und Attribut, was gewürfelt wird (T-181)', () => {
+    expect(book.details.find((d) => d.label === 'Skills')?.rolls).toEqual([{ name: 'Stealth', expr: '+6', label: 'Stealth check' }]);
+    const dex = book.abilities.find((a) => a.key === 'dex');
+    expect(dex?.check).toEqual({ name: 'DEX', expr: '+2', label: 'DEX check' });
+    const mitSaves = statblockBook(imperial, {
+      ...goblin,
+      components: { ...goblin.components, Proficiencies: { ...goblin.components!['Proficiencies'], saves: ['dex', 'str'] } },
+    }, { kindOf: () => 'Skill', skillAbility: () => 'dex' });
+    expect(mitSaves.details.find((d) => d.label === 'Saving Throws')?.rolls).toEqual([
+      { name: 'Dex', expr: '+4', label: 'DEX save' },
+      { name: 'Str', expr: '+1', label: 'STR save' },
+    ]);
   });
 
   it('nimmt eine feste Buchzahl vor der Rechnung', () => {
@@ -131,7 +147,7 @@ describe('Der Statblock wie im Buch (W2)', () => {
 
   it('rechnet Masse nach der Einstellung um', () => {
     const metrisch: Registry = { ...seedRegistry, settings: { ...seedRegistry.settings, units: 'metric' } };
-    expect(statblockBook(metrisch, goblin).top.find((l) => l.label === 'Speed')?.text).toBe('9.1 m');
+    expect(statblockBook(metrisch, goblin).top.find((l) => l.label === 'Speed')?.text).toBe('9.1 m');
   });
 });
 
@@ -153,8 +169,8 @@ describe('Die Abschnitte aus composedOf', () => {
 
   it('rechnet die Angriffe am Statblock (D51)', () => {
     const [scimitar, shortbow] = abschnitte[1]!.entries;
-    expect(scimitar!.text).toBe('*Melee Weapon Attack:* {{+4}} to hit, reach 5 ft, one target. *Hit:* 5 ({{1d6 + 2}}) slashing damage.');
-    expect(shortbow!.text).toContain('range 80/320 ft, one target');
+    expect(scimitar!.text).toBe('*Melee Weapon Attack:* {{+4}} to hit, reach 5 ft, one target. *Hit:* 5 ({{1d6 + 2}}) slashing damage.');
+    expect(shortbow!.text).toContain('range 80/320 ft, one target');
   });
 
   it('setzt die Aufladung an den Namen und den Satz vor die Legendären Aktionen', () => {
@@ -176,6 +192,21 @@ describe('Die Abschnitte aus composedOf', () => {
     expect(s.map((x) => x.title)).toEqual(['Actions', 'Legendary Actions']);
     expect(s[0]!.entries[0]!.name).toBe('Fire Breath (Recharge 5–6)');
     expect(s[1]!.intro).toMatch(/^The dragon can take 3 legendary actions/);
+  });
+
+  it('nennt die Zahl im Lair, wenn der Statblock sie trägt (T-437)', () => {
+    const drache: Entity = {
+      id: 'drache2',
+      interfaces: ['Statblock'],
+      name: 'Adult Fog Dragon',
+      components: { Statblock: { legendaryActions: 3, legendaryActionsLair: 4, prof: 6 } },
+      relations: [{ id: 'd1', type: 'composedOf', to: 'schwanz', props: { vars: { CREATURE: 'dragon' } } }],
+    };
+    const t: Record<string, Entity> = {
+      schwanz: { id: 'schwanz', interfaces: ['Action'], name: 'Tail Attack', components: { Action: { actionType: 'at-legendary' } } },
+    };
+    const s = bookSections(imperial, drache, { part: (id) => t[id], nameOf: (id) => namen[id] });
+    expect(s[0]!.intro).toMatch(/^The dragon can take 3 legendary actions \(4 in its lair\), choosing/);
   });
 
   it('kennt beide Fassungen der Bindung (W1: „the dragon" mit Artikel)', () => {
@@ -205,7 +236,7 @@ describe('Der Zauber wie im Buch', () => {
     expect(b.byline).toBe('3rd-level evocation');
     expect(b.lines.map((l) => `${l.label}: ${l.text}`)).toEqual([
       'Casting Time: 1 action',
-      'Range: 150 ft',
+      'Range: 150 ft',
       'Components: V, S, M (a tiny ball of bat guano and sulfur)',
       'Duration: Instantaneous',
     ]);
@@ -215,7 +246,7 @@ describe('Der Zauber wie im Buch', () => {
 
   it('nennt die Reichweite nie ohne Einheit', () => {
     const b = spellBook(seedRegistry, fireball, (id) => namen[id]);
-    expect(b.lines.find((l) => l.label === 'Range')?.text).toBe('150 ft (45.7 m)');
+    expect(b.lines.find((l) => l.label === 'Range')?.text).toBe('150 ft (45.7 m)');
   });
 
   it('kennt Zaubertricks, Rituale, Konzentration und Flächen um sich', () => {
@@ -226,7 +257,7 @@ describe('Der Zauber wie im Buch', () => {
     expect(b.byline).toBe('Divination cantrip (ritual)');
     const zeile = (l: string) => b.lines.find((x) => x.label === l)?.text;
     expect(zeile('Casting Time')).toBe('1 reaction, which you take when hit');
-    expect(zeile('Range')).toBe('Self (15 ft cone)');
+    expect(zeile('Range')).toBe('Self (15 ft cone)');
     expect(zeile('Duration')).toBe('Concentration, up to 10 minutes');
   });
 });
@@ -235,9 +266,9 @@ describe('Der Gegenstand wie im Buch', () => {
   it('setzt Art, Seltenheit und Einstimmung kursiv unter den Namen', () => {
     const b = itemBook(imperial, {
       id: 'ft', interfaces: ['Item'], name: 'Flame Tongue',
-      components: { Item: { rarity: 'rare', attunement: true, appliesTo: ['sword'] } },
+      components: { Item: { rarity: 'rare', attunement: true } },
     }, 'Item');
-    expect(b.byline).toBe('Item (any sword), rare (requires attunement)');
+    expect(b.byline).toBe('Item, rare (requires attunement)');
   });
 
   it('schreibt Rüstung, Preis und Gewicht als Zeilen', () => {
@@ -250,8 +281,30 @@ describe('Der Gegenstand wie im Buch', () => {
     });
     expect(b.byline).toBe('Heavy armor');
     expect(b.lines.map((l) => `${l.label}: ${l.text}`)).toEqual([
-      'Armor Class: 18', 'Strength: Str 15', 'Stealth: Disadvantage', 'Cost: 1,500 gp', 'Weight: 65 lb',
+      'Armor Class: 18', 'Strength: Str 15', 'Stealth: Disadvantage', 'Cost: 1,500 gp', 'Weight: 65 lb',
     ]);
+  });
+});
+
+describe('Verweisfelder im Buch (T-078)', () => {
+  const namen: Record<string, string> = { c1: 'Poisoned', c2: 'Charmed', ar: 'Arrow' };
+  const nameOf = (id: string) => namen[id];
+
+  it('nennt die Zustände eines Statblocks beim Namen', () => {
+    const b = statblockBook(imperial, {
+      id: 'sk', interfaces: ['Statblock'], name: 'Skeleton',
+      components: { Statblock: { conditionImmunities: ['c1', 'c2', 'Exhaustion'] } },
+    }, { nameOf });
+    /* Was keinen Namen bekommt, steht, wie es dasteht. */
+    expect(b.details.find((l) => l.label === 'Condition Immunities')?.text).toBe('Poisoned, Charmed, Exhaustion');
+  });
+
+  it('nennt die Munition einer Waffe beim Namen', () => {
+    const b = itemBook(imperial, {
+      id: 'lb', interfaces: ['Weapon'], name: 'Longbow',
+      components: { Item: { itemType: 'ranged weapon' }, Weapon: { ammoType: 'ar' } },
+    }, 'Weapon', nameOf);
+    expect(b.lines.find((l) => l.label === 'Ammunition')?.text).toBe('Arrow');
   });
 });
 
@@ -262,6 +315,61 @@ describe('Kleinzeug', () => {
     expect(coinText(50)).toBe('5 sp');
     expect(coinText(3)).toBe('3 cp');
     expect(xpForCr('17')).toBe(18000);
-    expect(fieldText(imperial, { type: 'number', unit: 'ft' }, 150, 'imperial')).toBe('150 ft');
+    expect(fieldText(imperial, { type: 'number', unit: 'ft' }, 150, 'imperial')).toBe('150 ft');
+  });
+});
+
+describe('Kennzahlen (T-206)', () => {
+  it('ein Statblock: AC, HP, Bewegung, Initiative, passive Wahrnehmung, CR', () => {
+    const k = keyStats(imperial, goblin);
+    expect(k.tiles.map((t) => [t.label, t.value])).toEqual([
+      ['AC', '15'],
+      ['HP', '7'],
+      ['Speed', '30 ft'],
+      ['Initiative', '+2'],
+      ['Passive Perception', '9'],
+      ['CR', '1/4'],
+    ]);
+    expect(k.tiles.find((t) => t.key === 'ac')?.note).toBe('leather armor, shield');
+    expect(k.conditions).toEqual([]);
+  });
+
+  it('an einer Figur: Trefferpunkte jetzt/Maximum, zeitweilige, Zustände mit Namen', () => {
+    const figur: Entity = {
+      id: 'pc-1',
+      interfaces: ['Creature'],
+      name: 'Rin',
+      components: { Vitals: { hp: 4, hpTemp: 3, conditions: ['cond-prone', 'cond-x'] } },
+    };
+    const k = keyStats(imperial, goblin, figur, { nameOf: (id) => (id === 'cond-prone' ? 'Prone' : undefined) });
+    expect(k.tiles.find((t) => t.key === 'hp')).toMatchObject({ value: '4/7 +3', ref: 'Vitals.hp' });
+    expect(k.conditions).toEqual([
+      { id: 'cond-prone', name: 'Prone' },
+      { id: 'cond-x', name: 'cond-x' },
+    ]);
+  });
+
+  it('ohne Statblock nur der Stand, ohne Werte keine leeren Kacheln', () => {
+    expect(keyStats(imperial, undefined, { id: 'x', interfaces: ['Creature'], components: { Vitals: { hp: 3 } } }).tiles).toEqual([
+      { key: 'hp', label: 'HP', value: '3', ref: 'Vitals.hp' },
+    ]);
+    expect(keyStats(imperial, { id: 'leer', interfaces: ['Statblock'], components: {} }).tiles).toEqual([]);
+  });
+
+  it('feste Zahlen gehen vor: Initiative und Perception aus `bonuses`', () => {
+    const sb: Entity = {
+      ...goblin,
+      components: {
+        ...goblin.components,
+        Statblock: { ...(goblin.components!['Statblock'] as object), bonuses: { initiative: 5, Perception: 4 } },
+        Proficiencies: { proficient: ['Perception'] },
+      },
+    };
+    const k = keyStats(imperial, sb);
+    expect(k.tiles.find((t) => t.key === 'initiative')?.value).toBe('+5');
+    expect(passivePerception(sb)).toBe(14);
+    /* Geübt ohne feste Zahl: WIS (−1) plus Übung (2). */
+    const geuebt: Entity = { ...goblin, components: { ...goblin.components, Proficiencies: { proficient: ['Perception'] } } };
+    expect(passivePerception(geuebt)).toBe(11);
   });
 });

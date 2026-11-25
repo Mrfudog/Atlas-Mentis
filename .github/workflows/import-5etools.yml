@@ -26,12 +26,16 @@ on:
         options: [dev, prod]
         default: dev
       mode:
-        description: "only-new: nur anlegen, was es noch nicht gibt · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben"
+        description: "only-new: nur anlegen, was es noch nicht gibt · additions: wie only-new, aber nur die Neuzugänge seit T-087 (2024, UA, Fahrzeuge, Decks, Bastionen), nichts aus dem Grundstand ausser dem Text der Regelbücher (T-145) · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer, mit confirm=neues: additions) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben · layers: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094)"
         type: choice
-        options: [only-new, dry-run, replace-layer, add]
+        options: [only-new, additions, dry-run, replace-layer, add, layers]
         default: only-new
       sources:
         description: "Nur diese Quellen, z. B. PHB,MM oder ein Modulkürzel (leer = alles)"
+        type: string
+        default: ""
+      types:
+        description: "Nur diese Arten ausgeben, z. B. Place (leer = alle) — zum Nachtragen einer neuen Art mit only-new"
         type: string
         default: ""
       confirm:
@@ -51,6 +55,9 @@ on:
         type: string
         default: only-new
       sources:
+        type: string
+        default: ""
+      types:
         type: string
         default: ""
       confirm:
@@ -79,6 +86,7 @@ jobs:
       ENVIRONMENT: ${{ inputs.environment }}
       MODE: ${{ inputs.mode }}
       SOURCES: ${{ inputs.sources }}
+      TYPES: ${{ inputs.types }}
       CONFIRM: ${{ inputs.confirm }}
       SOURCE_REF: ${{ inputs.source-ref }}
       DIR: ${{ vars.DEPLOY_DIR || (inputs.environment == 'prod' && '/srv/atlas/prod' || '/srv/atlas/dev') }}
@@ -97,8 +105,12 @@ jobs:
           # sie an 5e.tools-Artikeln geändert hat.
           case "$MODE" in
             only-new) echo "FLAGS=--only-new" >> "$GITHUB_ENV" ;;
+            # Nur die Neuzugänge (T-087): für einen Bestand aus einem älteren
+            # Importer, dessen Geteiltes andere Peg-Ids trägt.
+            additions) echo "FLAGS=--only-new --additions" >> "$GITHUB_ENV" ;;
             dry-run)
               if [ "$CONFIRM" = ersetzen ]; then echo "FLAGS=--replace-layer --dry-run" >> "$GITHUB_ENV"
+              elif [ "$CONFIRM" = neues ]; then echo "FLAGS=--only-new --additions --dry-run" >> "$GITHUB_ENV"
               else echo "FLAGS=--only-new --dry-run" >> "$GITHUB_ENV"; fi ;;
             replace-layer)
               [ "$CONFIRM" = ersetzen ] || {
@@ -107,10 +119,15 @@ jobs:
               }
               echo "FLAGS=--replace-layer" >> "$GITHUB_ENV" ;;
             add) echo "FLAGS=" >> "$GITHUB_ENV" ;;
-            *) echo "::error::Unbekannte Art: $MODE (only-new, dry-run, replace-layer, add)"; exit 1 ;;
+            # Nur Ebenen (T-088): Gruppen und Beschreibung, kein Artikel.
+            layers) echo "FLAGS=--layers" >> "$GITHUB_ENV" ;;
+            *) echo "::error::Unbekannte Art: $MODE (only-new, additions, dry-run, replace-layer, add, layers)"; exit 1 ;;
           esac
           case "$SOURCES" in
             *[!A-Za-z0-9,_\ -]*) echo "::error::sources: nur Kürzel, durch Kommas getrennt (z. B. PHB,MM)"; exit 1 ;;
+          esac
+          case "$TYPES" in
+            *[!A-Za-z0-9,]*) echo "::error::types: nur Artnamen, durch Kommas getrennt (z. B. Place)"; exit 1 ;;
           esac
 
       - uses: actions/checkout@v5
@@ -131,7 +148,8 @@ jobs:
           src="$RUNNER_TEMP/5etools-src"
           git clone --depth 1 --filter=blob:none --sparse ${SOURCE_REF:+--branch "$SOURCE_REF"} \
             https://github.com/5etools-mirror-3/5etools-src.git "$src"
-          git -C "$src" sparse-checkout set data
+          # `js/` für die Titel der Quellen ohne Kopf in books/adventures (T-420, `js/parser.js`).
+          git -C "$src" sparse-checkout set data js
           echo "Stand: $(git -C "$src" log -1 --format='%h %cs %s')"
 
       - name: Datei erzeugen
@@ -139,7 +157,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           node packages/import-5etools/dist/cli.js "$RUNNER_TEMP/5etools-src/data" \
-            ${SOURCES:+--sources "$SOURCES"} --out "$RUNNER_TEMP/5etools-2014.json" --bericht "$RUNNER_TEMP/5etools-Bericht.md"
+            ${SOURCES:+--sources "$SOURCES"} ${TYPES:+--types "$TYPES"} --out "$RUNNER_TEMP/5etools-2014.json" --bericht "$RUNNER_TEMP/5etools-Bericht.md"
           gzip -9 "$RUNNER_TEMP/5etools-2014.json"
           ls -l "$RUNNER_TEMP/5etools-2014.json.gz"
 
@@ -180,7 +198,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "### 5e.tools → $ENVIRONMENT ($MODE${SOURCES:+, $SOURCES})"
+            echo "### 5e.tools → $ENVIRONMENT ($MODE${SOURCES:+, $SOURCES}${TYPES:+, nur $TYPES})"
             echo
             echo '```'
             cat "$RUNNER_TEMP/ausgabe.txt" 2>/dev/null || echo "(keine Ausgabe — siehe Log)"

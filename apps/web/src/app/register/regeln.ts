@@ -106,11 +106,16 @@ export function holds(registry: Pick<Registry, 'enums' | 'interfaces'>, p: Prope
   if (p.format === 'long') teile.push('long');
   if (p.format === 'signed') teile.push('signed');
   if (p.format === 'measure') teile.push('measure');
+  if (p.format === 'icon') teile.push('icon');
   if (p.unit) teile.push(p.unit);
   if (p.many) teile.push('many');
   if (p.suggest) teile.push('suggests');
   if (p.alwaysEdit) teile.push('always an input');
+  if (p.prominent) teile.push('shown when empty');
+  if (p.editOnly) teile.push('edit form only');
   if (p.readOnly) teile.push('issued');
+  if (p.facet === false) teile.push('no list filter');
+  else if (p.facet && p.facet.as) teile.push(`filter as ${p.facet.as}`);
   return teile.join(' · ');
 }
 
@@ -280,6 +285,7 @@ export function fieldMentions(registry: Registry, owner: string, key: string): s
   }
   for (const [t, def] of Object.entries(registry.interfaces)) {
     if (def.titles?.[ref]) out.push(`${t} renames it`);
+    if (def.requiredFor?.[ref]) out.push(`${t} sets when it is required`);
     if (Object.values(def.views ?? {}).some((l) => layoutNennt(l, ref))) out.push(`${t} arranges it in a view`);
     for (const [k, p] of Object.entries(def.schema?.properties ?? {})) {
       if (enumRefs(p).includes(ref)) out.push(`${t}.${k} takes its choices`);
@@ -307,6 +313,11 @@ export function removeField(ifs: Ifs, owner: string, key: string): void {
     if (def.titles?.[ref] !== undefined) {
       delete def.titles[ref];
       if (!Object.keys(def.titles).length) delete def.titles;
+    }
+    /* Pflicht je Stand je Art (T-425, E-177) nennt das Feld ebenso. */
+    if (def.requiredFor?.[ref] !== undefined) {
+      delete def.requiredFor[ref];
+      if (!Object.keys(def.requiredFor).length) delete def.requiredFor;
     }
   }
 }
@@ -337,6 +348,10 @@ export function renameField(ifs: Ifs, owner: string, alt: string, neu: string): 
     if (def.titles?.[vorher] !== undefined) {
       def.titles[nachher] = def.titles[vorher]!;
       delete def.titles[vorher];
+    }
+    if (def.requiredFor?.[vorher] !== undefined) {
+      def.requiredFor[nachher] = def.requiredFor[vorher]!;
+      delete def.requiredFor[vorher];
     }
     for (const l of Object.values(def.views ?? {})) layoutUmbenennen(l, vorher, nachher);
     for (const p of Object.values(def.schema?.properties ?? {})) {

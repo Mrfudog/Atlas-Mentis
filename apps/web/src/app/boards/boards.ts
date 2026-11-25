@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { BOARD_TYPE, entityName, isInstance, PART_OF_RELATION, primaryInterface } from '@nw/model';
 import type { Entity } from '@nw/model';
 import { Bestand, schmal } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 import { Brett, isBoard, isStoryRung, storyOf, type Mangel } from './brett';
 
 interface Sprosse {
@@ -62,7 +63,7 @@ interface Sprosse {
                   <a class="story" [routerLink]="['/artikel', s.e.id]">{{ s.name }}</a>
                   <span class="boards">
                     @for (b of s.boards; track b.id) {
-                      <a class="board" [routerLink]="['/boards', b.id]">{{ boardName(b, s.e) }}</a>
+                      <a class="board" [routerLink]="['/boards', b.id]" [title]="'Open the board ' + name(b)"><span aria-hidden="true">▦</span> {{ boardName(b, s.e) }}</a>
                     } @empty {
                       @if (darfAnlegen()) {
                         <button type="button" class="klein" (click)="neu(s.e)" [disabled]="legtAn()">
@@ -88,7 +89,7 @@ interface Sprosse {
               @for (b of andere(); track b.id) {
                 <li>
                   <span class="art">Board</span>
-                  <a class="board" [routerLink]="['/boards', b.id]">{{ name(b) }}</a>
+                  <a class="board" [routerLink]="['/boards', b.id]"><span aria-hidden="true">▦</span> {{ name(b) }}</a>
                 </li>
               }
             </ul>
@@ -171,8 +172,28 @@ interface Sprosse {
       gap: 0.5rem;
       margin-left: auto;
     }
+    /* Ein Board ist ein Knopf mit Symbol (T-203), kein loser fetter Link am Zeilenende. */
     .board {
-      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 32px;
+      padding: 0 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .board:hover,
+    .board:focus-visible {
+      background: var(--hover);
+      border-color: var(--accent);
+    }
+    .board span {
+      color: var(--accent);
     }
     button.klein {
       min-height: 32px;
@@ -209,6 +230,16 @@ export class Boards {
   constructor() {
     void this.bestand.load();
     void this.holen();
+    /* Wechselt die laufende Kampagne oder ihr Stapel (T-411), stehen
+       andere Boards da — dieselbe Frage noch einmal, wie im Kompendium. */
+    const stapel = inject(Stapel);
+    let gesehen = stapel.stand();
+    effect(() => {
+      const n = stapel.stand();
+      if (n === gesehen) return;
+      gesehen = n;
+      untracked(() => void this.holen());
+    });
   }
 
   protected readonly fehler = signal<Mangel | null>(null);

@@ -1,5 +1,5 @@
-import { Component, computed, effect, inject, input } from '@angular/core';
-import { bookSections, relationDef } from '@nw/model';
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
+import { bookSections, entityName, relationDef } from '@nw/model';
 import type { BookSection, Entity } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from './text';
@@ -59,9 +59,31 @@ export class Abschnitte {
     return (e.relations ?? []).filter((k) => relationDef(r, k.type).section).map((k) => k.to);
   });
 
+  /**
+   * Die Aktionsarten der geholten Teile („Reaction", „Bonus Action" …):
+   * ihr Name ist die Überschrift. Die Kurzfassung kennt sie nur, wenn
+   * zufällig schon eine Liste sie brachte — sonst stand jede Gruppe unter
+   * „Actions", auch die Reaktion des Marilith (T-090).
+   */
+  private readonly aktionsarten = computed(() => {
+    const voll = this.bestand.voll();
+    const ids = new Set<string>();
+    for (const id of this.ziele()) {
+      const art = (voll.get(id)?.components?.['Action'] as { actionType?: unknown } | undefined)?.actionType;
+      if (typeof art === 'string' && art) ids.add(art);
+    }
+    return [...ids];
+  });
+
   constructor() {
     effect(() => {
       void this.bestand.holen(this.ziele());
+    });
+    effect(() => {
+      const name = this.bestand.name();
+      const voll = this.bestand.voll();
+      const offen = this.aktionsarten().filter((id) => !voll.has(id) && !name(id));
+      if (offen.length) untracked(() => void this.bestand.holen(offen));
     });
   }
 
@@ -78,7 +100,12 @@ export class Abschnitte {
     const name = this.bestand.name();
     return bookSections(r, this.besitzer(), {
       part: (id) => voll.get(id),
-      nameOf: (id) => voll.get(id)?.name ?? name(id),
+      /* Der Name steht in `Identity`; `Entity.name` ist bei eingelesenen
+         Artikeln leer, und „" ?? …" wäre dann die leere Überschrift. */
+      nameOf: (id) => {
+        const ganz = voll.get(id);
+        return (ganz && entityName(ganz)) || name(id);
+      },
       campaign: r.vars,
     });
   });

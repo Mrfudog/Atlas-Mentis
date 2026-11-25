@@ -1,0 +1,5 @@
+{
+  "//": "ES-Module für die E2E-Specs (import.meta); kein eigenes Paket, die Abhängigkeiten stehen in der Wurzel.",
+  "private": true,
+  "type": "module"
+}

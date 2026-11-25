@@ -1,5 +1,7 @@
 # Der Spieltisch
 
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md) · Herkunft: wie der Spieltisch im Prototyp entstand (eingefroren seit D59); was davon in der Seite steht, sagt [Anforderungen.md](Anforderungen.md).
+
 Stand 2026-09-20. Was in einem Zug gebaut wurde, nachdem A und B standen:
 Assets, Karten, Charakterbogen, Inventar, Handwerk, Boards, Begegnungen,
 Würfel, Aufträge und Zeitleiste. Die REQ-Nummern stammen aus
@@ -40,6 +42,7 @@ Stelle, um Code zu schreiben.
 | Regeln | `Rule.autolink` | — (eigener Einstieg) |
 | Decknamen | `Identity.cover` | — (im Namen selbst) |
 | Punktreise | `Place.state`, `route`, das Gruppen-Token | `crawl` |
+| Reise (Tag, Wache, Zehrung) | `Party.day/watch/sinceRation/sinceLight`, Einstellungen `travel*` | `travel` (T-350) |
 
 ---
 

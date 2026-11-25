@@ -1,6 +1,8 @@
 # Architektur
 
-Stand 2026-10-12 (preprod nach P5). Zeigt, **was läuft** (Container),
+↑ [Technik](Themen/Technik.md) · [Einstieg](README.md)
+
+Stand 2026-10-12 (preprod nach P5); Bilder §1 und §6 als Zeichnung 2026-10-15. Zeigt, **was läuft** (Container),
 **womit** (Frameworks), **wo es liegt** (Repo) und **wie der Code
 zusammenhängt** (Pakete, Server, Oberfläche). Das Datenmodell selbst —
 Typen, Felder, Kanten — steht in [Datenmodell.md](Datenmodell.md);
@@ -14,33 +16,9 @@ Eine Hetzner-Maschine, fünf Container. `prod` und `dev` sind vollständig
 getrennt: eigenes Abbild, eigene Datenbank, eigenes Volume. Der einzige
 Container mit offenem Port nach aussen ist Caddy.
 
-```mermaid
-flowchart TB
-  user([Browser<br/>Spielleitung, Spielende])
-  subgraph host["Hetzner CPX22 · Ubuntu 24.04 · Docker"]
-    direction TB
-    subgraph proxy["/srv/atlas/proxy"]
-      caddy[caddy:2-alpine<br/>Reverse Proxy, TLS über Let's Encrypt<br/>network_mode: host · Ports 80, 443]
-    end
-    subgraph prod["/srv/atlas/prod · Zweig main"]
-      appP[app<br/>ghcr.io/mrfudog/atlas-mentis:main-‹sha›<br/>Node 22 · Fastify + Angular-Build<br/>127.0.0.1:8080]
-      dbP[(db<br/>postgres:17-alpine<br/>./daten/db)]
-    end
-    subgraph dev["/srv/atlas/dev · Zweig preprod"]
-      appD[app<br/>ghcr.io/mrfudog/atlas-mentis:preprod-‹sha›<br/>127.0.0.1:8081]
-      dbD[(db<br/>postgres:17-alpine<br/>./daten/db-preprod)]
-    end
-    cron[cron 03:17<br/>pg_dump je Wochentag]
-  end
-  user -- https://atlas.‹domain› --> caddy
-  user -- https://dev.atlas.‹domain› --> caddy
-  caddy -- 127.0.0.1:8080 --> appP
-  caddy -->|"127.0.0.1:8081 · noindex"| appD
-  appP -- DATABASE_URL --> dbP
-  appD -- DATABASE_URL --> dbD
-  cron -.-> dbP
-  cron -.-> dbD
-```
+![Was auf dem Server läuft](Bilder/Server.excalidraw.svg)
+
+Gezeichnet in [Bilder/Server.excalidraw.md](Bilder/Server.excalidraw.md).
 
 | Container | Abbild | Aufgabe | Daten |
 |---|---|---|---|
@@ -229,12 +207,14 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
 | `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
 | `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
-| `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=` | **ein Blatt der Liste** mit Facetten (`{ total, columns, rows, facets }`) — Kompendium, Bereiche und jede Auswahl (W7) |
+| `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=` | **ein Blatt der Liste** mit Facetten (`{ total, columns, rows, facets }`) — Kompendium, Bereiche und jede Auswahl (W7); die Seiten schicken seit T-186 kein `nolayer` mehr, die Ebenen sagt der Stand der Kampagne |
+| `GET/POST /api/me/layer-sets`, `DELETE …/:id` | **gespeicherte Ebenenauswahlen** je Konto, wahlweise an eine Kampagne gebunden (T-186); geladen wird über `PUT /api/campaigns/:c/layers` |
 | `GET /api/entities` | der ganze Bestand, **gesiebt** — für Ausfuhr und Prüfungen, nicht für die Oberfläche |
 | `GET /api/entities/:id` | ein Artikel, gesiebt, mit `refs`: die Namen seiner Kantenziele und die Treffer seiner `[[Verweise]]` (beim Ausliefern gerechnet, nie gespeichert) |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
 | `POST /api/entities` | **anlegen**: `{ type, name, fields? }` → Peg-Id, Nummer (`nextId`), Vorgaben aus dem Register, geprüft mit `validateEntity` |
 | `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
+| `GET /api/origins/:id` | eine Herkunft oder ein Hintergrund samt Spielarten (`subraceOf`), Tabellen (`tableFor`) und den Merkmalen, die eines davon gewährt oder einbettet (`originParts`), gesiebt — die Herkunftsansicht (T-166) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/links` | `[[Name]]` → `[[nummer\|Name]]` (M11), über das, was der Schreibende sieht; liest nur, darf also jeder |
 | `POST /api/validate` | prüfen ohne zu speichern |
@@ -242,6 +222,7 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/checks?check=…&limit=…` | Prüfungen über den gesiebten Bestand (`checks.ts`): Zahl und Beispiele je Prüfung; Leitung und Verwaltung |
 | `POST /api/bulk` | Massenänderung (`bulk.ts`): Auswahl → Operationen, `dryRun` zeigt, was geschähe; geschrieben wird durch `validateEntity`, protokolliert mit den alten Fassungen |
 | `GET /api/bulk` · `POST /api/bulk/:id/undo` | die letzten Massenänderungen; eine zurücknehmen (Konflikte nur mit `force`) |
+| `GET /api/live` | **der Live-Kanal** (T-116): Server-Sent Events, je Empfänger gesiebt — `entity`, `gone`, `session`, `registry`, `reset`; Wiederverbinden mit `Last-Event-ID` (Abschnitt 5.2) |
 
 Ohne Anmeldung offen sind nur Gesundheit, Anmelden, Registrieren,
 Abmelden und `me`. **Angemeldet ist man über den Sitzungskeks oder über
@@ -294,6 +275,15 @@ Jetzt:
   Index, ein Spieler hat seinen eigenen (das Sieb rechnet Wissen je
   Artikel); gehalten werden die letzten acht. Blättern, Suchen, Filtern
   laufen über die Zeilen, nicht über die Artikel.
+- **Der Bestand selbst** liegt je Stempel im Speicher (`PgRepository`).
+  Schreibt der Server einen Artikel, **führt er ihn nach** statt neu zu
+  lesen (T-143): unter einer Sperre für andere Schreiber liest er den
+  Stempel vor und nach dem Schreiben und ersetzt den einen Artikel, wenn
+  der Bestand genau auf dem Stand davor war — sonst (ein fremder Prozess
+  wie die Einfuhr schrieb) liest er neu. Mit 150 000 Artikeln: 26 ms statt
+  gut vier Sekunden nach einem Häkchen an den Ebenen. Die Ebenenseite
+  (`GET /api/campaigns/:c/layers`) zählt ihren Inhalt je Stempel einmal und
+  behält die Zählung, wenn sich seither nur die Kampagne geändert hat.
 - **Facetten** zählen über die Zeilen, die alle *anderen* Filter bestehen:
   Arten (mit Bereich, das Kompendium gruppiert danach), Ebenen, und bei
   einer gewählten Art je Spalte eine Aufzählung (`enum`/`enumRef` → Werte
@@ -313,7 +303,80 @@ Die Reihenfolge ist die Regel aus CLAUDE.md: erst ob überhaupt
 (Stapel, Sichtbarkeit), dann was darin (Wissen). Zurückgehalten wird
 **nur hier**; die Oberfläche zeigt, was ankommt.
 
-### 5.2 Die Tabellen
+### 5.2 Der Live-Kanal
+
+Damit Beamer, Laptop und Telefone derselben Runde dasselbe zeigen, ohne
+neu zu laden (T-116, REQ-116). **Server-Sent Events, nicht WebSocket:**
+der Weg geht nur vom Server zum Gerät — geschrieben wird weiter über die
+gewöhnlichen Routen mit ihrer Wache —, es ist gewöhnliches HTTP hinter
+Caddy, und der Browser verbindet selbst wieder und sagt dabei, was er
+zuletzt bekam (`Last-Event-ID`).
+
+```mermaid
+sequenceDiagram
+  participant L as Laptop (Leitung)
+  participant F as Fastify
+  participant K as ChangeFeed (live.ts)
+  participant T as Telefon (Spielerin)
+  T->>F: GET /api/live (Cookie, Last-Event-ID)
+  F-->>T: hello {boot, seq}
+  L->>F: PUT /api/entities/s_eins (activeMap)
+  F->>K: putEntity über mitKanal → publish
+  K-->>F: Bündel (50 ms, je Artikel einmal)
+  F->>F: sieveFuer(Spielerin): Stapel → Sichtbarkeit → Wissen
+  F-->>T: entity {id, type, revision} · session {activeMap …}
+  T->>F: GET /api/entities/s_eins (gesiebt wie immer)
+```
+
+- **Die Quelle** (`ChangeFeed`, `apps/server/src/live.ts`) liegt als Hülle
+  um das `Repository` (`mitKanal`): jedes `putEntity`, `deleteEntity` und
+  `putRegistryPart` meldet sich, ohne dass eine Route daran denken muss —
+  und die Tests mit `InMemoryRepository` sehen dieselbe Quelle. Heute ein
+  Prozess, also der Speicher (`LocalChangeFeed`, ein Ring der letzten 1000
+  Meldungen zum Nachholen). Laufen einmal mehrere Prozesse, kommt eine
+  Umsetzung über Postgres `LISTEN/NOTIFY` hinter dieselbe Schnittstelle.
+- **Gesiebt je Empfänger** (`sieveFuer`, dieselbe Rechnung wie
+  `GET /api/entities/:id`, mit dem frisch gelesenen Konto): was er nicht
+  sieht, bekommt er nicht, auch nicht als Id. Eine Meldung trägt nur Id,
+  Art und Revision; den Inhalt holt das Gerät gesiebt wie immer. `gone`
+  geht nur an wen den alten Stand sah. `session` trägt `activeMap`,
+  `activeEncounter`, `activeScene`, `nowPlaying` aus dem **gesiebten**
+  Artikel.
+- **Gemeldet wird nur, was er anders sieht** (T-399, REQ-398): die Route
+  siebt den Artikel vor und nach dem Schreiben je Empfänger und schweigt,
+  wenn beides gleich ist (Revision und Zeitstempel zählen nicht). Zieht ein
+  verborgener Gegner oder ein Token unter dem Nebel, erfährt es die
+  Leitung — die Spielerin nicht, auch nicht über den Takt der Meldungen.
+- **Ein Token auf der Karte ist eine Kante der Karte** (`marker`): es
+  bewegt sich, und die Karte meldet `entity`. Eine eigene Meldung mit
+  Koordinaten käme erst, wenn die Karte im Web versteckte Tokens selbst
+  zurückhält (T-115) — sonst trüge der Kanal, was der Artikel verbirgt.
+- **Zu viel auf einmal** (über 200 Artikel in einem Bündel — eine
+  Massenänderung) und **zu lange weg** (die Nummer liegt nicht mehr im
+  Ring, oder der Server wurde neu gestartet) heissen `reset`: das Gerät
+  holt neu, was es offen hat.
+- Ein Lebenszeichen alle 25 s, als Ereignis `ping` (ein Kommentar sähe
+  der Browser nicht); bleibt 60 s lang alles aus, oder kommt das Telefon
+  nach 30 s Stille wieder in den Blick oder ins Netz, verbindet die Seite
+  selbst neu, mit `?since=` (T-399). Nach 15 min schliesst der Server und
+  das Gerät kommt wieder — dabei prüft die Wache die Anmeldung neu.
+  Bei `reset` fragen auch Play, Initiative, Kartenkontext, Zugplaner und
+  Seitenleiste neu, nicht nur der Bestand. „Überall
+  abmelden" schliesst die Ströme des Kontos sofort.
+- **Die Sicht eines Mitglieds** (`X-View-As`) gilt für den Strom nicht —
+  `EventSource` kann keinen Kopf setzen. Er läuft als die Leitung; was die
+  Seite daraufhin holt, holt sie in der Sicht.
+
+Im Browser: `Live` (`apps/web/src/app/kern/live.ts`) verbindet, solange
+jemand angemeldet ist, und verteilt an wer sich anmeldet —
+`onArtikel` (geändert / weg), `onSitzung` (der Sitzungszustand, dazu das
+Signal `sitzungen`) und `onNeu` (`reset`, Register). Der Transport steht
+hinter `LIVE_TRANSPORT`; eine Komponente kennt ihn nicht. Der `Bestand`
+holt geöffnete Artikel neu (eine Maske beim Bearbeiten hält ihre
+Ausgangslage selbst, REQ-192). Der Punkt in der Kopfleiste zeigt, ob das
+Gerät mithört.
+
+### 5.3 Die Tabellen
 
 Drei generische Tabellen tragen jeden Artikel, das Register steht als
 Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
@@ -323,55 +386,17 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 | Bestand | `entity` (die Id), `component` (eine Karte je Art und Artikel), `relation` (Kanten, vorwärts) |
 | Register | `interface_def`, `component_def`, `relation_def`, `view_def`, `var_def`, `unit_def`, `enum_def`, `setting_def` |
 | Zugang | `app_user`, `app_session`, `app_token`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
+| Lesen | `reading_position` — der Lesestand je Konto und Buch (T-091) |
 | Protokoll | `event_log` — auch jede Massenänderung (`bulk`, mit den alten Fassungen) und ihr Zurücknehmen (`bulk.undone`) |
 
 ---
 
 ## 6. Die Oberfläche
 
-```mermaid
-flowchart TB
-  subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
-    wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
-    subgraph seiten[Seiten, lazy geladen]
-      login[login/login.ts]
-      liste[artikel/kompendium.ts<br/>Kompendium und Bereiche]
-      vorschau[artikel/vorschau.ts<br/>Vorschau quick]
-      anlegen[artikel/anlegen.ts<br/>New article]
-      wahl[artikel/wahl.ts<br/>Artikel suchen und wählen]
-      artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
-      felder[artikel/felder.ts<br/>Felder aus dem Register]
-      text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
-      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
-      register[register/register.ts<br/>Typen · Kanten · Listen]
-      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
-      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
-      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
-    end
-    subgraph kern[kern/ · Dienste]
-      api[api.ts<br/>HttpClient → /api]
-      bestand[bestand.ts<br/>Register + geöffnete Artikel als Signal]
-      session[session.ts<br/>wer ist angemeldet]
-    end
-  end
-  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
-  router --> wache --> session
-  router --> login & liste & artikel & verwaltung & register & klassen
-  verwaltung --> api
-  register --> regtyp --> bestand
-  artikel --> felder & text & buch
-  buch --> text
-  liste --> vorschau & anlegen
-  artikel & anlegen --> wahl --> api
-  liste --> api
-  vorschau & artikel --> bestand --> api
-  klassen --> text
-  klassen -->|"GET /api/classes/:id"| api
-  login --> session --> api
-  felder & text & buch --> model
-  api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
-```
+![Die Oberfläche](Bilder/Oberflaeche.excalidraw.svg)
+
+Gezeichnet in [Bilder/Oberflaeche.excalidraw.md](Bilder/Oberflaeche.excalidraw.md). Die Routen stehen in
+`apps/web/src/app/app.routes.ts`; je Ordner ein Bereich, lazy geladen.
 
 **Gezeichnet wird aus dem Register, nicht aus einer Vorlage je Art.**
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell
@@ -399,7 +424,8 @@ geöffneten Artikel samt den Namen, die sie mitbrachten (`Bestand.namen`,
 `Bestand.verweise`). Das Kompendium fragt je Blatt den Server
 (`/api/list`); die Seitenzahl, die Feldfilter und die Vorschau stehen im
 Filterzustand der Seite (`ListenFilter`, „der Filter gehört der Seite"),
-die Art in der Adresse. Wer ein Kantenziel oder ein Verweisfeld wählt,
+die Art in der Adresse, die Filtergruppe auch (`?view=`, T-137; die
+Gruppen hält `Filtergruppen` für Kopfleiste und Unterreiter zugleich). Wer ein Kantenziel oder ein Verweisfeld wählt,
 sucht über dieselbe Route (`nw-wahl`, `of=Art&q=…&limit=20`). Boards und Klassen fragen sie ebenso
 (`Bestand.liste`): die Boards und die Geschichte mit `rel=partOf`, die
 Namen der verbundenen Artikel mit `ids=`; die Zeilen liegen als schmale
@@ -427,7 +453,7 @@ Artikel in `Bestand.kurz`.
 | `checks.ts` | Prüfungen über einen Bestand (W9): eine erweiterbare Liste `CHECKS` reiner Funktionen |
 | `bulk.ts` | Massenänderungen (W9): Auswahl, Operationen, Zusammenführen als Vorher/Nachher (`planBulk`), `repoint` |
 | `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
-| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
+| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten; dazu `originParts` für Herkunft und Hintergrund (T-166) |
 
 ---
 
@@ -437,7 +463,7 @@ Artikel in `Bestand.kurz`.
 flowchart LR
   reg["packages/registry<br/>(Quelle)"] -- emit-seed --> seed[prototype/test<br/>Prüfaufbau]
   reg -- catalogue --> docs1[docs/Artikeltypen.md<br/>Datenmodell.md › Register heute]
-  vault[VTT/Requirements.md] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Umsetzung.md]
+  vault[VTT/Stories · Features · Epics] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Requirements.md · Umsetzung.md]
   ft[(5etools-src/data<br/>ausserhalb des Repos)] -- import-5etools --> datei[Ausfuhrdatei<br/>~35 MB, nicht eingecheckt]
   datei -->|"server import --only-new"| pg[(Postgres)]
   datei -->|"--sample"| seed

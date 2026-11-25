@@ -10,9 +10,13 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { areaOf, entityName, primaryInterface, typeList } from '@nw/model';
+import { areaOf, entityName, placementGroups, primaryInterface, typeChain, typeList } from '@nw/model';
 import type { Entity } from '@nw/model';
 import { Bestand, schmal } from '../kern/bestand';
+import { AusgeblendetHinweis } from '../kern/ausgeblendet';
+import type { Ausgeblendet } from '../kern/api';
+import { Session } from '../kern/session';
+import { Schnell, anlegbareArten, type Angelegt } from '../artikel/schnell';
 
 /** So viele Treffer zeigt die Suche — 24 157 liest niemand. */
 const TREFFER = 30;
@@ -31,6 +35,7 @@ const TREFFER = 30;
  */
 @Component({
   selector: 'nw-board-suche',
+  imports: [AusgeblendetHinweis, Schnell],
   template: `
     <div class="zeile">
       <input
@@ -52,6 +57,45 @@ const TREFFER = 30;
       <p class="fehler" role="alert">The search failed: {{ f }}</p>
     } @else {
       <ul>
+        @if (gruppieren()) {
+          <!-- Auf der Karte (T-301): je Name eine Zeile, vorn das Relevanteste
+               — Kreatur, Statblock, Bild —, die übrigen hinter „+n". -->
+          @for (g of gruppen(); track g.key) {
+            <li>
+              <div class="gruppe">
+                <button type="button" (click)="gewaehlt.emit(g.best)">
+                  <b>{{ name(g.best) }}</b>
+                  <span>{{ artLabel(g.best) }}</span>
+                </button>
+                @if (g.others.length) {
+                  <button
+                    type="button"
+                    class="mehr"
+                    (click)="umschalten(g.key)"
+                    [attr.aria-expanded]="offen().has(g.key)"
+                    [attr.aria-label]="(offen().has(g.key) ? 'Hide' : 'Show') + ' ' + g.others.length + ' more for ' + name(g.best)"
+                  >
+                    {{ offen().has(g.key) ? '−' : '+' + g.others.length }}
+                  </button>
+                }
+              </div>
+              @if (offen().has(g.key)) {
+                <ul class="andere">
+                  @for (o of g.others; track o.id) {
+                    <li>
+                      <button type="button" (click)="gewaehlt.emit(o)">
+                        <b>{{ name(o) }}</b>
+                        <span>{{ artLabel(o) }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          } @empty {
+            <li class="leer">{{ laedt() ? 'Searching…' : 'Nothing matches — or it is already on the map.' }}</li>
+          }
+        } @else {
         @for (t of treffer(); track t.id) {
           <li>
             <button type="button" (click)="gewaehlt.emit(t)">
@@ -62,10 +106,29 @@ const TREFFER = 30;
         } @empty {
           <li class="leer">{{ laedt() ? 'Searching…' : 'Nothing matches — or it is already on the board.' }}</li>
         }
+        }        <!-- Was es noch nicht gibt, gleich anlegen und hinlegen (T-131). -->
+        @if (suche().trim() && !laedt() && anlegbar()) {
+          <li class="neu">
+            <button type="button" (click)="schnell.set(suche().trim())">
+              <b>Create “{{ suche().trim() }}”</b>
+              <span>as {{ art() ? artLabelVon(art()) : '…' }}</span>
+            </button>
+          </li>
+        }
       </ul>
       @if (mehr() > 0) {
         <p class="leer">{{ mehr() }} more — narrow the search or pick a type.</p>
       }
+      <nw-ausgeblendet [info]="ausgeblendet()" [knapp]="true" />
+    }
+    @if (schnell(); as name) {
+      <nw-schnell
+        [vorschlag]="name"
+        [ziele]="art() ? [art()] : []"
+        [vorgabe]="art() || undefined"
+        (angelegt)="eingetragen($event)"
+        (zu)="schnell.set(null)"
+      />
     }
   `,
   styles: `
@@ -112,6 +175,27 @@ const TREFFER = 30;
     button:focus-visible {
       background: var(--hover);
     }
+    .gruppe {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .gruppe > button:first-child {
+      flex: 1;
+      min-width: 0;
+    }
+    .gruppe .mehr {
+      flex: none;
+      width: auto;
+      min-width: 2.75rem;
+      justify-content: center;
+      border: 1px solid var(--line);
+    }
+    .andere {
+      margin: 0 0 0.25rem 1rem;
+      max-height: none;
+      border-left: 2px solid var(--line);
+      padding-left: 0.5rem;
+    }
     select {
       flex: 0 1 12rem;
       min-height: 40px;
@@ -126,6 +210,13 @@ const TREFFER = 30;
     .leer {
       margin: 0.5rem 0 0;
     }
+    .neu {
+      border-top: 1px solid var(--line);
+    }
+    .neu b {
+      color: var(--accent);
+      font-style: italic;
+    }
     .fehler {
       margin: 0.5rem 0 0;
       color: var(--accent, #8b1a1a);
@@ -136,8 +227,13 @@ export class BoardSuche {
   /** Was nicht angeboten wird: das Board selbst und was schon daraufliegt. */
   readonly ohne = input<ReadonlySet<string>>(new Set());
   readonly gewaehlt = output<Entity>();
+  /** Nur Artikel dieser Art (T-339: das Werkzeug „Map“ sucht Karten). */
+  readonly typ = input('');
 
   private readonly bestand = inject(Bestand);
+  private readonly session = inject(Session);
+  /** Das offene „Create"-Popup (T-131): der getippte Name. */
+  protected readonly schnell = signal<string | null>(null);
   private readonly feld = viewChild<ElementRef<HTMLInputElement>>('feld');
   protected readonly suche = signal('');
   protected readonly art = signal('');
@@ -145,6 +241,8 @@ export class BoardSuche {
   protected readonly laedt = signal(false);
   private readonly gefunden = signal<Entity[]>([]);
   private readonly gesamt = signal(0);
+  /** Was nur fehlt, weil seine Ebene nicht aufgeschaltet ist (T-069). */
+  protected readonly ausgeblendet = signal<Ausgeblendet | null>(null);
   private lauf = 0;
   private uhr: ReturnType<typeof setTimeout> | null = null;
 
@@ -163,7 +261,8 @@ export class BoardSuche {
     });
     /* Wer „Add article" drückt, will tippen. */
     afterNextRender(() => this.feld()?.nativeElement.focus());
-    this.fragen();
+    /* Erst, wenn die Eingaben stehen — `typ` kommt nach dem Konstruktor. */
+    queueMicrotask(() => this.fragen());
   }
 
   /** Gefragt wird nach einer kurzen Pause, nicht bei jedem Buchstaben. */
@@ -178,17 +277,18 @@ export class BoardSuche {
     this.fragen();
   }
 
-  private fragen(): void {
+  protected fragen(): void {
     const nr = ++this.lauf;
     this.laedt.set(true);
     const q = this.suche().trim();
     void this.bestand
-      .liste({ q: q || undefined, type: this.art() || undefined, limit: TREFFER + 10 })
+      .liste({ q: q || undefined, type: this.art() || this.typ() || undefined, limit: TREFFER + 10 })
       .then((r) => {
         if (nr !== this.lauf) return;
         this.fehler.set(null);
         this.gefunden.set(r.rows.map(schmal));
         this.gesamt.set(r.total);
+        this.ausgeblendet.set(r.unactivated ?? null);
       })
       .catch((e: unknown) => {
         if (nr === this.lauf) this.fehler.set(e instanceof Error ? e.message : String(e));
@@ -196,6 +296,26 @@ export class BoardSuche {
       .finally(() => {
         if (nr === this.lauf) this.laedt.set(false);
       });
+  }
+
+  /** Gruppieren nach Name (T-301) — die Karte will das Wesen, nicht drei Fassungen davon. */
+  readonly gruppieren = input(false);
+  protected readonly offen = signal<ReadonlySet<string>>(new Set());
+  protected readonly gruppen = computed(() => {
+    const r = this.bestand.registry();
+    const ohne = this.ohne();
+    const zeilen = this.gefunden()
+      .filter((e) => !ohne.has(e.id))
+      .map((e) => ({ id: e.id, name: entityName(e), type: primaryInterface(e), e }));
+    return placementGroups(zeilen, (t) => (r ? typeChain(r, t) : [t]))
+      .slice(0, TREFFER)
+      .map((g) => ({ key: g.key, best: g.best.e, others: g.others.map((o) => o.e) }));
+  });
+  protected umschalten(key: string): void {
+    const n = new Set(this.offen());
+    if (n.has(key)) n.delete(key);
+    else n.add(key);
+    this.offen.set(n);
   }
 
   protected readonly treffer = computed(() => {
@@ -207,6 +327,22 @@ export class BoardSuche {
 
   /** Was die Liste noch hätte — gesagt, damit niemand meint, das sei alles. */
   protected readonly mehr = computed(() => Math.max(0, this.gesamt() - this.gefunden().length));
+
+  /** Lässt sich hier überhaupt etwas anlegen — in der gewählten Art oder irgendeiner? */
+  protected readonly anlegbar = computed(() => {
+    const r = this.bestand.registry();
+    return !!r && anlegbareArten(r, this.art() ? [this.art()] : [], !this.session.isAdmin()).length > 0;
+  });
+
+  /** Der neue Artikel liegt sofort da (T-131); das Popup bleibt für „Open". */
+  protected eingetragen(a: Angelegt): void {
+    this.gewaehlt.emit(a.entity);
+    this.fragen();
+  }
+
+  protected artLabelVon(t: string): string {
+    return this.bestand.registry()?.interfaces[t]?.label ?? t;
+  }
 
   protected name(e: Entity): string {
     return entityName(e);

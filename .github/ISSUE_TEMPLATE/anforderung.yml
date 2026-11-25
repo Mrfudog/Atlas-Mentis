@@ -6,7 +6,7 @@ body:
     id: req
     attributes:
       label: REQ-Nummer
-      description: Die unveränderliche ID aus Requirements.md. Ohne sie gehört es hier nicht hin.
+      description: Die unveränderliche ID der Story (VTT/Stories/REQ-nnn.md). Ohne sie gehört es hier nicht hin.
       placeholder: REQ-174
     validations:
       required: true

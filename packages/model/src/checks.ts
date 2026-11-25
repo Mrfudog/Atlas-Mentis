@@ -14,10 +14,19 @@
  * Kantenziel überhaupt da ist.
  */
 
+import { imageAddresses } from './assets.js';
 import { entityName, linkFinder, typeChain } from './entity.js';
+import { glossaryFieldRefs } from './glossary.js';
 import { INSTANCE_RELATION, isInstance } from './instance.js';
+import { beschreibeAbweichung, registerAbweichung } from './registerabgleich.js';
+import { RULE_OPTIONS } from './ruleOptions.js';
 import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
+import { viewConflicts } from './viewScope.js';
+import { MIN_CONTRAST, tokenContrast } from './tokens.js';
+import { stateGaps, stateOf } from './readiness.js';
+import { LAYER_TYPES, UNASSIGNED_LAYER } from './stack.js';
+import { LAYER_RELATION } from './visibility.js';
 
 export interface CheckHit {
   /** Peg-Id — der Weg zum Artikel (`/artikel/:id`). */
@@ -27,6 +36,8 @@ export interface CheckHit {
   reason: string;
   /** Bei Doppeln: alle Artikel der Gruppe, der erste ist der älteste. */
   group?: string[];
+  /** Kein Artikel, sondern eine Registerzeile (T-123): wohin im Register. */
+  registry?: Record<string, string>;
 }
 
 export interface CheckResult {
@@ -45,6 +56,8 @@ export interface CheckContext {
   entities: Entity[];
   /** Id → Art über den ganzen Bestand: ob ein Kantenziel da ist. */
   exists: ReadonlyMap<string, string>;
+  /** Die Startzeilen, gegen die das Register verglichen wird (T-123). */
+  seed?: Registry;
 }
 
 export interface Check {
@@ -284,6 +297,23 @@ export const CHECKS: Check[] = [
     },
   },
   {
+    /* T-123: Registeränderungen ohne Migration kamen nie auf dev und prod. */
+    key: 'registryDrift',
+    label: 'Registry differs from the seed',
+    description:
+      'A type, field, edge, view or list that stands differently in this database than in packages/registry — a change that came without a migration, or one somebody made here on purpose.',
+    run({ registry, seed }) {
+      if (!seed) return [];
+      return registerAbweichung(registry, seed).map((a) => ({
+        id: `registry:${a.part}:${a.name}${a.path ? `:${a.path}` : ''}`,
+        name: a.path ? `${a.name}.${a.path}` : a.name,
+        type: a.part,
+        reason: beschreibeAbweichung(a),
+        registry: registerOrt(a.part, a.name),
+      }));
+    },
+  },
+  {
     key: 'brokenLinks',
     label: 'Links that hit nothing',
     description: 'A [[…]] link in text whose target no visible article carries as number, id, name or alias.',
@@ -319,7 +349,135 @@ export const CHECKS: Check[] = [
       return raus;
     },
   },
+  {
+    /* T-201: die Galerie zeigt Assets; ein Bild, das nur als Adresse in
+       einem Feld steht (die Karten der Abenteuer aus 5e.tools), ist für sie
+       nicht da. `scripts/bilder-nachtrag.mjs` führt sie als Assets. */
+    key: 'imageAddress',
+    label: 'Images given as an address',
+    description: 'An image field holds a web address instead of an image article — the gallery does not show it.',
+    run({ registry, entities }) {
+      const raus: CheckHit[] = [];
+      for (const e of entities) {
+        const adressen = imageAddresses(registry, e);
+        if (adressen.length) raus.push(hit(e, adressen.map((a) => `${a.field}: ${a.url}`).join(', ')));
+      }
+      return raus;
+    },
+  },
+  {
+    /* T-425, E-173: zwei Beiträge zu einer Ansicht fassen dasselbe Element
+       an, oder zwei Elemente wollen an dieselbe Stelle. Beides ist erlaubt
+       und hat eine Regel (genauere Schicht, Priorität) — hier steht, wo. */
+    key: 'viewConflicts',
+    label: 'View conflicts',
+    description:
+      'Two overlays on a view change the same element (the more specific one wins), or two elements claim the same position (the higher priority, then the more specific overlay comes first). Neither is an error; this lists where it happens.',
+    run({ registry, exists }) {
+      return viewConflicts(registry, (id) => exists.get(id)).map((k) => ({
+        id: `view:${k.group}:${k.type}:${k.kind}:${k.element}`,
+        name: `${k.group} › ${k.type}`,
+        type: 'view',
+        reason:
+          k.kind === 'conflict'
+            ? `“${k.element}” is changed by ${k.sources.join(' and ')} — ${k.winner} wins`
+            : `“${k.element}” shares position ${k.position} with ${k.sources.join(', ')}`,
+        registry: registerOrt('views', k.winner ?? k.sources.find((s) => !s.startsWith('type ') && !s.startsWith('view ')) ?? k.group),
+      }));
+    },
+  },
+  {
+    /* T-425, E-182, E-186: was in der Parkplatz-Ebene liegt oder noch gar
+       keine Ebene hat — offene Arbeit, bis es in seine Ebene verschoben ist. */
+    key: 'unassigned',
+    label: 'Unassigned',
+    description: 'Articles in the layer Unassigned, or with no layer at all. Move each into the layer it belongs to (Admin › Layer on the article, or a bulk change “move to layer”).',
+    run({ registry, entities }) {
+      const raus: CheckHit[] = [];
+      for (const e of entities) {
+        const typ = e.interfaces?.[0] ?? '';
+        if (LAYER_TYPES.has(typ) || typeChain(registry, typ).includes('Layer') || isInstance(e)) continue;
+        const ebenen = (e.relations ?? []).filter((r) => r.type === LAYER_RELATION);
+        if (!ebenen.length) raus.push(hit(e, 'no layer'));
+        else if (ebenen.some((r) => r.to === UNASSIGNED_LAYER)) raus.push(hit(e, 'in Unassigned'));
+      }
+      return raus;
+    },
+  },
+  {
+    /* T-425, E-178: ein Artikel trägt einen Stand, dessen Pflicht er nicht
+       (mehr) erfüllt — gesetzt vor der Pflicht oder danach geleert. Er
+       behält den Stand; hier steht, was fehlt. */
+    key: 'readyWithGaps',
+    label: 'Ready with gaps',
+    description: 'Articles at prepared or ready that miss a field or edge their type requires for that state (requiredFor), or characters with an open choice. They keep their state; fill in or decide what is missing, or set a lower state.',
+    run({ registry, entities }) {
+      const raus: CheckHit[] = [];
+      /* Mit dem Bestand: offene Entscheide einer Figur zählen mit (T-436). */
+      const byId = new Map(entities.map((e) => [e.id, e]));
+      for (const e of entities) {
+        const stand = stateOf(e);
+        if (!stand || isInstance(e)) continue;
+        const luecken = stateGaps(registry, e, stand, { byId });
+        if (luecken.length) raus.push(hit(e, `${stand}, missing: ${luecken.map((g) => g.label).join(', ')}`));
+      }
+      return raus;
+    },
+  },
+  {
+    /* T-425, E-170: ein Text oder Akzent steht auf seiner Fläche zu schwach. */
+    key: 'tokenContrast',
+    label: 'Token contrast',
+    description: `A text token reads below ${MIN_CONTRAST.text}:1 on the surface it is meant for, or an accent below ${MIN_CONTRAST.accent}:1 — in the light or the dark mode. Change one of the two colours under Registry › Tokens.`,
+    run({ registry }) {
+      return tokenContrast(registry).map((k) => ({
+        id: `token:${k.token}:${k.mode}`,
+        name: registry.tokens?.[k.token]?.label ?? k.token,
+        type: 'token',
+        reason: `${k.ratio}:1 on ${registry.tokens?.[k.on]?.label ?? k.on} (${k.mode})`,
+        registry: { tab: 'tokens', token: k.token },
+      }));
+    },
+  },
+  {
+    /* T-347: ein Feld oder eine Regeloption nennt einen Glossarbegriff
+       (`glossary`); der Eintrag ist ein Artikel der Installation und kann
+       fehlen — dann steht dort wieder der eigene Satz, und hier steht, wo. */
+    key: 'missingGlossaryTerms',
+    label: 'Glossary terms named but missing',
+    description:
+      'A field or rule option names a glossary term (glossary) that no visible glossary article carries as name or alias — the field title and the handbook fall back to their own sentence.',
+    run({ registry, entities }) {
+      const namen = new Set<string>();
+      for (const e of entities) {
+        if (!typeChain(registry, e.interfaces?.[0] ?? '').includes('GlossaryTerm')) continue;
+        const id = e.components?.['Identity'] as { name?: unknown; aliases?: unknown } | undefined;
+        for (const n of [id?.name, ...(Array.isArray(id?.aliases) ? id.aliases : [])]) if (typeof n === 'string') namen.add(n.trim().toLowerCase());
+      }
+      const fehlt = (n: string) => !namen.has(n.trim().toLowerCase());
+      const raus: CheckHit[] = [];
+      for (const r of glossaryFieldRefs(registry)) {
+        if (fehlt(r.name)) raus.push({ id: `glossary:${r.ref}`, name: r.ref, type: 'field', reason: `names “${r.name}”`, registry: { type: r.ref.split('.')[0]! } });
+      }
+      for (const o of RULE_OPTIONS) {
+        if (o.glossary && fehlt(o.glossary)) raus.push({ id: `glossary:rule:${o.key}`, name: o.key, type: 'rule option', reason: `names “${o.glossary}”` });
+        for (const v of o.variants ?? []) {
+          if (v.glossary && fehlt(v.glossary)) raus.push({ id: `glossary:rule:${o.key}:${v.key}`, name: `${o.key}: ${v.key}`, type: 'rule option', reason: `names “${v.glossary}”` });
+        }
+      }
+      return raus;
+    },
+  },
 ];
+
+/** Wohin im Register (`/registry?…`) eine Zeile führt. */
+function registerOrt(part: string, name: string): Record<string, string> {
+  if (part === 'interfaces') return { type: name };
+  if (part === 'relations') return { tab: 'edges', edge: name };
+  if (part === 'views') return { tab: 'views', view: name };
+  if (part === 'enums') return { tab: 'lists', list: name };
+  return {};
+}
 
 export interface RunChecksOptions {
   /** Nur diese Prüfungen (Schlüssel); ohne Angabe alle. */

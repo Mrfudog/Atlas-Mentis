@@ -79,8 +79,10 @@ export function convert(
 export function formatUnit(value: number, unit: UnitDef): string {
   const stellen = unit.decimals ?? 1;
   const gerundet = Number(value.toFixed(stellen));
-  /* Nachkommanullen weg: „12 m" und nicht „12.0 m". */
-  return `${gerundet}\u202f${unit.code}`;
+  /* Nachkommanullen weg: „12 m" und nicht „12.0 m". Dazwischen ein
+     geschütztes Leerzeichen in voller Breite: das schmale (U+202F)
+     verschwand in der Serifenschrift des Buchs, „3lb" (T-126). */
+  return `${gerundet}\u00a0${unit.code}`;
 }
 
 /**
@@ -97,7 +99,7 @@ export function formatMeasure(
   mode: UnitMode,
 ): string {
   const from = unitByCode(registry, unitCode);
-  if (!from) return `${value}\u202f${unitCode}`;
+  if (!from) return `${value}\u00a0${unitCode}`;
   const eigen = formatUnit(value, from);
   if (mode === from.system) return eigen;
   const andere = from.system === 'imperial' ? 'metric' : 'imperial';
@@ -114,12 +116,12 @@ export function formatMeasure(
  */
 function formatSpan(registry: UnitRegistry, a: number, b: number, from: UnitDef, mode: UnitMode): string {
   const zahl = (n: number, u: UnitDef) => String(Number(n.toFixed(u.decimals ?? 1)));
-  const eigen = `${zahl(a, from)}/${zahl(b, from)}\u202f${from.code}`;
+  const eigen = `${zahl(a, from)}/${zahl(b, from)}\u00a0${from.code}`;
   if (mode === from.system) return eigen;
   const andere = from.system === 'imperial' ? 'metric' : 'imperial';
   const ziel = targetUnit(registry, from, mode === 'both' ? andere : mode, Math.max(a, b) * from.base);
   if (!ziel) return eigen;
-  const um = `${zahl((a * from.base) / ziel.base, ziel)}/${zahl((b * from.base) / ziel.base, ziel)}\u202f${ziel.code}`;
+  const um = `${zahl((a * from.base) / ziel.base, ziel)}/${zahl((b * from.base) / ziel.base, ziel)}\u00a0${ziel.code}`;
   return mode === 'both' ? `${eigen} (${um})` : um;
 }
 

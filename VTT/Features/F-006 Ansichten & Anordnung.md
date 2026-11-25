@@ -1,0 +1,260 @@
+---
+id: "F-006"
+title: "Ansichten & Anordnung"
+typ: "feature"
+epic: "[[EP-01 Inhaltsgerüst]]"
+beschreibung: "Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohne Code."
+tags: ["vtt", "feature"]
+---
+# F-006 Ansichten & Anordnung
+
+Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohne Code.
+
+Epic: [[EP-01 Inhaltsgerüst]]
+
+## Stories
+
+## Collection (T-425, 26.10.2026)
+
+Ein Artikel zeigt, was an ihm hängt, in der Ansicht **seiner Art**: die
+Session ihre Szenen und Begegnungen als Kacheln, jede die Kurzansicht der
+Szene. Das Element wählt die Ansicht, nicht die Kante (E-172); gesiebt hat
+der Server; in einer Kachel zeichnet eine weitere Collection nichts.
+
+```mermaid
+flowchart LR
+  S["Session · full"] --> C["Element collection<br/>path ← partOf, types, show, view, sort"]
+  C --> R["Rückbezüge + Artikel<br/>(gesiebt am Server)"]
+  R --> H["collectionHits / collectionGroups"]
+  H --> K["je Treffer nw-vorschau<br/>Ansicht der Zielart (quick)"]
+```
+
+## Collection fertig (T-425, 26.10.2026)
+
+Eine Collection zeigt als Kacheln, Liste oder **Tabelle** (die frühere
+„Table from edges", Migration 146) und nimmt ihre Artikel über einen Pfad
+oder aus einem **Filter** wie im Kompendium. Vorgaben: jede Geschichte
+zeigt, was ohne Rang zu ihr gehört (`st-contains` an `Story`, ersetzt
+„Contains"), ein Ort seine Unterorte und Bewohner (Migration 145).
+
+```mermaid
+flowchart LR
+  E["Element collection"] -->|source linked| P["Pfad · Rückbezüge"]
+  E -->|source filter| F["GET /api/list<br/>types, tags, fields, q"]
+  P --> H["collectionHits<br/>unranked, types, sort"]
+  F --> H
+  H --> D{"show"}
+  D --> K["Kacheln · quick"]
+  D --> L["Liste · overview"]
+  D --> T["Tabelle · props + fields"]
+```
+
+## Collection als Artikel (T-425, REQ-438, 26.10.2026)
+
+Eine Collection (unter Rule) gruppiert Artikel nach Regel und von Hand
+(`inCollection`, `exclude`); ihre Seite zeigt die Mitglieder, gesiebt.
+`MaterialGroup` ist ein Untertyp (E-174).
+
+```mermaid
+flowchart LR
+  C["Collection<br/>types · tags · fields"] -->|collectionRuleQuery| L["GET /api/list"]
+  I["inCollection<br/>(exclude)"] --> R["Rückbezüge"]
+  L --> M["Mitglieder"]
+  R --> M
+  M --> E["Element collection<br/>source members"]
+  MG["MaterialGroup"] -.extends.-> C
+```
+
+## Erfassungsmasken (T-425, REQ-432, 28.10.2026)
+
+Zwei Ortsansichten sagen, was das Anlegen fragt (E-169 a): `create` den
+schnellen Dialog aus einer Auswahl, `createFull` die Artikelseite gleich
+nach „New article“ (`?edit=create`), mit den Feldern der Maske vorn, auch
+leer. Ohne Gestaltung einer Art gilt das Heutige. Pflichtfelder fragt der
+Dialog immer; der Designer warnt, wenn die Maske eines auslässt.
+
+**Abläufe (REQ-440, REQ-433, E-176, Schnitt 8a):** das Element `steps`
+macht aus jedem Kind eine Seite mit Back und Next; wo man steht, liest
+`currentStep` aus dem Befüllten. Das Element `builder` in `create` führt
+„New article“ in den Charakter-Assistenten — Vorgabe der Spielerfigur
+(Migration 154). Offen (8b): `levelUp` als Schicht über dem Assistenten.
+
+**T-436 (Assistent als Ablauf):** die Figur entsteht gleich und trägt,
+was gewählt ist; **offene Entscheide halten sie auf `idea`** — eine Lücke
+wie ein Pflichtfeld (`stateGaps` mit Bestand, `kind: 'choice'`, Schnitt 1).
+Die Schritte bleiben die heutigen des Assistenten, als Ansicht
+`create`/`edit` der Spielerfigur. Konzept:
+[[docs/vorschlaege/Assistent-als-Ablauf.md]].
+
+```mermaid
+flowchart LR
+  F["Figur<br/>Kanten hasClass · chose"] --> O["openDecisions<br/>pendingChoices ohne Ausrüstung"]
+  O --> G["stateGaps / stateRefusal<br/>kind: choice ab prepared"]
+  G --> S["Server: 422 state_gaps<br/>„decide: …“"]
+  G --> W["Werkbank: Ready with gaps"]
+  O --> A["Assistent: legt als idea an,<br/>solange offen"]
+```
+
+```mermaid
+flowchart LR
+  M["createFull mit steps"] --> S["createSteps<br/>Seiten · Felder"]
+  S --> C["currentStep<br/>aus dem Befüllten"]
+  C --> E["Bearbeiten<br/>eine Seite, Back/Next"]
+  B["create mit builder"] --> H["hasBuilder"]
+  H --> A["New article → /characters/new"]
+```
+
+```mermaid
+flowchart LR
+  T["InterfaceDef.views<br/>create · createFull"] --> L["createLayout<br/>Felder · designed"]
+  L -->|designed| S["Dialog nw-schnell<br/>Felder der Maske"]
+  L -->|nicht gestaltet| Q["quick-Felder<br/>höchstens 8"]
+  L -->|designed| N["New article<br/>?edit=create"]
+  N --> A["Artikelseite<br/>Maske vorn, auch leer"]
+  T --> W["createMissingRequired<br/>Warnung im Designer"]
+```
+
+## Erfassungsansichten „Roleplay“ und „Fight“ (T-462, REQ-461, 5.11.2026)
+
+Eine Kreatur wird als Figur angelegt, die man spielt, oder als Gegner, den
+man bekämpft — dieselben Felder, andere Reihenfolge. Darum sind
+`roleplay` und `fight` Ansichten der Gruppe `createFull` mit Geltung
+(`Creature`; `fight` auch `Statblock`), und wo mehrere gelten, wird
+gewählt: im Dialog „New article“ (vorgewählt nach `defaultIn` — Bereich
+oder Art, von der aus angelegt wird) und über der Maske (`?form=`).
+`roleplay` folgt dem Universal Roleplaying Template von The Alexandrian
+(Appearance, Roleplaying, Background, Key info, Agenda, Secrets,
+Relationships), je Feld ein eigener Hilfetext (`description`), der beim
+Fokus erscheint; neu sind `Creature.background`, `keyInfo`, `agenda`,
+`personality` heisst „Roleplaying“. `fight` stellt den Statblock in die
+Mitte (an der Kreatur `linked`, am Statblock wie im Buch), dazu Grösse und
+Token, den Stand, Taktik, Beute und die Begegnungen. Eine Maske fragt
+jetzt auch Prosafelder; der Wechsel verliert nichts. Migration 169; E2E
+`kreatur-ansichten.spec.ts`; Hilfe, Handbuch („Creating a creature:
+Roleplay or Fight“), Glossar.
+
+```mermaid
+flowchart LR
+  V["view_def roleplay · fight<br/>group createFull · applies · defaultIn"] --> F["createForms(Art)<br/>welche gelten"]
+  F --> D["Dialog New article<br/>Form, vorgewählt createFormFor(Bereich)"]
+  D --> U["?edit=create&form=roleplay"]
+  U --> A["Artikelseite im Bearbeiten<br/>createLayout: fields + prose"]
+  A --> W["Form-Leiste: Roleplay · Fight · All fields<br/>maskeAnwenden — Entwurf bleibt"]
+  A --> H["Hilfetext am Feld<br/>description, beim Fokus"]
+  S["Statblock-Hinweis<br/>Zahlen am Statblock, Link ?form=fight"] --- A
+```
+
+## Design-Tokens (T-425, REQ-437, 26.10.2026)
+
+Farben sind Registerzeilen mit Rolle und Wert hell/dunkel (E-170 a). Ein
+Element nennt je Stelle ein Token, die Ansicht je Elementart eine Vorgabe;
+der Kontrast wird geprüft (Werkbank), gepflegt wird unter Registry › Tokens.
+
+```mermaid
+flowchart LR
+  T["Registry.tokens<br/>Rolle · hell · dunkel"] --> C["--tok-name<br/>kern/tokenfarben.ts"]
+  V["ViewDef.styles<br/>je Elementart"] --> P["pickView<br/>withViewStyles"]
+  E["el.style<br/>je Stelle"] --> P
+  P --> H["[nwStil]-Hülle<br/>Baum · Seite · Kurzansicht"]
+  C --> H
+  T --> K["tokenContrast<br/>Werkbank"]
+```
+
+## Die Leiste im Designer (T-425, REQ-436, 26.10.2026)
+
+Eine Leiste mit drei Zonen (E-171): oben **Einfügen** nach Gruppe und
+Suche, rechts **Allgemein** (Rückgängig, Wiederholen, Kopieren,
+Einfügen), am gewählten Element schwebend der **Kontext** (ordnen,
+duplizieren, kopieren, entfernen, fertig). Verlauf und Ablage sind Muster
+für jede Leiste (`history.ts`, `kern/ablage.ts`).
+
+```mermaid
+flowchart LR
+  O["Leiste oben<br/>Einfügen · Suche"] -->|dazu| B["Baum (Entwurf)"]
+  A["Allgemein<br/>Undo · Redo · Copy · Paste"] --> V["Verlauf<br/>history.ts"]
+  K["Schwebend am Element<br/>↑ ↓ → ← · Duplicate · Copy · Remove"] -->|aendere| B
+  B --> V
+  A --> Ab["Ablage<br/>kern/ablage.ts"]
+  B -->|Save| R["Register"]
+```
+
+## Linked article und Board-Skizze (T-425, 26.10.2026)
+
+„Linked article" folgt auf Wunsch einer Kante und zeigt das Ziel in einer
+gewählten Ansicht (E-172); ohne Kante bleibt es die bearbeitbare
+`asField`-Seite. Die Kurzansicht eines Boards ist eine Skizze
+(`boardSketch`); eine Szene zeigt „Contains" als Liste (Element gleicher
+Id stellt um, Migration 147).
+
+```mermaid
+flowchart LR
+  L["Element linked"] -->|ohne path| S["Seite: asField, bearbeitbar"]
+  L -->|mit path| B["Baum: erstes Ziel"] --> V["nw-vorschau in view"]
+  Br["Board quick"] --> K["boardSketch<br/>Fläche + Kacheln"]
+  R["redactBoard am Server"] --> K
+```
+
+## Schichten (T-425, 26.10.2026)
+
+Eine Ansicht lässt sich für alle, einen Typ, eine Bedingung (Feld, Kante)
+oder einen Artikel **überlagern**, statt sie zu kopieren (E-168): eine
+Ansichtszeile mit `adjust` (UI *overlay*) fügt hinzu, verschiebt, nimmt
+weg; der Rest folgt der Ansicht. Elemente stehen nach Position (`pos`,
+still 10, 20 … der Grundlage), gleich genau ordnet `priority`. Treffen
+sich zwei Schichten, zeigt der Designer ⚠ und die Werkbank die Prüfung
+„View conflicts“ (E-173). Der Designer speichert „nur dieser Artikel“ und
+„mit Bedingung“ auf Wunsch als Schicht (`contributionFrom`).
+
+```mermaid
+flowchart LR
+  T["Anordnung der Art"] --> G["alle"] --> Ty["Typ"] --> B["Bedingung"] --> A["Artikel"]
+  A --> S["nach pos, Priorität, Genauigkeit"]
+  S --> D["Designer: Herkunft, ⚠"]
+  S --> W["Werkbank: View conflicts"]
+```
+
+## Icons (T-461, REQ-460, 5.11.2026)
+
+Ein **Icon** ist ein Name aus einem Katalog (`packages/model/src/icons.ts`,
+36 Lucide-Icons als Platzhaltersatz, ISC). Die Art trägt eines
+(`InterfaceDef.icon`, die `extends`-Kette hoch geerbt, Migration 168),
+ein Feld seines (`PropertySchema.icon`), ein Artikel darf ein anderes
+wählen (`Identity.icon`, `format: 'icon'`). Gezeichnet wird überall
+dieselbe Komponente `nw-icon` (Inline-SVG in Schriftfarbe; neben einem
+Namen Zierde, allein ein Bild mit Beschriftung); der Wähler `nw-icon-wahl`
+sucht nach Name und Tag. Gewählt wird gerechnet, nie gespeichert — nur
+die Namen stehen in Register und Artikel. Entscheid E-210 (a, erweitert):
+Lucide für die Oberfläche, game-icons.net und eigene Symbole als Module
+einer Asset-Sammlung (REQ-462, Schnitt 2). Die Stories REQ-460 und
+REQ-462 stehen auf dem Brett der Zentrale, nicht als Notiz hier: der
+Vault zählt bis REQ-394, das Brett ab 4xx — wie beide zusammenkommen,
+fragt ein Entscheid der Leitung (E-211).
+
+Stand 5.11.2026: In der Listenzeile steht das Icon der Art; das eigene
+Icon eines Artikels zeigt erst seine Seite und seine Karte — die
+Listen-API bekommt die Spalte mit T-398. Fantasy-Satz, Marker auf der
+Karte und das Modul `packages/assets` sind offen (T-461, Schnitt 2).
+
+```mermaid
+flowchart LR
+  A["Artikel: Identity.icon"] -->|gesetzt| I["iconOf"]
+  T["Art: InterfaceDef.icon"] -->|sonst, extends-Kette hoch| I
+  I --> K["Katalog: ICONS (Id, Pfad, Tags, Quelle)"]
+  K -->|bekannt| N["nw-icon: SVG, aria"]
+  K -->|unbekannt| L["nichts"]
+  N --> S["Liste · Kurzansicht · Kopf · Kanten · Kachel"]
+  W["nw-icon-wahl: Suche"] --> A
+  W --> T
+```
+
+<!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
+5 Stories · 24 Punkte · 2 steht · 2 offen · 1 ersetzt
+
+| Story | Rolle | Prio | Stand |
+|---|---|---|---|
+| [[REQ-026]] Ansichten festlegen | Spielleitung | 1 | steht |
+| [[REQ-164]] Darstellungsstufen als eigenes System | – | 2 | ersetzt |
+| [[REQ-256]] Ansichten ohne Code definieren | Spielleitung | 1 | steht |
+| [[REQ-376]] Sammlungsansichten neben Artikelansichten | Spielleitung | 2 | offen |
+| [[REQ-383]] Ansicht je Artikeltyp teilen, mit Vorschau als Spieler | Spielleitung | 2 | offen |
+<!-- stories:ende -->

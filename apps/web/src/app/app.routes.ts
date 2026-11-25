@@ -1,5 +1,7 @@
-import type { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, type RedirectFunction, type Routes } from '@angular/router';
 import { wache } from './kern/wache';
+import { startpunkt } from './start/startpunkt';
 
 /**
  * Die Wache steht vor allem ausser der Anmeldung. Sie ist Bequemlichkeit,
@@ -11,13 +13,18 @@ import { wache } from './kern/wache';
  */
 const kompendium = () => import('./artikel/kompendium').then((m) => m.Kompendium);
 
+/** Ein alter Weg auf die Artikelseite (T-191) — mit seinen Abfrageparametern. */
+const zumArtikel: RedirectFunction = ({ params, queryParams }) =>
+  inject(Router).createUrlTree(['/artikel', params['id']], { queryParams });
+
 export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./login/login').then((m) => m.Login),
     title: 'Sign in · Atlas Mentis',
   },
-  { path: '', pathMatch: 'full', redirectTo: 'compendium' },
+  /* Der Start (T-342): Spielende aufs Kampagnenboard, sonst das Kompendium. */
+  { path: '', pathMatch: 'full', canActivate: [startpunkt], children: [] },
   {
     path: 'compendium',
     canActivate: [wache],
@@ -62,6 +69,31 @@ export const routes: Routes = [
     loadComponent: () => import('./boards/board').then((m) => m.Board),
     title: 'Board · Atlas Mentis',
   },
+  /* Play › Map (T-115): die Karte der laufenden Sitzung. Ein Schirm,
+     kein Bereich — Karte, Initiative und Boards sucht man mitten im Kampf
+     nicht in einer Liste (CLAUDE.md, „Play ist ein Schirm"). */
+  {
+    path: 'play',
+    canActivate: [wache],
+    loadComponent: () => import('./karten/play').then((m) => m.Play),
+    title: 'Play · Atlas Mentis',
+  },
+  /* Play › Maps (T-202): der feste Ort für Karten — Liste mit Vorschau,
+     Unterkarten eingerückt, „New map“ aus einem Bild. */
+  {
+    path: 'maps',
+    canActivate: [wache],
+    loadComponent: () => import('./karten/karten').then((m) => m.Karten),
+    title: 'Maps · Atlas Mentis',
+  },
+  /* Die Galerie (T-119): alle Bilder, die man sieht — gefiltert nach
+     Klasse, Marke, Ebene, „unused". Ein Bild selbst ist ein Artikel. */
+  {
+    path: 'images',
+    canActivate: [wache],
+    loadComponent: () => import('./bilder/galerie').then((m) => m.Galerie),
+    title: 'Images · Atlas Mentis',
+  },
   /* Werkbank (W9): Prüfungen und Massenänderungen. Die Wache lässt jeden
      Angemeldeten hinein; was er sieht, entscheidet der Server — die Seite
      sagt nur, wem sie etwas zeigt. */
@@ -78,17 +110,88 @@ export const routes: Routes = [
     loadComponent: () => import('./konto/konto').then((m) => m.Konto),
     title: 'Account · Atlas Mentis',
   },
+  /* Der Papierkorb (T-400): was jemand gelöscht hat, 30 Tage lang. */
+  {
+    path: 'trash',
+    canActivate: [wache],
+    loadComponent: () => import('./papierkorb/papierkorb').then((m) => m.Papierkorb),
+    title: 'Deleted · Atlas Mentis',
+  },
+  /* Was neu ist (T-157): erreichbar über die Kopfleiste, mit Punkt bei Neuem. */
+  /* Die Vorgabeformen des Inventars im Überblick (T-394, REQ-333): Rules & options › Inventory › Shapes. */
+  {
+    path: 'inventory/shapes',
+    canActivate: [wache],
+    loadComponent: () => import('./artikel/formen-uebersicht').then((m) => m.FormenUebersichtSeite),
+    title: 'Item shapes · Atlas Mentis',
+  },
+  {
+    path: 'whats-new',
+    canActivate: [wache],
+    loadComponent: () => import('./neues/neues').then((m) => m.NeuesSeite),
+    title: "What's new · Atlas Mentis",
+  },
+  /* Das Handbuch (T-242, T-225): alle Erklärungen auf einer Seite, mit Glossar. */
+  {
+    path: 'handbook',
+    canActivate: [wache],
+    loadComponent: () => import('./handbuch/handbuch').then((m) => m.Handbuch),
+    title: 'Handbook · Atlas Mentis',
+  },
   {
     path: 'classes',
     canActivate: [wache],
     loadComponent: () => import('./klassen/klassen').then((m) => m.Klassen),
     title: 'Classes · Atlas Mentis',
   },
+  /* Eine Klasse, Herkunft, ein Hintergrund zeigen ihre Übersicht als
+     Element ihrer Artikelseite (T-191); die alten Wege leiten dorthin,
+     `?sub=` und `?opt=` gehen mit. */
+  { path: 'classes/:id', redirectTo: zumArtikel },
+  /* Herkünfte und Hintergründe wie die Klassen (T-166): eine Liste. */
   {
-    path: 'classes/:id',
+    path: 'ancestries',
     canActivate: [wache],
-    loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
-    title: 'Class · Atlas Mentis',
+    data: { art: 'Ancestry' },
+    loadComponent: () => import('./klassen/herkuenfte').then((m) => m.Herkuenfte),
+    title: 'Ancestries · Atlas Mentis',
+  },
+  { path: 'ancestries/:id', redirectTo: zumArtikel },
+  {
+    path: 'backgrounds',
+    canActivate: [wache],
+    data: { art: 'Background' },
+    loadComponent: () => import('./klassen/herkuenfte').then((m) => m.Herkuenfte),
+    title: 'Backgrounds · Atlas Mentis',
+  },
+  { path: 'backgrounds/:id', redirectTo: zumArtikel },
+  /* Der Assistent für Figuren (T-080): seine Schritte kommen aus den
+     Artikeln. Der Stufenaufstieg ist derselbe Assistent an einer Figur. */
+  {
+    path: 'characters/new',
+    canActivate: [wache],
+    loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
+    title: 'New character · Atlas Mentis',
+  },
+  /* Kein eigener Level-up mehr (T-319): die Stufen stehen im Assistenten
+     je Klasse; eine alte Adresse führt dorthin. */
+  { path: 'characters/:id/level-up', redirectTo: 'characters/:id/edit' },
+  /* Edit an einer Figur ist der Assistent (T-194); „Full edit" ist die Feldmaske. */
+  {
+    path: 'characters/:id/edit',
+    canActivate: [wache],
+    loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
+    data: { mode: 'edit' },
+    title: 'Edit character · Atlas Mentis',
+  },
+  /* Lab › Rules (T-270): der Regel-Builder als Versuch. Die Seite zeigt
+     ohne den Schalter `experiments.ruleBuilder` nur einen Hinweis; verlinkt
+     ist sie allein aus Rules & options › Experiments. */
+  {
+    path: 'lab/rules',
+    canActivate: [wache],
+    loadComponent: () => import('./lab/regel-builder').then((m) => m.RegelBuilder),
+    title: 'Rule builder · Atlas Mentis',
   },
   {
     path: 'registry',
@@ -103,6 +206,27 @@ export const routes: Routes = [
     canActivate: [wache],
     loadComponent: () => import('./verwaltung/verwaltung').then((m) => m.Verwaltung),
     title: 'Campaign · Atlas Mentis',
+  },
+  /* Die Leseansicht (T-091) ist seit T-191 das Element `reader` auf der
+     Seite der Ebene; ein gespeicherter Link landet dort, `?at=` und
+     `?page=` springen weiter an die Stelle. */
+  {
+    path: 'read/:layer',
+    redirectTo: ({ params, queryParams }) =>
+      inject(Router).createUrlTree(['/artikel', params['layer']], { queryParams: { ...queryParams, tab: 'read' } }),
+  },
+  /* Fassungen nebeneinander (T-173): links der Artikel, rechts die Fassung. */
+  {
+    path: 'artikel/:id/compare/:other',
+    canActivate: [wache],
+    loadComponent: () => import('./artikel/vergleich').then((m) => m.FassungsVergleich),
+    title: 'Compare · Atlas Mentis',
+  },
+  {
+    path: 'artikel/:id/print',
+    canActivate: [wache],
+    loadComponent: () => import('./artikel/druck').then((m) => m.Druck),
+    title: 'Print · Atlas Mentis',
   },
   {
     path: 'artikel/:id',

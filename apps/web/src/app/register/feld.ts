@@ -4,6 +4,8 @@ import { articlesTaking, enumHolds, enumOptions, typeList } from '@nw/model';
 import type { PropertySchema, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit, articles, carry } from './arbeit';
+import { RegFacette } from './facette';
+import { IconWahl } from '../muster/icon-wahl';
 import {
   FIELD_KINDS,
   enumRefs,
@@ -34,7 +36,7 @@ import {
  */
 @Component({
   selector: 'nw-reg-feld',
-  imports: [RouterLink],
+  imports: [RouterLink, RegFacette, IconWahl],
   template: `
     @if (p(); as p) {
       <div class="einst">
@@ -81,6 +83,37 @@ import {
         </label>
         <p class="hint">What the field is called wherever it is drawn. A type may rename it for itself.</p>
 
+        <!-- T-195: was das Feld meint, gezeigt in „+ Add field“. -->
+        <label class="f">
+          <span>Description</span>
+          <textarea
+            rows="2"
+            [value]="p.description ?? ''"
+            [disabled]="!darf()"
+            (change)="setzen({ description: wert($event) || undefined })"
+          ></textarea>
+        </label>
+        <p class="hint">One sentence on what the field means — shown when someone adds it while editing an article.</p>
+
+        <!-- T-347: der Glossarbegriff, der das Feld erklärt — eine Erklärung, eine Stelle (T-225). -->
+        <label class="f">
+          <span>Glossary term</span>
+          <input
+            [value]="p.glossary ?? ''"
+            [disabled]="!darf()"
+            (change)="setzen({ glossary: wert($event) || undefined })"
+          />
+        </label>
+        <p class="hint">The name of a glossary entry that explains this field. The field name on an article is then dotted: hover shows the definition, Ctrl/⌘+click opens the entry.</p>
+
+        <!-- T-461: das Icon des Feldes, vor seiner Beschriftung, wo es steht. -->
+        <div class="f">
+          <span>Icon</span>
+          <nw-icon-wahl [wert]="p.icon ?? ''" [disabled]="!darf()" label="Icon of this field"
+            (wertChange)="setzen({ icon: $event || undefined })" />
+        </div>
+        <p class="hint">A symbol before the field’s label wherever the field is shown — on the article, in the form, in the registry.</p>
+
         <label class="f">
           <span>Holds</span>
           <select [disabled]="!darf()" (change)="artWechseln($any($event.target))">
@@ -98,14 +131,18 @@ import {
 
         <label class="f">
           <span>Required</span>
-          <select [disabled]="!darf() || !!p.derived" (change)="pflichtSetzen($any($event.target).value === '1')">
-            <option value="" [selected]="!pflicht()">no</option>
-            <option value="1" [selected]="pflicht()">yes</option>
+          <select [disabled]="!darf() || !!p.derived" (change)="pflichtWahl($any($event.target).value)">
+            <option value="" [selected]="!pflicht() && !p.requiredFor">no</option>
+            <option value="always" [selected]="pflicht()">always</option>
+            <option value="prepared" [selected]="!pflicht() && p.requiredFor === 'prepared'">to be prepared</option>
+            <option value="ready" [selected]="!pflicht() && p.requiredFor === 'ready'">to be ready</option>
           </select>
         </label>
         <p class="hint">
-          A required field must be filled before an article is saved — every article of a type that takes
-          {{ label(owner()) }}.
+          <b>Always</b>: the field must be filled before an article is saved — every article of a type that takes
+          {{ label(owner()) }}. <b>To be prepared</b> or <b>to be ready</b>: an idea may stay empty, but the article
+          can only be set to that state once the field is filled; one that already has the state keeps it, and the
+          workbench lists it under Ready with gaps. A type can change this for itself.
         </p>
 
         @if (!p.derived && !p.readOnly) {
@@ -119,6 +156,47 @@ import {
           <p class="hint">
             <b>Always an input</b> shows the input without pressing Edit — for a value set mid-turn, like hit
             points. Who may not write still sees the value.
+          </p>
+          <label class="f">
+            <span>In the edit form</span>
+            <select [disabled]="!darf()" (change)="schalter('prominent', $any($event.target).value === '1')">
+              <option value="" [selected]="!p.prominent">when required or filled</option>
+              <option value="1" [selected]="!!p.prominent">always, even empty</option>
+            </select>
+          </label>
+          <p class="hint">
+            The edit form shows required fields and fields with a value; the rest are under <b>+ Add field</b>.
+            <b>Always, even empty</b> keeps a field one fills on almost every article in view.
+          </p>
+          <!-- Ein Schlüssel zum Ordnen liest niemand (T-126, editOnly). -->
+          <label class="f">
+            <span>Read</span>
+            <select [disabled]="!darf()" (change)="schalter('editOnly', $any($event.target).value === '1')">
+              <option value="" [selected]="!p.editOnly">on the page</option>
+              <option value="1" [selected]="!!p.editOnly">only in the edit form</option>
+            </select>
+          </label>
+          <p class="hint">
+            <b>Only in the edit form</b> keeps a value off every page, card and print — for a key that orders
+            and that nobody reads, like the sortable value next to a date.
+          </p>
+          <!-- Die Facette einstellbar (T-212): sonst nur aus der Form abgeleitet. -->
+          <nw-reg-facette [hint]="p.facet" [darf]="darf()" [feld]="true" (aendern)="setzen({ facet: $event })" />
+        }
+
+        <!-- Eine Liste hält oder schlägt vor (T-423): mit „suggests“ darf ein eigenes Wort stehen. -->
+        @if (art() === 'choice' || art() === 'choices') {
+          <label class="f">
+            <span>List</span>
+            <select [disabled]="!darf() || !!p.derived" (change)="schalter('suggest', $any($event.target).value === '1')">
+              <option value="" [selected]="!p.suggest">holds — only values from the list</option>
+              <option value="1" [selected]="!!p.suggest">suggests — the list and values in use, own words allowed</option>
+            </select>
+          </label>
+          <p class="hint">
+            <b>Suggests</b> is for a kind of thing that belongs to the campaign (place type, encounter kind): the list
+            offers its values and what other articles carry, and a new word is simply saved. <b>Holds</b> is for values
+            the app works with (a phase, a rule option): anything else is refused on save.
           </p>
         }
 
@@ -145,6 +223,7 @@ import {
               <option value="long" [selected]="p.format === 'long'">long text</option>
               <option value="signed" [selected]="p.format === 'signed'">signed</option>
               <option value="measure" [selected]="p.format === 'measure'">measure (text with units)</option>
+              <option value="icon" [selected]="p.format === 'icon'">icon (a symbol from the icon set)</option>
             </select>
           </label>
           <p class="hint">
@@ -427,7 +506,7 @@ export class RegFeld {
       return p;
     });
   }
-  protected schalter(k: 'alwaysEdit' | 'suggest', an: boolean): void {
+  protected schalter(k: 'alwaysEdit' | 'editOnly' | 'suggest' | 'prominent', an: boolean): void {
     void this.setzen({ [k]: an ? true : undefined });
   }
 
@@ -489,6 +568,16 @@ export class RegFeld {
       'Change it',
       () => this.feldAendern((p) => setFieldKind(p, kind)),
     );
+  }
+
+  /** Pflicht: nie, immer (`required`) oder erst für einen Stand (`requiredFor`, T-425, E-177). */
+  protected async pflichtWahl(wert: string): Promise<void> {
+    const stand = wert === 'prepared' || wert === 'ready' ? wert : undefined;
+    /* Nacheinander: zwei Registerschreibungen zugleich überschrieben sich. */
+    if ((this.reg()?.interfaces[this.owner()]?.schema?.properties[this.key()]?.requiredFor ?? undefined) !== stand) {
+      await this.setzen({ requiredFor: stand });
+    }
+    if (this.pflicht() !== (wert === 'always')) this.pflichtSetzen(wert === 'always');
   }
 
   protected pflichtSetzen(an: boolean): void {

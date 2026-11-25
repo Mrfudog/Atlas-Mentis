@@ -36,9 +36,10 @@ jobs:
       # Build order matters: the apps compile against @nw/model's emitted types.
       - run: pnpm --filter @nw/model build
       - run: pnpm --filter @nw/registry build
-      # Der Importer läuft nicht in der Anwendung, aber er übersetzt gegen
-      # dieselben Typen — ein Register, das ihn bricht, soll hier rot werden.
-      - run: pnpm --filter @nw/import-5etools typecheck
+      # Alle Pakete und die E2E-Dateien (T-429): der Importer läuft nicht in
+      # der Anwendung, übersetzt aber gegen dieselben Typen, und Playwright
+      # prüft beim Laufen keine Typen — ein Fehler dort blieb sonst grün.
+      - run: pnpm typecheck
 
       - run: pnpm lint
       - run: pnpm test
@@ -73,6 +74,72 @@ jobs:
       - run: node apps/server/scripts/durchstich.mjs
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # Keine Registeränderung ohne Migration (T-123): eine Installation auf
+      # dem Stand von register-stand.json muss nach allen Migrationen und
+      # dem Seed den Startzeilen gleichen.
+      - run: node apps/server/scripts/register-abgleich.mjs
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # Die Übernahme dev ↔ prod (T-130): zwei Server, zwei Datenbanken.
+      - run: node apps/server/scripts/uebernahme-durchstich.mjs
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+  # Die Abläufe im Browser (T-356): gebauter Server mit gebauter
+  # Oberfläche gegen eine frische Postgres, als Leitung und als Spielerin,
+  # 1360 und 390 px. Konten und Testkampagne legt der Aufbau selbst an
+  # (apps/web/e2e/aufbau.ts). Kein `needs` vom Abbild: ob der Job den Merge
+  # hält, sagt die Pflichtprüfung in den Repo-Einstellungen.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @nw/model build
+      - run: pnpm --filter @nw/registry build
+      - run: pnpm --filter @nw/server build
+      - run: pnpm --filter web build
+      # Chromium in der Version, die zum installierten Playwright gehört;
+      # zwischengespeichert je Version, das spart eine Minute.
+      - id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - run: pnpm e2e
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # Spuren und Bilder der fehlgeschlagenen Specs: `pnpm exec playwright
+      # show-trace <datei>` oder der HTML-Bericht.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-spuren
+          path: |
+            apps/web/e2e/.ergebnis/
+            apps/web/e2e/.bericht/
+          retention-days: 14
 
   # Gebaut wird immer; nach GHCR geht das Abbild nur von preprod und main.
   # Der Server baut nie selbst — was dort läuft, ist genau das, was hier
@@ -165,7 +232,7 @@ jobs:
         run: |
           ssh "$TARGET" "mkdir -p '$DIR' '$PROXY_DIR'"
           scp "$COMPOSE" "$TARGET:$DIR/compose.yml"
-          scp deploy/deploy.sh "$TARGET:$DIR/deploy.sh"
+          scp deploy/deploy.sh deploy/bilder-sichern.sh "$TARGET:$DIR/"
           scp deploy/proxy/compose.yml deploy/proxy/Caddyfile "$TARGET:$PROXY_DIR/"
       # Der Reverse Proxy kommt aus dem Repository mit: Caddyfile und Compose
       # werden bei jedem Ausrollen frisch hingelegt, Caddy lädt sie ohne
@@ -182,7 +249,7 @@ jobs:
         # die stünde auf dem Server in der Prozessliste.
         run: |
           printf '%s\n' "$TOKEN" | ssh "$TARGET" \
-            "cd '$DIR' && chmod +x deploy.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"
+            "cd '$DIR' && chmod +x deploy.sh bilder-sichern.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"
 
   # Nach dem Ausrollen, mit dem Abbild, das gerade gestartet ist — nur,
   # wenn jemand CI von Hand mit dem Häkchen startet. Von selbst nie mehr:

@@ -123,6 +123,7 @@ describe('bulk', () => {
     expect(BulkRequestSchema.safeParse({ select: {}, ops: [{ op: 'set', field: 'Statblock.combatRole', value: 'Brute' }] }).success).toBe(true);
     expect(BulkRequestSchema.safeParse({ select: {}, ops: [] }).success).toBe(false);
     expect(BulkRequestSchema.safeParse({ select: {}, ops: [{ op: 'explode' }] }).success).toBe(false);
+    expect(BulkRequestSchema.safeParse({ select: {}, ops: [{ op: 'set', field: 'Statblock.token', values: { s1: 'as_1' } }] }).success).toBe(true);
   });
 
   it('selects by type and a name condition, case-insensitive', () => {
@@ -142,6 +143,27 @@ describe('bulk', () => {
     expect(plan.changes[0]!.after!.components['Statblock']!['combatRole']).toBe('Brute');
     expect(plan.changes[0]!.summary).toEqual(['Statblock.combatRole: — → "Brute"']);
     expect(storedKey(ogre)).toBe(vorher);
+  });
+
+  it('sets a value per article and leaves out who is not named (T-144)', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1', 's2', 's3'], [
+      { op: 'set', field: 'Statblock.token', values: { s1: 'as_1', 'statblock-0003': 'as_3' } },
+    ]);
+    expect(plan.changes.map((c) => [c.id, c.after!.components['Statblock']!['token']])).toEqual([
+      ['s1', 'as_1'],
+      ['s3', 'as_3'],
+    ]);
+  });
+
+  it('refuses a set without value or values', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1'], [{ op: 'set', field: 'Statblock.ac' }]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped.map((p) => p.reason)).toEqual(['Statblock.ac: set needs a value or values']);
+  });
+
+  it('with ifEmpty keeps what is already there', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1', 's3'], [{ op: 'set', field: 'Statblock.ac', value: '15', ifEmpty: true }]);
+    expect(plan.changes.map((c) => c.id)).toEqual(['s3']);
   });
 
   it('changes nothing where nothing changes', () => {
@@ -169,6 +191,64 @@ describe('bulk', () => {
   it('gives a new edge an id no other edge carries', () => {
     const plan = planBulk(seedRegistry, raw, ['s2'], [{ op: 'addRelation', type: 'composedOf', to: 'f3' }]);
     expect(plan.changes[0]!.after!.relations!.map((r) => r.id)).toEqual(['s2~composedOf-1', 's2~composedOf-2']);
+  });
+
+  it('adds edges with targets of their own per article (T-212)', () => {
+    const plan = planBulk(seedRegistry, raw, ['s1', 's2', 's3'], [
+      {
+        op: 'addRelation',
+        type: 'composedOf',
+        targets: { s1: ['feature-0003', 'f2'], 'statblock-0002': [{ to: 'f3', props: { note: 'only here' } }], s4: ['f1'] },
+      },
+    ]);
+    const nach = new Map(plan.changes.map((c) => [c.id, c.after!.relations]));
+    /* Was schon steht, kommt nicht doppelt; wer fehlt, bleibt unberührt. */
+    expect(nach.get('s1')).toEqual([
+      { id: 's1~composedOf-1', type: 'composedOf', to: 'f2' },
+      { id: 's1~composedOf-2', type: 'composedOf', to: 'f3' },
+    ]);
+    expect(nach.get('s2')!.at(-1)).toEqual({ id: 's2~composedOf-2', type: 'composedOf', to: 'f3', props: { note: 'only here' } });
+    expect(nach.has('s3')).toBe(false);
+    const fehlt = planBulk(seedRegistry, raw, ['s3'], [{ op: 'addRelation', type: 'composedOf', targets: { s3: ['nowhere'] } }]);
+    expect(fehlt.skipped.map((x) => x.reason)).toEqual(['composedOf → nowhere: no such article']);
+    const beides = planBulk(seedRegistry, raw, ['s3'], [{ op: 'addRelation', type: 'composedOf' }]);
+    expect(beides.skipped[0]?.reason).toMatch(/either to or targets/);
+  });
+
+  it('takes the target from an edge path (T-182)', () => {
+    const e = (id: string, typ: string, relations: Entity['relations'] = []): Entity => ({
+      id, interfaces: [typ], name: id, components: { Identity: { name: id, id: `${typ.toLowerCase()}-${id}` } }, relations,
+    });
+    const orte = [
+      e('sz1', 'Scene'),
+      e('sz2', 'Scene'),
+      e('sz3', 'Scene', [{ id: 'sz3~h', type: 'happensAt', to: 'p9' }]),
+      e('sz4', 'Scene'),
+      e('p1', 'Place', [{ id: 'p1~d', type: 'describedIn', to: 'sz1' }]),
+      e('p2', 'Place', [{ id: 'p2~d', type: 'describedIn', to: 'sz2' }]),
+      e('p3', 'Place', [{ id: 'p3~d', type: 'describedIn', to: 'sz2' }]),
+      e('p4', 'Place', [{ id: 'p4~d', type: 'describedIn', to: 'sz3' }]),
+      e('p9', 'Place'),
+      /* Beschreibt die Szene, ist aber kein Ort. */
+      e('n1', 'Creature', [{ id: 'n1~d', type: 'describedIn', to: 'sz4' }]),
+      e('m1', 'Map', [{ id: 'm1~m', type: 'mapOf', to: 'sz1' }]),
+      e('m3', 'Map', [{ id: 'm3~m', type: 'mapOf', to: 'sz3' }, { id: 'm3~p', type: 'mapOf', to: 'p9' }]),
+    ];
+    const bestand = new Map(orte.map((x) => [x.id, x]));
+    const szenen = planBulk(seedRegistry, bestand, ['sz1', 'sz2', 'sz3', 'sz4'], [
+      { op: 'addRelation', type: 'happensAt', to: '<-describedIn', toTypes: ['Place'], ifNone: true },
+    ]);
+    /* sz1: eindeutig; sz2: zwei Orte — mehrdeutig, übersprungen; sz3 hat
+       schon einen (nichts überschrieben); sz4: kein Ort. */
+    expect(szenen.changes.map((c) => [c.id, c.summary])).toEqual([['sz1', ['+ happensAt → p1']]]);
+    expect(szenen.skipped.map((x) => [x.id, x.reason])).toEqual([['sz2', 'happensAt via <-describedIn: ambiguous (2 targets: p2 (place-p2), p3 (place-p3))']]);
+    /* Zwei Schritte: die Karte zeigt auch den Ort ihrer Szene; was schon steht, bleibt. */
+    const karten = planBulk(seedRegistry, bestand, ['m1', 'm3'], [{ op: 'addRelation', type: 'mapOf', to: '->mapOf->happensAt' }]);
+    expect(karten.changes).toEqual([]);
+    const mitSzene = new Map(bestand);
+    mitSzene.set('sz1', { ...bestand.get('sz1')!, relations: [{ id: 'sz1~h', type: 'happensAt', to: 'p1' }] });
+    const karten2 = planBulk(seedRegistry, mitSzene, ['m1', 'm3'], [{ op: 'addRelation', type: 'mapOf', to: '->mapOf->happensAt' }]);
+    expect(karten2.changes.map((c) => [c.id, c.summary])).toEqual([['m1', ['+ mapOf → p1']]]);
   });
 
   it('merges identical features as variants', () => {
@@ -199,5 +279,100 @@ describe('bulk', () => {
     ]);
     const neu = repoint([doppelt], new Map([['f2', 'f1']]), new Map());
     expect(neu.get('s9')!.relations).toEqual([{ id: 'a', type: 'composedOf', to: 'f1' }]);
+  });
+});
+
+describe('bulk delete (T-176)', () => {
+  const e = (id: string, typ: string, relations: Entity['relations'] = [], components: Entity['components'] = {}): Entity => ({
+    id,
+    interfaces: [typ],
+    name: id,
+    components: { ...ident(id, `${typ.toLowerCase()}-${id}`), ...components },
+    relations,
+  });
+  const bestand = new Map(
+    [
+      e('figur', 'Creature', [{ id: 'figur~c', type: 'carries', to: 'inv' }]),
+      e('inv', 'Inventory', [
+        { id: 'inv~h1', type: 'holds', to: 'stueck' },
+        { id: 'inv~h2', type: 'holds', to: 'seil' },
+      ]),
+      /* Ein Stück (Instanz) geht mit seinem Inventar, der Grundartikel bleibt. */
+      e('stueck', 'Item', [{ id: 'stueck~i', type: 'instanceOf', to: 'seil' }]),
+      e('seil', 'Item'),
+      /* Eine Instanz der gehenden Vorlage, die bleibt, wird vorher gelöst. */
+      e('vorlage', 'Statblock', [], { Statblock: { ac: 12 } }),
+      e('wache', 'Statblock', [{ id: 'wache~i', type: 'instanceOf', to: 'vorlage' }], { Statblock: { hp: 9 } }),
+      e('board', 'Board', [
+        { id: 'board~p1', type: 'placed', to: 'figur', props: { x: 0, y: 0 } },
+        { id: 'board~p2', type: 'placed', to: 'seil', props: { x: 1, y: 0 } },
+      ]),
+    ].map((x) => [x.id, x]),
+  );
+
+  it('takes inventory and pieces along, detaches instances, and drops edges into what goes', () => {
+    const plan = planBulk(seedRegistry, bestand, ['figur', 'vorlage'], [{ op: 'delete' }]);
+    const weg = plan.changes.filter((c) => !c.after).map((c) => c.id).sort();
+    expect(weg).toEqual(['figur', 'inv', 'stueck', 'vorlage']);
+    expect(plan.changes.find((c) => c.id === 'inv')!.summary).toEqual(['deleted — part of figur (creature-figur)']);
+    const nach = new Map(plan.changes.filter((c) => c.after).map((c) => [c.id, c.after!]));
+    expect([...nach.keys()].sort()).toEqual(['board', 'wache']);
+    expect(nach.get('board')!.relations!.map((r) => r.to)).toEqual(['seil']);
+    expect(nach.get('wache')!.relations!.some((r) => r.type === 'instanceOf')).toBe(false);
+    expect(nach.get('wache')!.components['Statblock']).toEqual({ ac: 12, hp: 9 });
+  });
+
+  it('parses as an op of its own', () => {
+    expect(BulkRequestSchema.safeParse({ select: { layer: 'ly' }, ops: [{ op: 'delete' }] }).success).toBe(true);
+  });
+});
+
+/* T-169: zu jedem benannten Statblock seine Kreatur — erfundene Namen. */
+describe('addLinked', () => {
+  const ebene: Entity = { id: 'L1', interfaces: ['Layer'], name: 'Book', components: ident('Book', 'layer-0001'), relations: [] };
+  const benannt = statblock('sb1', 'statblock-0011', 'Morwen Ashgrove (Wraith Form)', { ac: 14 }, [
+    { id: 'sb1~inLayer-1', type: 'inLayer', to: 'L1' },
+  ]);
+  benannt.components['Source'] = { publication: 'XYZ', page: '12', srd: false };
+  benannt.components['Status'] = { status: 'ready' };
+  const kreatur: Entity = { id: 'c9', interfaces: ['Creature'], name: 'Tobin', components: ident('Tobin', 'creature-0007'), relations: [] };
+  const vergeben = statblock('sb2', 'statblock-0012', 'Tobin', { ac: 10 }, [{ id: 'sb2~belongsTo-1', type: 'belongsTo', to: 'c9' }]);
+  const raw = new Map([ebene, benannt, kreatur, vergeben].map((e) => [e.id, e] as const));
+  const op = {
+    op: 'addLinked' as const,
+    type: 'Creature',
+    relation: 'belongsTo',
+    fields: { 'Creature.kind': 'npc' },
+    copy: ['Source', 'Status'],
+    stripBracket: true,
+  };
+
+  it('legt die Kreatur in derselben Ebene an und hängt den Statblock an sie', () => {
+    expect(BulkRequestSchema.safeParse({ select: { tag: 'named' }, ops: [op] }).success).toBe(true);
+    const plan = planBulk(seedRegistry, raw, ['sb1'], [op, { op: 'addTag', tag: 'named' }]);
+    const neu = plan.changes.find((c) => c.before === null)!.after!;
+    expect(neu.id).toBe('sb1-creature');
+    expect(neu.name).toBe('Morwen Ashgrove');
+    expect(neu.components['Identity']).toEqual({ name: 'Morwen Ashgrove', id: 'creature-0008' });
+    expect(neu.components['Creature']).toEqual({ kind: 'npc' });
+    expect(neu.components['Source']).toEqual({ publication: 'XYZ', page: '12', srd: false });
+    expect(neu.relations).toEqual([{ id: 'sb1-creature~inLayer-1', type: 'inLayer', to: 'L1' }]);
+    const sb = plan.changes.find((c) => c.id === 'sb1')!.after!;
+    expect(sb.relations?.find((r) => r.type === 'belongsTo')?.to).toBe('sb1-creature');
+    expect(sb.components['Tags']).toEqual({ tags: ['named'] });
+  });
+
+  it('lässt einen Statblock, der schon einer Kreatur gehört, stehen', () => {
+    const plan = planBulk(seedRegistry, raw, ['sb2'], [op]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped[0]?.reason).toMatch(/already has a belongsTo \(Tobin/);
+  });
+
+  it('zählt die Nummern innerhalb eines Laufs weiter', () => {
+    const zweiter = statblock('sb3', 'statblock-0013', 'Ilse', {}, []);
+    const r2 = new Map([...raw, ['sb3', zweiter] as const]);
+    const plan = planBulk(seedRegistry, r2, ['sb1', 'sb3'], [op]);
+    const nummern = plan.changes.filter((c) => c.before === null).map((c) => (c.after!.components['Identity'] as { id: string }).id);
+    expect(nummern.sort()).toEqual(['creature-0008', 'creature-0009']);
   });
 });

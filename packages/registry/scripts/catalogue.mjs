@@ -16,7 +16,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { areaOf as areaVon, typeChain } from '@nw/model';
+import { areaOf as areaVon, layoutFor, typeChain } from '@nw/model';
 import { seedRegistry as R } from '../dist/index.js';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
@@ -117,13 +117,11 @@ function kantenVon(name) {
   };
 }
 /* Die Anordnung wohnt am Typ. Gesucht wird die `extends`-Kette hoch — eine
-   an `Creature` deckt die Spielerfigur mit ab. */
+   an `Creature` deckt die Spielerfigur mit ab; eine Anpassung (T-110) gilt
+   über dem, was darüber steht. Gerechnet wie überall: `layoutFor`. */
 function sichtVon(name) {
-  for (const at of [name, ...kette(name)]) {
-    const eigen = R.interfaces[at]?.views?.full;
-    if (eigen?.length) return { von: at, layout: eigen };
-  }
-  return { von: '(Vorgabe)', layout: R.views.full?.layout ?? [] };
+  const { layout, from, mode } = layoutFor(R, 'full', name);
+  return { von: from ? (mode === 'adjusted' ? `${from} (angepasst)` : from) : '(Vorgabe)', layout };
 }
 function layoutText(layout, tiefe = 0) {
   return layout

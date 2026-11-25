@@ -109,6 +109,21 @@ describe('GET /api/list', () => {
     expect(await namen('spell-0002')).toEqual(['Fire Bolt']);
   });
 
+  it('finds many articles by exact name or alias in one request, sieved (T-398)', async () => {
+    const { get, gm, spieler } = await makeApp();
+    const namen = async (url: string, wer = gm) => (await get(url, wer)).json().rows.map((z: { name: string }) => z.name);
+    /* Genau der Name, kein Teilwort: „fire" trifft weder Fireball noch Fire Bolt. */
+    expect(await namen('/api/list?name=fireball&name=Unsichtbarkeit&name=fire&limit=50')).toEqual(['Fireball', 'Invisibility']);
+    /* Ein Komma gehört zum Namen, es trennt nicht. */
+    expect(await namen(`/api/list?name=${encodeURIComponent('Fire Bolt, the')}`)).toEqual([]);
+    expect(await namen('/api/list?of=Rule&name=Fireball&name=Multiattack')).toEqual(['Fireball']);
+    /* Was die Spielerin nicht sieht, findet sie auch nicht beim Namen. */
+    const verboten = `/api/list?name=${encodeURIComponent('Verbotener Spruch')}`;
+    expect(await namen(verboten)).toEqual(['Verbotener Spruch']);
+    expect(await namen(verboten, spieler)).toEqual([]);
+    expect(parseListQuery({ name: ['A, B', ' c '] }).name).toEqual(['a, b', 'c']);
+  });
+
   it('gives the columns of the type from its overview, and filters by them', async () => {
     const { get } = await makeApp();
     const r = (await get('/api/list?type=Spell')).json();
@@ -131,6 +146,57 @@ describe('GET /api/list', () => {
     /* Die eigene Facette zählt ohne den eigenen Filter. */
     const s2 = gefiltert.facets.fields.find((f: { ref: string }) => f.ref === 'Spell.school');
     expect(s2.options.map((o: { value: string }) => o.value)).toEqual(['evocation', 'illusion']);
+  });
+
+  it('derives facets from the registry: lists, switches, edges both ways — only from what the viewer sees (T-174)', async () => {
+    const zauber2 = [
+      art('s1', 'Spell', 'Fireball', 'spell-0001', { level: 3, school: 'evocation', components: ['v', 's', 'm'], concentration: false }),
+      art('s2', 'Spell', 'Fire Bolt', 'spell-0002', { level: 0, school: 'evocation', components: ['v', 's'] }),
+      art('s3', 'Spell', 'Invisibility', 'spell-0003', { level: 2, school: 'illusion', components: ['v', 's', 'm'], concentration: true }),
+    ];
+    const klassen = [
+      art('c1', 'Class', 'Wizard', 'class-0001', {}, [
+        { id: 'c1~1', type: 'grants', to: 's1', props: {} },
+        { id: 'c1~2', type: 'grants', to: 's3', props: {} },
+      ]),
+      art('c2', 'Class', 'Hexenmeister', 'class-0002', {}, [{ id: 'c2~1', type: 'grants', to: 's2', props: {} }], {
+        Visibility: { audience: 'gm' },
+      }),
+    ];
+    const { get, spieler } = await makeApp([ebene, ...zauber2, ...klassen]);
+    const r = (await get('/api/list?type=Spell')).json();
+    const facette = (ref: string) => r.facets.fields.find((f: { ref: string }) => f.ref === ref);
+    expect(facette('Spell.components').options).toEqual([
+      { value: 'v', count: 3 },
+      { value: 's', count: 3 },
+      { value: 'm', count: 2 },
+    ]);
+    expect(facette('Spell.concentration')).toMatchObject({
+      of: 'bool',
+      options: [
+        { value: 'true', count: 1, label: 'Yes' },
+        { value: 'false', count: 2, label: 'No' },
+      ],
+    });
+    const klasse = facette('in.grants');
+    expect(klasse.of).toBe('link');
+    expect(klasse.options).toEqual([
+      { value: 'c1', count: 2, label: 'Wizard', group: 'Class' },
+      { value: 'c2', count: 1, label: 'Hexenmeister', group: 'Class' },
+    ]);
+    /* UND zwischen Facetten, ODER innerhalb. */
+    const wiz = (await get('/api/list?type=Spell&f=in.grants:c1|c2&f=Spell.concentration:false')).json();
+    expect(wiz.rows.map((z: { name: string }) => z.name)).toEqual(['Fire Bolt', 'Fireball']);
+    /* Wer die Klasse nicht sieht, zählt sie nicht und findet sie nicht. */
+    const sp = (await get('/api/list?type=Spell', spieler)).json();
+    expect(sp.facets.fields.find((f: { ref: string }) => f.ref === 'in.grants').options.map((o: { label: string }) => o.label)).toEqual(['Wizard']);
+    expect((await get('/api/list?type=Spell&f=in.grants:c2', spieler)).json().total).toBe(0);
+    /* Eine Filtergruppe, die auf Zauber eingrenzt, hat dieselben Facetten. */
+    const gruppe = (await get('/api/list?of=Spell&f=Spell.school:illusion')).json();
+    expect(gruppe.rows.map((z: { name: string }) => z.name)).toEqual(['Invisibility']);
+    /* Die Klasse sieht die Gegenrichtung: „grants". */
+    const k = (await get('/api/list?type=Class')).json();
+    expect(k.facets.fields.find((f: { ref: string }) => f.ref === 'out.grants').label).toBe('grants');
   });
 
   it('reads the challenge rating as a range, fractions and all', async () => {
@@ -229,7 +295,7 @@ describe('POST /api/entities', () => {
   it('hands out the id and the number, and fills in the defaults', async () => {
     const { app, gm, get } = await makeApp();
     const res = await app.inject({ method: 'POST', url: '/api/entities', headers: gm, payload: { type: 'Spell', name: 'Nebelpfeil' } });
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode, res.body).toBe(201);
     const e = res.json() as Entity;
     expect(e.id).toMatch(/^e_[0-9a-f]{12}$/);
     expect(e.components['Identity']).toEqual({ name: 'Nebelpfeil', id: 'spell-0005' });
@@ -288,5 +354,36 @@ describe('lists for other pages', () => {
     const e = res.json() as Entity;
     expect(e.relations).toEqual([{ id: `${e.id}~inLayer-1`, type: 'inLayer', to: 'l1', props: {} }]);
     expect((await get('/api/list?layer=l1&q=ebenen')).json().total).toBe(1);
+  });
+});
+
+describe('GET /api/entities/batch (T-398)', () => {
+  it('sends each article as /api/entities/:id does, with its backlinks, in one request', async () => {
+    const { get } = await makeApp();
+    const r = (await get('/api/entities/batch?ids=a2,s1,b1&backlinks=1')).json();
+    expect(r.missing).toEqual([]);
+    for (const id of ['a2', 's1', 'b1']) {
+      const einzeln = (await get(`/api/entities/${id}`)).json();
+      expect(r.entities[id]).toEqual(einzeln);
+      expect(r.backlinks[id]).toEqual((await get(`/api/entities/${id}/backlinks`)).json());
+    }
+    /* Pack Tactics gehört zwei Statblöcken. */
+    expect(r.backlinks.a2.map((b: { from: { id: string } }) => b.from.id).sort()).toEqual(['b1', 'b2']);
+  });
+
+  it('leaves out what the viewer may not see, and says so', async () => {
+    const { get, spieler } = await makeApp();
+    const r = (await get('/api/entities/batch?ids=s1,g1,nichts&backlinks=1', spieler)).json();
+    expect(Object.keys(r.entities)).toEqual(['s1']);
+    expect(r.missing).toEqual(['g1', 'nichts']);
+    expect(Object.keys(r.backlinks)).toEqual(['s1']);
+    const ohne = (await get('/api/entities/batch?ids=s1', spieler)).json();
+    expect(ohne.backlinks).toBeUndefined();
+  });
+
+  it('refuses more than 200 ids', async () => {
+    const { get } = await makeApp();
+    const ids = Array.from({ length: 201 }, (_, i) => `x${i}`).join(',');
+    expect((await get(`/api/entities/batch?ids=${ids}`)).statusCode).toBe(400);
   });
 });
