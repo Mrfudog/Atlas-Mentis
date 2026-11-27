@@ -244,11 +244,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const da = await kampagnen();
     const settings = (await repo.getRegistry()).settings ?? null;
-    /* Die Kampagne dieses Kontos (T-496, REQ-408), nicht die der Installation. */
+    /* Die Kampagne dieses Kontos (T-496, REQ-395), nicht die der Installation. */
     const laufend = kontoKampagne(da, settings, user.campaign ?? null);
     const vorgabe = kontoKampagne(da, settings, null);
     const alleJetzt = laufend ? await bestandAls(await repo.version()) : new Map<string, Entity>();
-    /* Gezählt in der Sicht des Kontos (REQ-412): die Kopfleiste sagt, was hier steht. */
+    /* Gezählt in der Sicht des Kontos (REQ-396): die Kopfleiste sagt, was hier steht. */
     const gelesen = viewedCampaign(laufend, user.stackView);
     const ids = new Set<string>(user.isAdmin ? da.keys() : []);
     for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
@@ -269,7 +269,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
          Verwaltung (`mayWrite`). */
       canCreate: user.isAdmin,
       isAdmin: user.isAdmin,
-      /* **Zur Wahl** (T-496, REQ-408): jede Kampagne, in der dieses Konto
+      /* **Zur Wahl** (T-496, REQ-395): jede Kampagne, in der dieses Konto
          eine Rolle hat, für die Verwaltung jede. `default` ist die Vorgabe
          der Installation, `chosen`, ob das Konto selbst gewählt hat. */
       choices: [...da.values()]
@@ -288,7 +288,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
             may: rechtAn(user, laufend.id),
             /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst. */
             layers: resolvedStack(alleJetzt, gelesen).filter((l) => !isGroupLayer(l)).length,
-            /* Die eigene Sicht (REQ-412): `campaign` ganz, `narrowed` enger, `mine` eigene Ebenen. */
+            /* Die eigene Sicht (REQ-396): `campaign` ganz, `narrowed` enger, `mine` eigene Ebenen. */
             view: !user.stackView || isDefaultView(user.stackView) ? 'campaign' : user.stackView.mode === 'mine' ? 'mine' : 'narrowed',
             /* Wie viele Vergleichsebenen dieser Betrachter sieht (T-213) —
                ohne eine gibt es den Schalter „Show comparison" nicht. */

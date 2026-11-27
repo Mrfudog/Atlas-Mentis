@@ -324,13 +324,13 @@ wiederkommen, werden sie neu geschrieben.
   Seit Migration 152 hat jeder Artikel eine Ebene (E-182); was keine
   andere hatte, liegt in „Unassigned“ und gehört so niemandem besonders,
   bis es verschoben ist.
-  **Die laufende Kampagne wählt jedes Konto selbst** (T-496, REQ-408,
+  **Die laufende Kampagne wählt jedes Konto selbst** (T-496, REQ-395,
   D99): unter den Kampagnen mit Rolle, die Verwaltung jede
   (`PUT /api/me/campaign`); `settings.campaign` ist nur die Vorgabe für
   Konten ohne Wahl. Am Server liest jede Route sie über `kontoKampagne`
   (Anfrage-Speicher, gesetzt von `werIst` aus `alsKonto`); wer
   ausserhalb einer Anfrage rechnet — das Sieb im Live-Kanal —, gibt
-  `user.campaign` ausdrücklich mit. **Die eigene Sicht** (REQ-412,
+  `user.campaign` ausdrücklich mit. **Die eigene Sicht** (REQ-396,
   `/api/me/view`): Campaign view blendet Ebenen nur für dieses Konto aus,
   My view wählt lesbare Ebenen; gerechnet als Kopie der Kampagne mit
   anderen Aufschaltkanten (`viewedCampaign`), die nie geschrieben wird —

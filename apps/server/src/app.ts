@@ -586,11 +586,11 @@ export function buildApp({
     return { user: await alsKonto(rest) };
   }
   /**
-   * **Das Konto, wie es in seiner Kampagne fragt** (T-496, REQ-408): die
+   * **Das Konto, wie es in seiner Kampagne fragt** (T-496, REQ-395): die
    * gewählte Kampagne, wenn es dort eine Rolle hat (die Verwaltung jede)
    * und es sie gibt, sonst die Vorgabe der Installation; „meine Figuren"
    * sind die dieser Kampagne (T-412), und die Sicht auf ihren Stapel ist
-   * die eigene (REQ-412). Jede Route liest `user.campaign`, keine die
+   * die eigene (REQ-396). Jede Route liest `user.campaign`, keine die
    * Einstellung allein.
    */
   async function alsKonto<U extends User>(user: U): Promise<U> {
@@ -1712,7 +1712,7 @@ export function buildApp({
     /* Einmal je Bestand und Register gerechnet, nicht je Aufruf (T-086,
        T-108): mit hunderttausend Teilen kostet der Stapel eine Sekunde,
        und die Leseansicht siebt je Anfrage zwei- oder dreimal. Gerechnet
-       mit der Sicht des Kontos (T-496, REQ-412): enger oder eigene Ebenen. */
+       mit der Sicht des Kontos (T-496, REQ-396): enger oder eigene Ebenen. */
     const sicht = messeSync('s.stapel', () => stapelFuer(roh, kampagne, registry, user?.stackView ?? null));
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = messeSync('s.imspiel', () => entities
@@ -2031,7 +2031,7 @@ export function buildApp({
     /* Der Rang je Artikel für die Kopfzeile der Fassungen (T-092) —
        derselbe Stapel, einmal gerechnet. */
     const kampagne = kontoKampagne(stand.map, registry.settings ?? null, user?.campaign ?? null);
-    /* In der Sicht des Kontos (REQ-412): was es ausblendet, steht nicht da. */
+    /* In der Sicht des Kontos (REQ-396): was es ausblendet, steht nicht da. */
     const gelesen = viewedCampaign(kampagne, user?.stackView);
     const rang = playStack(stand.map, gelesen, registry);
     /* **Was nicht aufgeschaltet ist, steht nicht da** (T-207): Ebenen
@@ -2760,7 +2760,7 @@ export function buildApp({
     if (!basis || !sichtbar) return reply.code(404).send({ error: 'Nicht gefunden' });
     const registry = await repo.getRegistry();
     const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
-    /* Im Spiel heisst: in der Sicht dieses Kontos (T-496, REQ-412). */
+    /* Im Spiel heisst: in der Sicht dieses Kontos (T-496, REQ-396). */
     const gelesen = viewedCampaign(kampagne, anfrageKonto()?.stackView);
     const sicht = playStack(stand.map, gelesen, registry);
     const roheFassungen = versionsOf(stand.map, basis.id);

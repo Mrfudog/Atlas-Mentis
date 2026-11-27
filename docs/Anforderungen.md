@@ -459,7 +459,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 | REQ-236 | Kampagne mit Dialog anlegen | 2 | **offen** | Kampagne anlegen ohne Dialog |
 | REQ-278 | Bereiche als eigene Seiten | 1 | **steht** | `area` am Typ |
 | REQ-279 | Kampagnenwerte pflegen und in Texten nutzen | 2 | **teils** | Auflösung steht; Maske fehlt |
-| REQ-408 | Kampagne je Konto wählen | 1 | **steht** | T-496: laufende Kampagne je Konto (`PUT /api/me/campaign`, Einstellung `campaign` am Konto), die Einstellung der Installation nur noch Vorgabe; Sieb, Liste, Suche, Live-Kanal, Anlegen, Schreibebene und View as fragen die Kampagne des Kontos (`alsKonto`, `kontoKampagne`) |
+| REQ-395 | Kampagne je Konto wählen | 1 | **steht** | T-496: laufende Kampagne je Konto (`PUT /api/me/campaign`, Einstellung `campaign` am Konto), die Einstellung der Installation nur noch Vorgabe; Sieb, Liste, Suche, Live-Kanal, Anlegen, Schreibebene und View as fragen die Kampagne des Kontos (`alsKonto`, `kontoKampagne`) |
 
 ### F-030 Bereich Story
 
@@ -937,7 +937,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter`; seit T-382 auch Zeit und Autor (`f=@added:7d`, `@changed`, `@by`), D85 |
 | REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 | REQ-386 | Suche und Filter in den Modulen | 2 | **offen** |  |
-| REQ-412 | Globalfilter mit Campaign view und My view | 1 | **steht** | T-496: zwei Reiter im Popup der Kopfleiste; Sicht je Konto und Kampagne (`/api/me/view`, Einstellung `stackView`), am Server gerechnet über `viewedCampaign` — enger (`hide`) oder eigene Ebenen (`mine`); gespeicherte Auswahlen in My view |
+| REQ-396 | Globalfilter mit Campaign view und My view | 1 | **steht** | T-496: zwei Reiter im Popup der Kopfleiste; Sicht je Konto und Kampagne (`/api/me/view`, Einstellung `stackView`), am Server gerechnet über `viewedCampaign` — enger (`hide`) oder eigene Ebenen (`mine`); gespeicherte Auswahlen in My view |
 
 ### F-070 Navigation & Kurzansicht
 

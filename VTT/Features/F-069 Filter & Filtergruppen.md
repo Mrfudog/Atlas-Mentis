@@ -23,7 +23,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 | [[REQ-303]] Filtergruppen je Seite | Spielleitung | 2 | steht |
 | [[REQ-318]] Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | steht |
 | [[REQ-386]] Suche und Filter in den Modulen | Spielleitung | 2 | offen |
-| [[REQ-412]] Globalfilter mit Campaign view und My view | Spieler | 1 | steht |
+| [[REQ-396]] Globalfilter mit Campaign view und My view | Spieler | 1 | steht |
 <!-- stories:ende -->
 
 ## Wann und von wem (T-382)
@@ -54,7 +54,7 @@ flowchart LR
 ```
 
 
-## Stand: Kampagne und Sicht je Konto (T-496, REQ-408, REQ-412, D99)
+## Stand: Kampagne und Sicht je Konto (T-496, REQ-395, REQ-396, D99)
 
 Seit 27.11.2026 wählt jedes Konto seine laufende Kampagne selbst, im
 Globalfilter (Popup der Kopfleiste, „Running campaign“) — unter den

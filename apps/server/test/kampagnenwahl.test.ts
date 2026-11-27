@@ -1,6 +1,6 @@
 /**
- * **Die Kampagne je Konto und die eigene Sicht** (T-496, REQ-408,
- * REQ-412): wer wählt, wählt für sich — ein zweites Konto bleibt in seiner
+ * **Die Kampagne je Konto und die eigene Sicht** (T-496, REQ-395,
+ * REQ-396): wer wählt, wählt für sich — ein zweites Konto bleibt in seiner
  * Kampagne; enger filtern ändert die Kampagne nicht; eigene Ebenen nur,
  * soweit lesbar, und die Sichtbarkeit gilt darin wie immer. Erfundene
  * Runden und Artikel.
@@ -46,7 +46,7 @@ type Sicht = { campaign: { id: string } | null; mode: string; hide: string[]; mi
 const regeln = async (t: Awaited<ReturnType<typeof aufbau>>, wer: string) =>
   (await t.json<{ rows: { id: string }[] }>(wer, 'GET', '/api/list?type=Rule')).rows.map((r) => r.id).sort();
 
-describe('the campaign per account (REQ-408)', () => {
+describe('the campaign per account (REQ-395)', () => {
   it('follows the default of the installation until an account chooses', async () => {
     const t = await aufbau();
     for (const wer of ['Mira', 'Sela', 'Bo']) {
@@ -125,7 +125,7 @@ describe('the campaign per account (REQ-408)', () => {
   });
 });
 
-describe('the own view on the stack (REQ-412)', () => {
+describe('the own view on the stack (REQ-396)', () => {
   it('narrows the campaign view for one account — the campaign, and the GM, stay as they are', async () => {
     const t = await aufbau();
     const v = await t.json<Sicht>('Sela', 'PUT', '/api/me/view', { mode: 'campaign', hide: ['ly_rules'] });

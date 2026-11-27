@@ -1,5 +1,5 @@
 /**
- * **Die laufende Kampagne einer Anfrage** (T-496, REQ-408). Seit jedes
+ * **Die laufende Kampagne einer Anfrage** (T-496, REQ-395). Seit jedes
  * Konto seine Kampagne wählt, ist „die laufende Kampagne" keine Frage an
  * die Einstellung allein mehr: `kontoKampagne` nimmt die des fragenden
  * Kontos (aus dem Anfrage-Speicher, gesetzt von `werIst`), sonst die

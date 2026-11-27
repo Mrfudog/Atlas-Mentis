@@ -12,7 +12,7 @@ import { MeineSicht } from './meine-sicht';
  * 14.10.): die laufende Kampagne steht immer da, mit der Zahl der Ebenen
  * im Spiel, unter der Marke — am Telefon gekürzt. Ein Klick öffnet das Popup:
  *
- * - **zwei Reiter** (T-496, REQ-412): „Campaign view" — die Kampagne mit
+ * - **zwei Reiter** (T-496, REQ-396): „Campaign view" — die Kampagne mit
  *   Wechsel für jedes Konto, das in mehreren eine Rolle hat (nur für
  *   dieses Konto, `PUT /api/me/campaign`), und ihre Ebenen zum Ausblenden
  *   nur für mich (`nw-meine-sicht`); „My view" — eigene, lesbare Ebenen
@@ -54,7 +54,7 @@ import { MeineSicht } from './meine-sicht';
           <span class="kname">{{ k.name }}</span>
           <span class="kzahl">{{ zahlText() }}</span>
           @if (k.view === 'mine' || k.view === 'narrowed') {
-            <!-- Die eigene Sicht (T-496, REQ-412) steht in der Leiste, damit niemand eine fehlende Ebene sucht. -->
+            <!-- Die eigene Sicht (T-496, REQ-396) steht in der Leiste, damit niemand eine fehlende Ebene sucht. -->
             <span class="marke sichtmarke" [title]="sichtTitel()">{{ k.view === 'mine' ? 'my view' : 'narrowed' }}</span>
           }
           @if (stapel.schreib(); as w) {
@@ -75,7 +75,7 @@ import { MeineSicht } from './meine-sicht';
             <h2 id="stapel-titel">Campaign &amp; layers</h2>
             <button type="button" class="zu" aria-label="Close" (click)="zu()">×</button>
           </header>
-          <!-- Zwei Reiter (T-496, REQ-412): die Kampagne mit ihrem Stapel, enger nur für mich — oder eigene Ebenen. -->
+          <!-- Zwei Reiter (T-496, REQ-396): die Kampagne mit ihrem Stapel, enger nur für mich — oder eigene Ebenen. -->
           <div class="reiter" role="tablist" aria-label="What you see">
             <button type="button" role="tab" id="reiter-kampagne" aria-controls="teil-sicht" [attr.aria-selected]="reiter() === 'campaign'" [disabled]="wechselt()" (click)="reiterWaehlen('campaign')">Campaign view</button>
             <button type="button" role="tab" id="reiter-meine" aria-controls="teil-sicht" [attr.aria-selected]="reiter() === 'mine'" [disabled]="wechselt()" (click)="reiterWaehlen('mine')">My view</button>

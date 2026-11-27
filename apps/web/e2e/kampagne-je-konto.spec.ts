@@ -1,5 +1,5 @@
 /**
- * **Kampagne und Sicht je Konto** (T-496, REQ-408, REQ-412): eine Spielerin
+ * **Kampagne und Sicht je Konto** (T-496, REQ-395, REQ-396): eine Spielerin
  * in zwei Runden wählt im Globalfilter die zweite — ihre Mitspielerin
  * bleibt in der ersten. Danach blendet sie in „Campaign view" eine Ebene
  * nur für sich aus und setzt zurück, und in „My view" sieht sie eine Ebene,
@@ -60,7 +60,7 @@ test('each account chooses its campaign and its own view; the other stays in her
     const popup = p.getByRole('dialog', { name: 'Campaign & layers' });
     await expect(popup.getByRole('tab', { name: 'Campaign view' })).toHaveAttribute('aria-selected', 'true');
 
-    /* REQ-408: die zweite Runde wählen — nur für dieses Konto. */
+    /* REQ-395: die zweite Runde wählen — nur für dieses Konto. */
     const wahl = popup.getByLabel('Running campaign');
     await expect(wahl.locator('option')).toHaveCount(2);
     await wahl.selectOption(zweite.id);
@@ -73,7 +73,7 @@ test('each account chooses its campaign and its own view; the other stays in her
     expect(await sieht(juno.api, idA)).toBe(200);
     expect(await sieht(juno.api, idB)).toBe(404);
 
-    /* REQ-412, Campaign view: die eigene Ebene der Runde für mich ausblenden — die Runde ändert sich nicht. */
+    /* REQ-396, Campaign view: die eigene Ebene der Runde für mich ausblenden — die Runde ändert sich nicht. */
     /* Genau die Ebene der Runde — daneben steht Maras Spielerebene mit dem Namen der Runde darin. */
     const haken = popup.locator('nw-meine-sicht').getByRole('checkbox', { name: zweite.name, exact: true });
     await expect(haken).toBeChecked();

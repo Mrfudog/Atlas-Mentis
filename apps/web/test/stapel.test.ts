@@ -27,7 +27,7 @@ const schreib = {
   ],
 };
 const gefragt: string[] = [];
-/* Die eigene Sicht (T-496, REQ-412): zwei Ebenen der Kampagne und eine dritte zum freien Wählen. */
+/* Die eigene Sicht (T-496, REQ-396): zwei Ebenen der Kampagne und eine dritte zum freien Wählen. */
 let sicht: Record<string, unknown>;
 const gesendet: { url: string; method: string; body: unknown }[] = [];
 const sichtVon = (o: Record<string, unknown> = {}) => ({
@@ -117,7 +117,7 @@ describe('the campaign in the bar (T-143)', () => {
     expect(gefragt.filter((u) => u === '/api/campaigns')).toHaveLength(2);
   });
 
-  it('narrows the campaign view for me only, and resets it (REQ-412)', async () => {
+  it('narrows the campaign view for me only, and resets it (REQ-396)', async () => {
     await TestBed.inject(Stapel).laden();
     const f = TestBed.createComponent(StapelKnopf);
     await f.whenStable();
@@ -163,7 +163,7 @@ describe('the campaign in the bar (T-143)', () => {
     await vi.waitFor(() => expect(gesendet.at(-1)?.body).toEqual({ mode: 'mine', mine: ['ly_rules', 'ly_camp', 'ly_extra'] }));
   });
 
-  it('lets a player with two campaigns switch for her account only (REQ-408)', async () => {
+  it('lets a player with two campaigns switch for her account only (REQ-395)', async () => {
     antwort = {
       ...(antwort as object),
       choices: [

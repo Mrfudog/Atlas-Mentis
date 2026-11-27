@@ -22,12 +22,12 @@
  * laufenden Kampagne anlegt. Sie hängt am Stapel — fällt die gewählte
  * heraus, gilt die Vorgabe —, also wird sie mit ihm neu geholt.
  *
- * **Die Kampagne je Konto** (T-496, REQ-408): `wechseln` wählt sie für
+ * **Die Kampagne je Konto** (T-496, REQ-395): `wechseln` wählt sie für
  * dieses Konto, auf jedem Gerät, unter `kampagnen` (mit Rolle, für die
  * Verwaltung jede). Die Vorgabe der Installation (`vorgabe`) setzt nur die
  * Verwaltung (`vorgabeSetzen`); sie gilt für Konten ohne Wahl.
  *
- * **Die eigene Sicht** (REQ-412, `sicht`): enger filtern (Campaign view)
+ * **Die eigene Sicht** (REQ-396, `sicht`): enger filtern (Campaign view)
  * oder eigene Ebenen (My view), am Server gespeichert und gerechnet —
  * erst beim Öffnen des Popups geholt, denn die Liste der lesbaren Ebenen
  * ist gross und die Kopfleiste braucht nur die Zahl.
@@ -69,7 +69,7 @@ export class Stapel {
   readonly vorgabe = this._vorgabe.asReadonly();
   /** Die Verwaltung setzt die Vorgabe der Installation. */
   readonly verwaltung = this._verwaltung.asReadonly();
-  /** Die eigene Sicht auf den Stapel (REQ-412), sobald das Popup sie geholt hat. */
+  /** Die eigene Sicht auf den Stapel (REQ-396), sobald das Popup sie geholt hat. */
   readonly sicht = this._sicht.asReadonly();
   readonly stand = this._stand.asReadonly();
   /** Ob Listen die Artikel der Vergleichsebenen mitzeigen (T-213) — nur, wo es welche gibt. */
@@ -163,7 +163,7 @@ export class Stapel {
     return v;
   }
 
-  /** Die eigene Sicht setzen (REQ-412): Listen und Zahl folgen. */
+  /** Die eigene Sicht setzen (REQ-396): Listen und Zahl folgen. */
   async sichtSetzen(view: { mode: 'campaign' | 'mine'; hide?: string[]; mine?: string[] }): Promise<void> {
     this._sicht.set(await this.api.setMyView(view));
     this.geaendert();

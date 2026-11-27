@@ -24,5 +24,5 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 | [[REQ-236]] Kampagne mit Dialog anlegen | Spielleitung | 2 | offen |
 | [[REQ-278]] Bereiche als eigene Seiten | Spielleitung | 1 | steht |
 | [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen | Spielleitung | 2 | teils |
-| [[REQ-408]] Kampagne je Konto wählen | Spieler | 1 | steht |
+| [[REQ-395]] Kampagne je Konto wählen | Spieler | 1 | steht |
 <!-- stories:ende -->

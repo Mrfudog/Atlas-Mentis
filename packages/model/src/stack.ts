@@ -469,7 +469,7 @@ export function offLayers(campaign: Entity | null): Set<EntityId> {
 }
 
 /**
- * Die laufende Kampagne: die **des Kontos** (T-496, REQ-408), sonst die
+ * Die laufende Kampagne: die **des Kontos** (T-496, REQ-395), sonst die
  * Einstellung, sonst die erste im Bestand, sonst keine. Die Einstellung
  * `campaign` ist seit T-496 nur noch die Vorgabe für Konten, die nichts
  * gewählt haben; ob ein Konto die gewählte überhaupt wählen darf, prüft
@@ -489,13 +489,13 @@ export function currentCampaign(
   return null;
 }
 
-/** Die Einstellung je Konto, die die gewählte Kampagne hält (T-496, REQ-408). */
+/** Die Einstellung je Konto, die die gewählte Kampagne hält (T-496, REQ-395). */
 export const CAMPAIGN_PREF = 'campaign';
-/** Die Einstellung je Konto mit seiner Sicht auf den Stapel, je Kampagne (T-496, REQ-412). */
+/** Die Einstellung je Konto mit seiner Sicht auf den Stapel, je Kampagne (T-496, REQ-396). */
 export const STACK_VIEW_PREF = 'stackView';
 
 /**
- * **Die eigene Sicht auf den Stapel** (T-496, REQ-412) — eine Frage des
+ * **Die eigene Sicht auf den Stapel** (T-496, REQ-396) — eine Frage des
  * Kontos, nicht der Kampagne:
  *
  * - `campaign`: der Stapel der Kampagne, ohne die Ebenen in `hide` —
@@ -535,7 +535,7 @@ export const stackViewKey = (v: StackView | null | undefined): string =>
   isDefaultView(v) ? '' : v!.mode === 'mine' ? `m:${v!.mine.join(',')}` : `h:${[...v!.hide].sort().join(',')}`;
 
 /**
- * **Die Kampagne, wie dieses Konto sie liest** (T-496, REQ-412): derselbe
+ * **Die Kampagne, wie dieses Konto sie liest** (T-496, REQ-396): derselbe
  * Artikel mit denselben Rollen und Regeln, nur mit den Aufschaltkanten
  * der eigenen Sicht. Jede Stapelrechnung (`resolvedStack`, `inPlay`,
  * `shownLayers`) nimmt sie unverändert — so gibt es keine zweite

@@ -1,6 +1,6 @@
 /**
  * **Die Kampagne je Konto und die eigene Sicht auf ihren Stapel** (T-496,
- * REQ-408, REQ-412).
+ * REQ-395, REQ-396).
  *
  * Bis hierher war die laufende Kampagne eine Einstellung der Installation
  * (`settings.campaign`): wechselte die Verwaltung, wechselte sie für alle,
@@ -107,7 +107,7 @@ export function registerKampagnenwahl(app: FastifyInstance, deps: KampagnenwahlD
   }
 
   /**
-   * **Die Kampagne wählen** (REQ-408): `{ id }` setzt sie für dieses Konto,
+   * **Die Kampagne wählen** (REQ-395): `{ id }` setzt sie für dieses Konto,
    * auf jedem Gerät; `{ id: null }` nimmt die Wahl weg — dann gilt wieder
    * die Vorgabe der Installation. Die Vorgabe selbst setzt weiter die
    * Verwaltung (`PUT /api/campaigns/current`).
@@ -167,7 +167,7 @@ export function registerKampagnenwahl(app: FastifyInstance, deps: KampagnenwahlD
   });
 
   /**
-   * **Die eigene Sicht setzen** (REQ-412): `{ mode: 'campaign', hide }`
+   * **Die eigene Sicht setzen** (REQ-396): `{ mode: 'campaign', hide }`
    * filtert den Stapel der Kampagne enger, `{ mode: 'mine', mine }` wählt
    * eigene Ebenen. Eine eigene Ebene muss dieses Konto lesen dürfen; eine
    * ausgeblendete muss es nicht — was nicht da ist, kann man ausblenden.

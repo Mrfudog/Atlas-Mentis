@@ -1,4 +1,4 @@
-/* T-496, REQ-408 und REQ-412: die Kampagne je Konto und die eigene Sicht
+/* T-496, REQ-395 und REQ-396: die Kampagne je Konto und die eigene Sicht
    auf ihren Stapel. Die Rechnung des Stapels bleibt eine — die Sicht ist
    nur eine Kopie der Kampagne mit anderen Aufschaltkanten. */
 import { describe, expect, it } from 'vitest';
@@ -43,7 +43,7 @@ const imSpiel = (k: Entity | null) => {
   return [...welt.values()].filter((e) => e.interfaces?.[0] === 'Rule' && s.inPlay(e)).map((e) => e.id).sort();
 };
 
-describe('the campaign of an account (REQ-408)', () => {
+describe('the campaign of an account (REQ-395)', () => {
   it('takes the chosen campaign first, then the setting, then the first', () => {
     expect(currentCampaign(welt, { campaign: 'camp' }, 'camp2')?.id).toBe('camp2');
     expect(currentCampaign(welt, { campaign: 'camp2' }, null)?.id).toBe('camp2');
@@ -56,7 +56,7 @@ describe('the campaign of an account (REQ-408)', () => {
   });
 });
 
-describe('the own view on the stack (REQ-412)', () => {
+describe('the own view on the stack (REQ-396)', () => {
   it('reads nothing unusable as the default of the campaign', () => {
     expect(cleanStackView(null)).toBeNull();
     expect(cleanStackView('mine')).toBeNull();

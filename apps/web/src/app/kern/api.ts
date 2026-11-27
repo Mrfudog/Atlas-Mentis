@@ -1194,10 +1194,10 @@ export interface LaufendeKampagne {
   compare?: number;
   /** Die Ebene der Kampagne (T-251) — Listen nennen nur andere. */
   campaignLayer?: { id: string; name: string } | null;
-  /** Die eigene Sicht (T-496, REQ-412): ganz, enger oder eigene Ebenen. */
+  /** Die eigene Sicht (T-496, REQ-396): ganz, enger oder eigene Ebenen. */
   view?: 'campaign' | 'narrowed' | 'mine';
 }
-/** Eine Kampagne zur Wahl (T-496, REQ-408): mit Rolle, für die Verwaltung jede. */
+/** Eine Kampagne zur Wahl (T-496, REQ-395): mit Rolle, für die Verwaltung jede. */
 export interface KampagneZurWahl {
   id: string;
   name: string;
@@ -1213,7 +1213,7 @@ export interface Kampagnen {
   /** Die Vorgabe der Installation — wer nichts wählt, ist dort. */
   default?: string | null;
 }
-/** Eine Ebene zur Wahl in der eigenen Sicht (T-496, REQ-412). */
+/** Eine Ebene zur Wahl in der eigenen Sicht (T-496, REQ-396). */
 export interface EigeneSichtEbene {
   id: string;
   name: string;
@@ -2527,11 +2527,11 @@ export class Api {
   setCurrentCampaign(id: string): Promise<{ ok: true; current: string }> {
     return this.call('/api/campaigns/current', { method: 'PUT', body: JSON.stringify({ id }) });
   }
-  /** Die eigene Kampagne wählen (T-496, REQ-408); `null` folgt der Vorgabe. */
+  /** Die eigene Kampagne wählen (T-496, REQ-395); `null` folgt der Vorgabe. */
   setMyCampaign(id: string | null): Promise<{ ok: true; current: string | null }> {
     return this.call('/api/me/campaign', { method: 'PUT', body: JSON.stringify({ id }) });
   }
-  /** Die eigene Sicht auf den Stapel (T-496, REQ-412). */
+  /** Die eigene Sicht auf den Stapel (T-496, REQ-396). */
   myView(): Promise<Sichtstand> {
     return this.call<Sichtstand>('/api/me/view', {}, false);
   }

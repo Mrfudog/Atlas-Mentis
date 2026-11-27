@@ -159,7 +159,7 @@ flowchart TB
   Ebene liegt, die die laufende Kampagne nicht aufschaltet, ist für niemanden
   da (die nullte Frage) — darum bietet der Server als Ziel für Anlegen und
   Fassung nur Ebenen an, die im Spiel sind (`zielEbenen`).
-- **Die Sicht eines Kontos** (T-496, REQ-412): ein Konto darf Ebenen der
+- **Die Sicht eines Kontos** (T-496, REQ-396): ein Konto darf Ebenen der
   Kampagne für sich ausblenden (Campaign view) oder eigene, lesbare Ebenen
   wählen (My view). Das ändert nur, was *es* sieht — gerechnet als Kopie
   der Kampagne mit anderen Aufschaltkanten (`viewedCampaign`); was die

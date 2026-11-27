@@ -433,8 +433,8 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-392]] | Featureseiten im Projektbrett | Spielleitung | [[F-084 Projektsteuerung & Vermittlung\|Projektsteuerung & Vermittlung]] | 2 | 5 | defined | offen |
 | [[REQ-393]] | Demo-Video der Seite | Spielleitung | [[F-084 Projektsteuerung & Vermittlung\|Projektsteuerung & Vermittlung]] | 3 | 3 | in progress | teils |
 | [[REQ-394]] | Artikel löschen, einzeln und mehrere, mit Rückgängig | Spielleitung | [[F-071 Bearbeiten in der Ansicht\|Bearbeiten in der Ansicht]] | 2 | 3 | done | steht |
-| [[REQ-408]] | Kampagne je Konto wählen | Spieler | [[F-029 Kampagne\|Kampagne]] | 1 | 3 | done | steht |
-| [[REQ-412]] | Globalfilter mit Campaign view und My view | Spieler | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 1 | 5 | done | steht |
+| [[REQ-395]] | Kampagne je Konto wählen | Spieler | [[F-029 Kampagne\|Kampagne]] | 1 | 3 | done | steht |
+| [[REQ-396]] | Globalfilter mit Campaign view und My view | Spieler | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 1 | 5 | done | steht |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

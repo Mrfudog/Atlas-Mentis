@@ -4,7 +4,7 @@ import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
 
 /**
- * **Der Inhalt der Reiter im Globalfilter** (T-496, REQ-408, REQ-412),
+ * **Der Inhalt der Reiter im Globalfilter** (T-496, REQ-395, REQ-396),
  * nachgeladen (P6): oben die Kampagne mit Wechsel für dieses Konto und —
  * für die Verwaltung — die Vorgabe der Installation; darunter je Reiter
  * ein Teil, gezeigt der der Sicht, die gilt (`mode`).
@@ -299,7 +299,7 @@ export class MeineSicht {
     return this.stapel.kampagnen().find((c) => c.id === v)?.name ?? 'another campaign';
   });
 
-  /** Die eigene Kampagne wählen (REQ-408) — nur dieses Konto; danach ihre Sicht. */
+  /** Die eigene Kampagne wählen (REQ-395) — nur dieses Konto; danach ihre Sicht. */
   protected wechseln(id: string): Promise<void> {
     if (id === this.stapel.laufend()?.id) return Promise.resolve();
     return this.tun(async () => {

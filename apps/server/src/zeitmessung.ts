@@ -33,7 +33,7 @@ export function mitZeiten(weiter: () => void): void {
 }
 
 /**
- * **Die Kampagne der Anfrage** (T-496, REQ-408): einmal gesetzt, wenn
+ * **Die Kampagne der Anfrage** (T-496, REQ-395): einmal gesetzt, wenn
  * feststeht, wer fragt (`werIst`), und von jeder Stelle gelesen, die die
  * laufende Kampagne braucht, ohne das Konto in der Hand zu haben
  * (`kontoKampagne`). Ausserhalb einer Anfrage — Live-Kanal, Start — steht

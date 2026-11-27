@@ -75,13 +75,13 @@ export interface User {
    *  danach kam — wer neu dazukommt, braucht nicht die ganze Geschichte.
    *  Aus `app_user.created_at`; `putUser` schreibt es nicht. */
   createdAt?: string | undefined;
-  /** **Die Kampagne, in der dieses Konto gerade fragt** (T-496, REQ-408):
+  /** **Die Kampagne, in der dieses Konto gerade fragt** (T-496, REQ-395):
    *  die gewählte (Einstellung `campaign` des Kontos), wenn es sie wählen
    *  darf, sonst die Vorgabe der Installation. Nur an einer Anfrage
    *  gesetzt (`alsKonto`), nie gespeichert; `undefined` heisst „nicht
    *  gerechnet" und fällt auf die Vorgabe zurück. */
   campaign?: string | null | undefined;
-  /** **Seine Sicht auf den Stapel dieser Kampagne** (REQ-412): enger
+  /** **Seine Sicht auf den Stapel dieser Kampagne** (REQ-396): enger
    *  oder eigene Ebenen. `null`: die Vorgabe der Kampagne. */
   stackView?: StackView | null | undefined;
 }
