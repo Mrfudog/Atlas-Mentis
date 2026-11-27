@@ -70,6 +70,7 @@ von Hand ändern.
 | [Karten.md](Karten.md) | Zeichenebenen, Sperren, Unterkarten; die Karte in der Seite; der Zugplan (T-198) | gilt | Hand |
 | [vorschlaege/Laden-Analyse.md](vorschlaege/Laden-Analyse.md) | Was eine Seite lädt, auf dev gemessen: Ladepfade, die fünf grössten Hebel, Zielwerte (T-398, REQ-397) | Bericht, Vorschlag | Hand, Messung mit `scripts/laden-messen.mjs` |
 | [vorschlaege/Ansichten-Bedarf.md](vorschlaege/Ansichten-Bedarf.md) | Ansichten: Bestand je Art und Ort, Bedarf je Stufe, was T-234 anlegte und was offen ist (E-124) | Vorschlag, Bestand | Hand, Tabelle aus `scripts/ansichten.mjs` |
+| [vorschlaege/Leiste-und-Tasten.md](vorschlaege/Leiste-und-Tasten.md) | Eine Leiste für alle Orte (Kontext, eigene, von der Leitung) im Karussell, und drei Wörter für die Umschalttasten: Shift in Stufen, Alt frei, Ctrl weiter | Vorschlag | Hand |
 | [vorschlaege/Karten-VTT-Vergleich.md](vorschlaege/Karten-VTT-Vergleich.md) | Was andere VTTs an der Karte können und was wir übernehmen (T-203) | Vorschlag | Hand |
 | [vorschlaege/Regel-Builder.md](vorschlaege/Regel-Builder.md) | Versuch: Regeln als Knoten (Auslöser → Bedingung → Folge), hinter einem Schalter (T-270, E-102) | Versuch, Bericht | Hand |
 | [vorschlaege/Verknuepfte-Ansichten.md](vorschlaege/Verknuepfte-Ansichten.md) | Verknüpfte Artikel in Ansichten (Collection), Schichten, Werkzeugleiste als Muster, Design-Tokens, Erfassungsmasken: Bestand, Entscheide E-168–E-172, was sich am Bestand ändert, Schnitte (T-425) | Vorschlag, Bestand | Hand |
