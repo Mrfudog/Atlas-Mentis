@@ -30,7 +30,6 @@ import {
   articleVisible,
   BOARD_TYPE,
   campaignOfBoard,
-  currentCampaign,
   liveArticles,
   drawNext,
   entityName,
@@ -48,6 +47,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -114,7 +114,7 @@ export function registerAbfrage(app: FastifyInstance, deps: AbfrageDeps): void {
        offenen Aufträge — gefragt an die Kampagne des Boards, sonst an die
        laufende, und wie einzeln genannte Artikel behandelt: gesiebt wird
        danach wie bei jeder Abfrage. */
-    const kampagne = campaignOfBoard(stand.map, board) ?? currentCampaign(stand.map, registry.settings ?? null)?.id ?? null;
+    const kampagne = campaignOfBoard(stand.map, board) ?? kontoKampagne(stand.map, registry.settings ?? null)?.id ?? null;
     const live = liveArticles(registry, stand.map, kampagne, tile.query.current);
     const frage = live.length ? { ...tile.query, articles: [...new Set([...tile.query.articles, ...live])] } : tile.query;
     const grob = queryPool(registry, frage, stand.alle, dims, { exclude: board.id, limit: Infinity });
@@ -226,7 +226,7 @@ export function registerAbfrage(app: FastifyInstance, deps: AbfrageDeps): void {
   async function freigeben(request: FastifyRequest, id: string, partyWahl: string) {
     const stand = await roh();
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const party = partyWahl && stand.map.get(partyWahl) ? stand.map.get(partyWahl)! : kampagne ? partiesOf(stand.map, kampagne.id)[0] : undefined;
     if (!party) return { party: null, known: 0, visible: false, skipped: [] as string[] };
     const artikel = stand.map.get(id);

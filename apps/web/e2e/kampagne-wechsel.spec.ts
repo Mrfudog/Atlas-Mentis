@@ -1,8 +1,8 @@
 /**
  * T-411: die Kampagnenseite und die Kopfleiste zeigen dieselbe laufende
  * Kampagne, und eine neu angelegte steht sofort zur Wahl im Popup der
- * Kopfleiste — ohne Neuladen. Der Wechsel selbst ist global (er gälte für
- * die parallel laufenden Specs mit); ihn prüft `kampagnenseite.test.ts`.
+ * Kopfleiste — ohne Neuladen. Der Wechsel je Konto (T-496) prüft
+ * `kampagne-je-konto.spec.ts`.
  */
 import { test, expect } from './hilfen';
 import { sitzungDatei } from './stand';
@@ -25,9 +25,9 @@ test('a new campaign is offered in the bar at once, and the campaign page opens 
     await p.getByRole('button', { name: 'Create campaign' }).click();
     neu = ((await (await antwort).json()) as { id: string }).id;
     await expect(p.locator('.uebersicht h2')).toHaveText(name);
-    /* Sie läuft nicht — das sagt die Seite, mit dem Knopf für die Verwaltung. */
+    /* Sie läuft nicht — das sagt die Seite, mit dem Knopf zum Wechseln (seit T-496 je Konto). */
     await expect(p.locator('.nicht-laufend')).toContainText(lauf.campaign.name);
-    await expect(p.getByRole('button', { name: 'Make this the running campaign' })).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Switch to this campaign' })).toBeVisible();
 
     /* Im Popup der Kopfleiste steht sie schon zur Wahl. */
     await p.locator('nw-stapel .knopf').click();

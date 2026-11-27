@@ -21,7 +21,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  currentCampaign,
   entityName,
   inParty,
   isMap,
@@ -42,6 +41,7 @@ import type { ChangeFeed } from './live.js';
 import type { Repository } from './repo.js';
 import { mitZustand, type InsSpiel } from './spielinstanz.js';
 import { leitetTisch, wurfEintragen } from './wuerfe.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -74,7 +74,7 @@ export function registerKampfstart(app: FastifyInstance, deps: KampfstartDeps): 
       const stand = { alle: roherStand.alle, map: new Map(roherStand.map) };
       const gefunden = stand.map.get(request.params.id);
       if (!gefunden || primaryInterface(gefunden) !== 'Encounter') return reply.code(404).send({ error: 'Nicht gefunden' });
-      const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+      const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
       if (!leitetTisch(user, kampagne?.id ?? null)) return reply.code(403).send({ error: 'Eine Begegnung beginnt die Leitung.' });
       let begegnung = await geltend(gefunden, stand.map);
       const runde = Number((begegnung.components?.['Encounter'] as { round?: unknown } | undefined)?.round);

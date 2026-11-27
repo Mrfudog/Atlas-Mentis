@@ -23,7 +23,6 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
   campaignBoardOf,
-  currentCampaign,
   entityName,
   newCampaignBoard,
   PARTY_RELATION,
@@ -36,6 +35,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 /** Das Ereignis, das sagt: diese Kampagne hat ihr Board schon einmal bekommen. */
 export const BOARD_EVENT = 'campaign.board';
@@ -94,7 +94,7 @@ export function registerKampagnenboard(app: FastifyInstance, deps: Kampagnenboar
       return undefined;
     }
     const map = await repo.entityMap();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     const leer: Heim = { campaign: null, role: null, board: null, playerStart: 'board', land: null, character: null };
     if (!kampagne) return leer;
     const role = (user.roles?.[kampagne.id] ?? null) as TableRole | null;

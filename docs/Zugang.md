@@ -460,11 +460,11 @@ sieht Mara das nicht?".
 - **Artikel ohne Ebene** schreibt nur die Verwaltung; die Leitung ändert
   sie als Fassung in der Ebene ihrer Kampagne (T-098). Ob sie mit der
   Kampagne wandern sollen, hängt an der offenen Frage unten.
-- **Die laufende Kampagne ist eine globale Einstellung.** `currentCampaign()`
-  liest `setting('campaign')` — wer umschaltet, schaltet für alle um.
-  Solange das so ist, gibt es faktisch eine Kampagne. Sie muss der
-  Betrachter mitbringen: die, in denen er leitet, plus die, in deren Stapel
-  seine Figur liegt.
+- ~~**Die laufende Kampagne ist eine globale Einstellung.**~~ Seit T-496
+  (27.11.2026, D100) wählt jedes Konto seine Kampagne selbst — unter denen
+  mit Rolle, die Verwaltung jede —, und `setting('campaign')` ist nur noch
+  die Vorgabe. Der Server fragt sie je Anfrage (`alsKonto`,
+  `kontoKampagne`).
 - **Ohne Ebenenkante gehört ein Artikel niemandem besonders** — heute 65 von
   75. Das stimmt bei *einer* Kampagne; bei zweien braucht jede ihre eigene
   Ebene, und die Umkehrung kostet eine Wanderung.

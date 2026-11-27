@@ -1196,12 +1196,43 @@ export interface LaufendeKampagne {
   compare?: number;
   /** Die Ebene der Kampagne (T-251) — Listen nennen nur andere. */
   campaignLayer?: { id: string; name: string } | null;
+  /** Die eigene Sicht (T-496, REQ-396): ganz, enger oder eigene Ebenen. */
+  view?: 'campaign' | 'narrowed' | 'mine';
+}
+/** Eine Kampagne zur Wahl (T-496, REQ-395): mit Rolle, für die Verwaltung jede. */
+export interface KampagneZurWahl {
+  id: string;
+  name: string;
+  role: TableRole | null;
 }
 export interface Kampagnen {
   campaigns: KampagneKurz[];
   canCreate: boolean;
   isAdmin: boolean;
   current?: LaufendeKampagne | null;
+  /** Die Kampagnen, unter denen dieses Konto wählt (T-496). */
+  choices?: KampagneZurWahl[];
+  /** Die Vorgabe der Installation — wer nichts wählt, ist dort. */
+  default?: string | null;
+}
+/** Eine Ebene zur Wahl in der eigenen Sicht (T-496, REQ-396). */
+export interface EigeneSichtEbene {
+  id: string;
+  name: string;
+  group: boolean;
+  /** Schaltet die Kampagne sie auf? */
+  inCampaign: boolean;
+}
+/** Die eigene Sicht auf den Stapel (`/api/me/view`). */
+export interface Sichtstand {
+  campaign: { id: string; name: string } | null;
+  mode: 'campaign' | 'mine';
+  hide: string[];
+  mine: string[];
+  /** Die Ebenen der Kampagne, von unten nach oben — zum Enger-Filtern. */
+  stack: EigeneSichtEbene[];
+  /** Jede lesbare Ebene — für „My view". */
+  layers: EigeneSichtEbene[];
 }
 export interface Mitglied {
   id: string;
@@ -2494,9 +2525,23 @@ export class Api {
       method: on ? 'PUT' : 'DELETE',
     });
   }
-  /** Die laufende Kampagne wechseln — nur die Verwaltung (T-143). */
+  /** Die Vorgabe der Installation setzen — nur die Verwaltung (T-143, seit T-496 nur Vorgabe). */
   setCurrentCampaign(id: string): Promise<{ ok: true; current: string }> {
     return this.call('/api/campaigns/current', { method: 'PUT', body: JSON.stringify({ id }) });
+  }
+  /** Die eigene Kampagne wählen (T-496, REQ-395); `null` folgt der Vorgabe. */
+  setMyCampaign(id: string | null): Promise<{ ok: true; current: string | null }> {
+    return this.call('/api/me/campaign', { method: 'PUT', body: JSON.stringify({ id }) });
+  }
+  /** Die eigene Sicht auf den Stapel (T-496, REQ-396). */
+  myView(): Promise<Sichtstand> {
+    return this.call<Sichtstand>('/api/me/view', {}, false);
+  }
+  setMyView(view: { mode: 'campaign' | 'mine'; hide?: string[]; mine?: string[] }): Promise<Sichtstand> {
+    return this.call<Sichtstand>('/api/me/view', { method: 'PUT', body: JSON.stringify(view) });
+  }
+  resetMyView(): Promise<{ ok: true }> {
+    return this.call('/api/me/view', { method: 'DELETE' });
   }
   /** Eine ganze Gruppe an oder aus, mit allem darin (T-185). */
   switchGroup(campaign: string, group: string, on: boolean): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {

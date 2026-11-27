@@ -1439,6 +1439,27 @@ ein Mitleiter sieht die Liste.
 `app_user.is_admin` ist etwas anderes: die Verwaltung der **Installation**.
 Sie schaltet Register, Einladungen und unbeschnittenes Lesen.
 
+### Die laufende Kampagne steht am Konto, die Sicht auch (T-496, D100)
+
+**Welche Kampagne läuft, ist eine Frage an das Konto**, nicht an die
+Installation. Solange sie eine Einstellung für alle war, gab es faktisch
+eine Kampagne: wer in zwei Runden spielte, kam in die zweite nur, wenn die
+Verwaltung für alle umschaltete — und der Tisch der ersten sah danach die
+falsche Runde. Jetzt wählt jedes Konto unter den Kampagnen, in denen es
+eine Rolle hat (die Verwaltung unter allen); `settings.campaign` bleibt als
+**Vorgabe** für Konten, die nichts gewählt haben. Gefragt wird die Rolle in
+der gewählten Kampagne — wer in A leitet und in B spielt, ist in B Spieler.
+
+**Die Sicht ist eine Kopie der Kampagne, keine zweite Rechnung.** Enger
+filtern (Campaign view) und eigene Ebenen (My view) gehören dem Konto,
+nicht der Kampagne. Gerechnet werden sie, indem `viewedCampaign` die
+Aufschaltkanten der Kampagne für dieses Konto austauscht — ausgeblendete
+Ebenen werden `mode: 'off'`, eigene ersetzen die aufgeschalteten — und
+dieselbe Stapelrechnung wie immer darüber läuft. Eine eigene Stapellogik
+für die Sicht wäre die zweite Stelle, die mit der ersten auseinanderläuft.
+Die Kopie wird nie geschrieben; Sichtbarkeit, Wissen, Rollen und
+Schreibebene fragen weiter die Kampagne.
+
 > **Nicht mehr:** `Access` — eine Karte mit `userIds` und `role` an der
 > Figur, für einen Tag auch an der Kampagne. Der Server las sie nie, denn
 > welche Figur ein Konto führt, stand längst am Konto; `userIds` war in

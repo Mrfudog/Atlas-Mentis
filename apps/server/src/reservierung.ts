@@ -14,7 +14,6 @@
  */
 import {
   applySettlement,
-  currentCampaign,
   entityName,
   ORDER_COMPONENT,
   primaryInterface,
@@ -27,6 +26,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 const ORDER_TYPE = 'CraftingOrder';
 
@@ -44,7 +44,7 @@ export function auftragLaeuft(map: ReadonlyMap<string, Entity>): (id: string) =>
 async function leitet(repo: Repository, user: User | null, map: Map<string, Entity>): Promise<boolean> {
   if (!user) return false;
   if (user.isAdmin) return true;
-  const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+  const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
   const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
   return rolle === 'gm' || rolle === 'co-gm';
 }

@@ -26,7 +26,6 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   cleanNat,
-  currentCampaign,
   fogOn,
   isDoor,
   isMap,
@@ -52,6 +51,7 @@ import {
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 import { leitetTisch } from './wuerfe.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -113,7 +113,7 @@ export function registerTueren(app: FastifyInstance, deps: TuerenDeps): void {
       const roheKarte = await geltend(gefunden, stand.map);
       const [karte] = await sieve(request, [roheKarte], stand.map);
       if (!karte) return reply.code(404).send({ error: 'Nicht gefunden' });
-      const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+      const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
       const leitet = leitetTisch(user, kampagne?.id ?? null);
 
       const b = request.body ?? {};

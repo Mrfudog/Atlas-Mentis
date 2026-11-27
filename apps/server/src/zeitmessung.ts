@@ -13,16 +13,41 @@
  * Betrachter sieht —, und `db` gegen `app` zeigt, ob es die Datenbank war.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { StackView } from '@nw/model';
 import type { Repository } from './repo.js';
 
 type Zeiten = Map<string, { ms: number; n: number }>;
 
-/** Je Anfrage: die Zeiten und, was `mitAnfrageSpeicher` sich gemerkt hat. */
-const speicher = new AsyncLocalStorage<{ zeiten: Zeiten; merk: Map<PropertyKey, Promise<unknown>> }>();
+/** Kampagne und Sicht des fragenden Kontos (T-496), wie `alsKonto` sie gerechnet hat. */
+export interface AnfrageKonto {
+  campaign: string | null;
+  stackView: StackView | null;
+}
+
+/** Je Anfrage: die Zeiten, was `mitAnfrageSpeicher` sich gemerkt hat, und das fragende Konto. */
+const speicher = new AsyncLocalStorage<{ zeiten: Zeiten; merk: Map<PropertyKey, Promise<unknown>>; konto?: AnfrageKonto }>();
 
 /** Eine Anfrage in ihrem eigenen Speicher laufen lassen (aus dem `onRequest`-Haken, mit `done`). */
 export function mitZeiten(weiter: () => void): void {
   speicher.run({ zeiten: new Map(), merk: new Map() }, weiter);
+}
+
+/**
+ * **Die Kampagne der Anfrage** (T-496, REQ-395): einmal gesetzt, wenn
+ * feststeht, wer fragt (`werIst`), und von jeder Stelle gelesen, die die
+ * laufende Kampagne braucht, ohne das Konto in der Hand zu haben
+ * (`kontoKampagne`). Ausserhalb einer Anfrage — Live-Kanal, Start — steht
+ * nichts da: dort wird das Konto ausdrücklich mitgegeben, denn der
+ * Live-Kanal läuft im Speicher der Anfrage, die *geschrieben* hat.
+ */
+export function setzeAnfrageKonto(k: AnfrageKonto | null): void {
+  const s = speicher.getStore();
+  if (!s) return;
+  if (k) s.konto = k;
+  else delete s.konto;
+}
+export function anfrageKonto(): AnfrageKonto | undefined {
+  return speicher.getStore()?.konto;
 }
 
 function buche(name: string, ms: number): void {

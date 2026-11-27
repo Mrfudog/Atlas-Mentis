@@ -15,7 +15,7 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-5 Stories · 12 Punkte · 3 steht · 1 teils · 1 offen
+6 Stories · 15 Punkte · 4 steht · 1 teils · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -24,4 +24,5 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 | [[REQ-236]] Kampagne mit Dialog anlegen | Spielleitung | 2 | offen |
 | [[REQ-278]] Bereiche als eigene Seiten | Spielleitung | 1 | steht |
 | [[REQ-279]] Kampagnenwerte pflegen und in Texten nutzen | Spielleitung | 2 | teils |
+| [[REQ-395]] Kampagne je Konto wählen | Spieler | 1 | steht |
 <!-- stories:ende -->

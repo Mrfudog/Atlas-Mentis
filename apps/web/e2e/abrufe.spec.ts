@@ -151,3 +151,29 @@ test('the help for a page loads only when asked for (T-348)', async ({ leitung }
   await expect(leitung.getByRole('dialog', { name: 'Help for this page' })).toBeVisible();
   await expect(leitung.getByRole('dialog', { name: 'Help for this page' }).locator('p').first()).not.toBeEmpty();
 });
+
+/**
+ * **Das Popup der Kopfleiste** (T-496): die eigene Sicht kommt erst beim
+ * Öffnen (`GET /api/me/view`, einmal), die Kopfleiste fragt beim
+ * Seitenaufbau nur die Kampagne (`GET /api/campaigns`, einmal) — vorher und
+ * nachher gleich viele Abrufe beim Laden. Ein Häkchen schreibt einmal und
+ * fragt Kampagne und Schreibebene je einmal neu.
+ */
+test('the layers popup asks for the own view once, only when it opens', async ({ spielerin }) => {
+  const l = await abrufe(spielerin, '/compendium');
+  expect(l.filter((x) => x === 'GET /api/campaigns'), l.join('\n')).toHaveLength(1);
+  expect(l.filter((x) => x.startsWith('GET /api/me/view')), l.join('\n')).toHaveLength(0);
+
+  const offen: string[] = [];
+  const mit = (r: Request) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith('/api/') && u.pathname !== '/api/live') offen.push(`${r.method()} ${u.pathname}`);
+  };
+  spielerin.on('request', mit);
+  await spielerin.locator('nw-stapel button.knopf').click();
+  await expect(spielerin.getByRole('dialog', { name: 'Campaign & layers' }).locator('nw-meine-sicht fieldset')).toBeVisible();
+  await spielerin.waitForLoadState('networkidle');
+  spielerin.off('request', mit);
+  expect(offen.filter((x) => x === 'GET /api/me/view'), offen.join('\n')).toHaveLength(1);
+  expect(offen.length, offen.join('\n')).toBeLessThanOrEqual(2);
+});

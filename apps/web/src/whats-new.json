@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-campaign-per-account",
+      "date": "2026-11-27",
+      "title": "Your own campaign and your own view",
+      "text": "Choose your running campaign in the popup under the mark — it changes for you only, and the others at the table stay in theirs. Campaign view hides layers for you without changing the campaign (Reset brings them back); My view shows any layers you can read, with saved selections.",
+      "area": "Campaign",
+      "link": "/compendium"
+    },
+    {
       "id": "2026-11-27-followers-villains-minions",
       "date": "2026-11-27",
       "title": "Retainers, companions, villain actions and minions",

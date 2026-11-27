@@ -468,18 +468,115 @@ export function offLayers(campaign: Entity | null): Set<EntityId> {
   return new Set(kanten(campaign ?? undefined, ACTIVATES_RELATION).filter(isOffEdge).map((r) => r.to));
 }
 
-/** Die laufende Kampagne: die Einstellung, sonst die erste im Bestand, sonst keine. */
+/**
+ * Die laufende Kampagne: die **des Kontos** (T-496, REQ-395), sonst die
+ * Einstellung, sonst die erste im Bestand, sonst keine. Die Einstellung
+ * `campaign` ist seit T-496 nur noch die Vorgabe für Konten, die nichts
+ * gewählt haben; ob ein Konto die gewählte überhaupt wählen darf, prüft
+ * der Server, bevor er sie hier hineingibt (`chosen`).
+ */
 export function currentCampaign(
   entities: ReadonlyMap<EntityId, Entity>,
   settings?: Record<string, string> | null,
+  chosen?: EntityId | null,
 ): Entity | null {
-  const gesetzt = settings?.[CAMPAIGN_SETTING];
-  if (gesetzt) {
+  for (const gesetzt of [chosen, settings?.[CAMPAIGN_SETTING]]) {
+    if (!gesetzt) continue;
     const e = entities.get(gesetzt);
     if (e && (e.interfaces ?? [])[0] === CAMPAIGN_TYPE) return e;
   }
   for (const e of entities.values()) if ((e.interfaces ?? [])[0] === CAMPAIGN_TYPE) return e;
   return null;
+}
+
+/** Die Einstellung je Konto, die die gewählte Kampagne hält (T-496, REQ-395). */
+export const CAMPAIGN_PREF = 'campaign';
+/** Die Einstellung je Konto mit seiner Sicht auf den Stapel, je Kampagne (T-496, REQ-396). */
+export const STACK_VIEW_PREF = 'stackView';
+
+/**
+ * **Die eigene Sicht auf den Stapel** (T-496, REQ-396) — eine Frage des
+ * Kontos, nicht der Kampagne:
+ *
+ * - `campaign`: der Stapel der Kampagne, ohne die Ebenen in `hide` —
+ *   enger filtern, ohne die Kampagne zu ändern; leer heisst ihre Vorgabe.
+ * - `mine`: frei gewählte Ebenen (`mine`, von unten nach oben) statt der
+ *   aufgeschalteten. Rollen, Schreibrecht und Schreibebene bleiben bei der
+ *   Kampagne; nur was im Stapel *steht*, sagt die eigene Auswahl.
+ *
+ * Sichtbarkeit und Wissen gelten danach wie immer: eine Ebene zu wählen
+ * heisst nicht, ihre verborgenen Artikel zu sehen.
+ */
+export interface StackView {
+  mode: 'campaign' | 'mine';
+  hide: EntityId[];
+  mine: EntityId[];
+}
+
+const HOECHSTENS_EBENEN = 300;
+
+/** Was gespeichert steht, bereinigt — Unlesbares und Leeres heisst „die Vorgabe der Kampagne". */
+export function cleanStackView(roh: unknown): StackView | null {
+  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return null;
+  const o = roh as Record<string, unknown>;
+  const ids = (x: unknown): EntityId[] =>
+    Array.isArray(x) ? [...new Set(x.filter((y): y is string => typeof y === 'string' && y.length > 0 && y.length <= 200))].slice(0, HOECHSTENS_EBENEN) : [];
+  const mode = o['mode'] === 'mine' ? 'mine' : 'campaign';
+  const v: StackView = { mode, hide: ids(o['hide']), mine: ids(o['mine']) };
+  /* Eine eigene Auswahl bleibt gemerkt, auch während die Kampagnensicht gilt. */
+  return v.mode === 'campaign' && !v.hide.length && !v.mine.length ? null : v;
+}
+
+/** Die Vorgabe der Kampagne — nichts ausgeblendet, keine eigene Auswahl in Kraft. */
+export const isDefaultView = (v: StackView | null | undefined): boolean => !v || (v.mode === 'campaign' && v.hide.length === 0);
+
+/** Ein Stempel der Sicht, für Zwischenspeicher je Stapel. */
+export const stackViewKey = (v: StackView | null | undefined): string =>
+  isDefaultView(v) ? '' : v!.mode === 'mine' ? `m:${v!.mine.join(',')}` : `h:${[...v!.hide].sort().join(',')}`;
+
+/**
+ * **Die Kampagne, wie dieses Konto sie liest** (T-496, REQ-396): derselbe
+ * Artikel mit denselben Rollen und Regeln, nur mit den Aufschaltkanten
+ * der eigenen Sicht. Jede Stapelrechnung (`resolvedStack`, `inPlay`,
+ * `shownLayers`) nimmt sie unverändert — so gibt es keine zweite
+ * Stapelrechnung, die auseinanderlaufen könnte.
+ *
+ * Die Kopie wird **nie geschrieben**: wer die Kampagne ändert, liest sie
+ * aus dem Bestand, nicht hier.
+ *
+ * - Ausgeblendet (`hide`): eine ausdrücklich aufgeschaltete Ebene verliert
+ *   ihre Kante; eine, die nur über eine Gruppe käme, bekommt `mode: 'off'`
+ *   — dieselbe Herausnahme, die die Leitung für ein Buch hat.
+ * - Eigene Auswahl (`mine`): die Aufschalt- und Abschaltkanten weichen der
+ *   Auswahl, in ihrer Reihenfolge. Vergleiche, Freigaben einzelner Artikel
+ *   und Typ-Regeln der Kampagne bleiben.
+ */
+export function viewedCampaign(campaign: Entity | null, view: StackView | null | undefined): Entity | null {
+  if (!campaign || isDefaultView(view)) return campaign;
+  const v = view!;
+  const rels = campaign.relations ?? [];
+  const aufschaltend = (r: Rel) => r.type === ACTIVATES_RELATION && !isCompareEdge(r);
+  if (v.mode === 'mine') {
+    const gewaehlt = new Set(v.mine);
+    return {
+      ...campaign,
+      relations: [
+        /* Ein Vergleich auf eine gewählte Ebene wiche ihr ohnehin (`compareLayers`). */
+        ...rels.filter((r) => !aufschaltend(r) && !(isCompareEdge(r) && gewaehlt.has(r.to))),
+        ...v.mine.map((to, i) => ({ id: `view~${to}`, type: ACTIVATES_RELATION, to, props: { order: i + 1 } })),
+      ],
+    };
+  }
+  const weg = new Set(v.hide);
+  const ausdruecklich = new Set(rels.filter((r) => aufschaltend(r) && !isOffEdge(r)).map((r) => r.to));
+  const schonAus = offLayers(campaign);
+  return {
+    ...campaign,
+    relations: [
+      ...rels.filter((r) => !(aufschaltend(r) && !isOffEdge(r) && weg.has(r.to))),
+      ...v.hide.filter((id) => !ausdruecklich.has(id) && !schonAus.has(id)).map((to) => ({ id: `view~off~${to}`, type: ACTIVATES_RELATION, to, props: { mode: OFF_MODE } })),
+    ],
+  };
 }
 
 export interface StackEntry {

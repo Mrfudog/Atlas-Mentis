@@ -36,11 +36,12 @@ import {
   publisherInfo,
   offLayers,
   resolvedStack,
+  viewedCampaign,
+  isDefaultView,
   withOff,
   groupSwitched,
   GROUP_RELATION,
   campaignsOf,
-  currentCampaign,
   playStack,
   filterOf,
   withFilter,
@@ -83,6 +84,8 @@ import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User }
 import { inDieGruppe, neueGruppe } from './gruppe.js';
 import { BOARD_EVENT } from './kampagnenboard.js';
 import { eigeneEbenen } from './ebenenrechte.js';
+import { kontoKampagne } from './kampagne.js';
+import { darfWaehlen } from './kampagnenwahl.js';
 
 /**
  * **Eine Auswahl aus dem Körper lesen** (T-105, T-187): `{ areas?, types? }`,
@@ -240,8 +243,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const user = await viewerOf(request);
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const da = await kampagnen();
-    const laufend = currentCampaign(da, (await repo.getRegistry()).settings ?? null);
+    const settings = (await repo.getRegistry()).settings ?? null;
+    /* Die Kampagne dieses Kontos (T-496, REQ-395), nicht die der Installation. */
+    const laufend = kontoKampagne(da, settings, user.campaign ?? null);
+    const vorgabe = kontoKampagne(da, settings, null);
     const alleJetzt = laufend ? await bestandAls(await repo.version()) : new Map<string, Entity>();
+    /* Gezählt in der Sicht des Kontos (REQ-396): die Kopfleiste sagt, was hier steht. */
+    const gelesen = viewedCampaign(laufend, user.stackView);
     const ids = new Set<string>(user.isAdmin ? da.keys() : []);
     for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
     return {
@@ -261,6 +269,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
          Verwaltung (`mayWrite`). */
       canCreate: user.isAdmin,
       isAdmin: user.isAdmin,
+      /* **Zur Wahl** (T-496, REQ-395): jede Kampagne, in der dieses Konto
+         eine Rolle hat, für die Verwaltung jede. `default` ist die Vorgabe
+         der Installation, `chosen`, ob das Konto selbst gewählt hat. */
+      choices: [...da.values()]
+        .filter((c) => darfWaehlen(user, c.id))
+        .map((c) => ({ id: c.id, name: entityName(c), role: user.roles?.[c.id] ?? null }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+      default: vorgabe?.id ?? null,
       /* **Die laufende Kampagne** (T-143) — sie steht in der Kopfleiste,
          für jeden am Tisch. Ihr Name ist kein Geheimnis: ihr Inhalt ist,
          was jeder ohnehin sieht. `role` sagt, was man an ihr ist. */
@@ -271,7 +287,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
             role: user.roles?.[laufend.id] ?? null,
             may: rechtAn(user, laufend.id),
             /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst. */
-            layers: resolvedStack(alleJetzt, laufend).filter((l) => !isGroupLayer(l)).length,
+            layers: resolvedStack(alleJetzt, gelesen).filter((l) => !isGroupLayer(l)).length,
+            /* Die eigene Sicht (REQ-396): `campaign` ganz, `narrowed` enger, `mine` eigene Ebenen. */
+            view: !user.stackView || isDefaultView(user.stackView) ? 'campaign' : user.stackView.mode === 'mine' ? 'mine' : 'narrowed',
             /* Wie viele Vergleichsebenen dieser Betrachter sieht (T-213) —
                ohne eine gibt es den Schalter „Show comparison" nicht. */
             compare: siehtVergleich(user, laufend) ? compareLayers(alleJetzt, laufend).length : 0,
@@ -285,14 +303,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   });
 
   /**
-   * **Die laufende Kampagne wechseln** (T-143) — die Einstellung
-   * `campaign` im Register. Sie gilt für die ganze Installation (offen in
-   * CLAUDE.md: „die laufende Kampagne ist eine globale Einstellung"), also
-   * wechselt sie nur die Verwaltung; der Kampagnenmanager (T-141) übernimmt.
+   * **Die Vorgabe der Installation setzen** (T-143, seit T-496 nur noch
+   * Vorgabe) — die Einstellung `campaign` im Register. Sie gilt für jedes
+   * Konto, das selbst keine Kampagne gewählt hat (`PUT /api/me/campaign`),
+   * also setzt sie nur die Verwaltung.
    */
   app.put<{ Body: { id?: unknown } }>('/api/campaigns/current', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isAdmin) return nein(reply, 403, 'Die laufende Kampagne wechselt die Verwaltung; sie gilt für alle.');
+    if (!user?.isAdmin) return nein(reply, 403, 'Only the administration sets the default campaign. Choose your own with PUT /api/me/campaign.');
     const id = request.body?.id;
     if (typeof id !== 'string' || !(await kampagnen()).has(id)) return nein(reply, 400, 'Diese Kampagne gibt es nicht als Artikel.');
     const registry = await repo.getRegistry();
@@ -975,7 +993,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     /* „View as" nur in der laufenden Kampagne (REQ-241): gerechnet wird mit
        ihrem Stapel, und eine andere zu zeigen hiesse, etwas anderes zu
        zeigen, als der Spieler sieht. Der Server sagt es je Mitglied. */
-    const laufend = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
+    const laufend = kontoKampagne(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     const members = (await repo.listUsers())
       .filter((u) => isTableRole(u.roles?.[c]))
       .map((u) => ({

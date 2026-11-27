@@ -19,7 +19,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
 | Feature | Stories | Punkte | Stand |
 |---|---|---|---|
-| [[F-029 Kampagne]] — Die Kampagne als Wurzel: Einstellungen, Kampagnenwerte, Anlegen mit Dialog, Bereiche als Seiten. | 5 | 12 | 3 steht · 1 teils · 1 offen |
+| [[F-029 Kampagne]] — Die Kampagne als Wurzel: Einstellungen, Kampagnenwerte, Anlegen mit Dialog, Bereiche als Seiten. | 6 | 15 | 4 steht · 1 teils · 1 offen |
 | [[F-030 Bereich Story]] — Arcs, Kapitel, Quests, Szenen, Fäden — die Geschichte der Kampagne. | 4 | 11 | 2 steht · 2 offen |
 | [[F-031 Sitzungen & Vorbereitung]] — Sitzungen, Vorbereitungsseite, Unfertiges und Todos, Schnellerfassung, Sitzungsansicht. | 9 | 25 | 6 steht · 1 teils · 2 offen |
 | [[F-032 Begegnungen]] — Begegnungen bauen und vorbereiten, Begegnungstabellen, Weltzustand zwischen Sitzungen. | 4 | 12 | 2 steht · 2 offen |

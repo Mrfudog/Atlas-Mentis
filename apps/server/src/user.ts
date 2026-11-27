@@ -38,13 +38,14 @@ import {
   type TokenScope,
 } from './auth.js';
 import type { Repository } from './repo.js';
-import { currentCampaign, isTableRole } from '@nw/model';
+import { isTableRole } from '@nw/model';
 import { figurDazu } from './figurenzuteilung.js';
 
 /** Die Figuren mit ihrer Kampagne (T-412): `e_1 (in camp)`, ohne bekannte Kampagne nur die Id. */
 const figurenText = (u: { actorIds: string[]; actorCampaigns?: Record<string, string> }): string =>
   u.actorIds.map((a) => (u.actorCampaigns?.[a] ? `${a} (in ${u.actorCampaigns[a]})` : a)).join(', ');
 import { sorgeSpielerEbene } from './spielerebene.js';
+import { kontoKampagne } from './kampagne.js';
 
 async function askPassword(prompt: string): Promise<string> {
   const fromEnv = process.env['NW_PASSWORD'];
@@ -205,7 +206,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       const campaignAt = rest.indexOf('--campaign');
       const kampagne =
         (campaignAt >= 0 ? rest[campaignAt + 1] : undefined) ??
-        currentCampaign(new Map((await repo.listEntities()).map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null)?.id;
+        kontoKampagne(new Map((await repo.listEntities()).map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null)?.id;
       if (!kampagne) throw new Error('Keine Kampagne: --campaign <kampagne> angeben.');
       await repo.putUser(figurDazu(existing, kampagne, actorId));
       return `${name} spielt jetzt auch ${actorId} (in ${kampagne}).`;

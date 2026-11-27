@@ -30,6 +30,11 @@ function antwort(url: string, method: string, body?: string): unknown {
     kampagnen = [...kampagnen, neu];
     return { id: neu.id, name };
   }
+  /* Seit T-496 wechselt jedes Konto selbst; hier ein Konto, also dieselbe Wirkung. */
+  if (url === '/api/me/campaign' && method === 'PUT') {
+    laufend = (JSON.parse(body ?? '{}') as { id: string }).id;
+    return { ok: true, current: laufend };
+  }
   if (url === '/api/campaigns/current' && method === 'PUT') {
     laufend = (JSON.parse(body ?? '{}') as { id: string }).id;
     return { ok: true, current: laufend };
@@ -125,12 +130,14 @@ describe('the campaign page follows the running campaign (T-411)', () => {
     await vi.waitFor(() => expect(mitgliederVon()).toContain('c-nebel'));
     await f.whenStable();
 
-    /* Die neue läuft noch nicht — die Verwaltung kann sie hier laufen lassen. */
+    /* Die neue läuft noch nicht — wer dort eine Rolle hat, wechselt hier hinein. */
     const knopf = el.querySelector<HTMLButtonElement>('.laufend-machen');
-    expect(knopf?.textContent).toContain('Make this the running campaign');
+    expect(knopf?.textContent).toContain('Switch to this campaign');
     knopf!.click();
     await vi.waitFor(() => expect(s.laufend()?.id).toBe('c-nebel'));
-    expect(gefragt.some((g) => g.url === '/api/campaigns/current' && g.method === 'PUT')).toBe(true);
+    /* Nur für dieses Konto (T-496), nicht die Vorgabe der Installation. */
+    expect(gefragt.some((g) => g.url === '/api/me/campaign' && g.method === 'PUT')).toBe(true);
+    expect(gefragt.some((g) => g.url === '/api/campaigns/current' && g.method === 'PUT')).toBe(false);
     await f.whenStable();
     expect(el.querySelector('.laufend-machen')).toBeNull();
   });

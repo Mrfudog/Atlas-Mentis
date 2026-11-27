@@ -383,10 +383,11 @@ const ROLLEN: { role: TableRole; text: string }[] = [
                  Kopfleiste; dann sagt sie es, und die Verwaltung schaltet
                  hier um wie dort. -->
             <p class="nicht-laufend">
-              Not the running campaign — the bar shows <b>{{ stapel.laufend()?.name }}</b>.
-              @if (kampagnen()?.isAdmin && m.campaign.exists) {
+              Not your running campaign — the bar shows <b>{{ stapel.laufend()?.name }}</b>.
+              <!-- Seit T-496 je Konto: wer hier eine Rolle hat, wechselt selbst. -->
+              @if (m.campaign.exists && waehlbar(m.campaign.id)) {
                 <button type="button" class="laufend-machen" [disabled]="laeuft()" (click)="laufendMachen(m.campaign.id)">
-                  Make this the running campaign
+                  Switch to this campaign
                 </button>
               }
             </p>
@@ -615,7 +616,12 @@ export class Verwaltung {
     });
   }
 
-  /** Die gezeigte Kampagne laufen lassen — dasselbe wie die Wahl in der Kopfleiste (T-143, T-411). */
+  /** Ob dieses Konto in diese Kampagne wechseln darf (T-496): mit Rolle, die Verwaltung jede. */
+  protected waehlbar(id: string): boolean {
+    return this.stapel.kampagnen().some((c) => c.id === id);
+  }
+
+  /** In die gezeigte Kampagne wechseln — dasselbe wie die Wahl in der Kopfleiste (T-143, T-411, seit T-496 je Konto). */
   protected async laufendMachen(id: string): Promise<void> {
     await this.tun(() => this.stapel.wechseln(id));
   }

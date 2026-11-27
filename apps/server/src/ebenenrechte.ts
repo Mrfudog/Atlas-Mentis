@@ -26,7 +26,6 @@ import {
   LAYER_COMPONENT,
   LAYER_RELATION,
   GROUP_RELATION,
-  currentCampaign,
   entityName,
   isGroupLayer,
   publisherGroups,
@@ -42,6 +41,7 @@ import type { Repository } from './repo.js';
 import { foldName, type User } from './auth.js';
 import { spielerEbenen } from './spielerebene.js';
 import { mitWahl } from './schreibebene.js';
+import { kontoKampagne } from './kampagne.js';
 
 /**
  * **Die Ebenen, die hier angelegt wurden** (T-109): jede, die nicht aus
@@ -123,7 +123,7 @@ export function registerEbenenrechte(
     const user = await viewerOf(request);
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const map = await bestand();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     const schreibt = await schreibEbenen(user, map);
     const imSpiel = new Set((await zielEbenen(user, map, kampagne)).map((l) => l.id));
     const vorgabe = (await vorgabeEbene(user, map, kampagne))?.id ?? null;
@@ -178,7 +178,7 @@ export function registerEbenenrechte(
     const user = await viewerOf(request);
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const map = await bestand();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     const l = await vorgabeEbene(user, map, kampagne);
     const spieler = l ? spielerEbenen(await repo.layerGrants()).get(l.id) : undefined;
     return {
@@ -197,7 +197,7 @@ export function registerEbenenrechte(
    */
   async function schreibStand(user: User) {
     const map = await bestand();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     const s = await schreibEbene(user, map, kampagne);
     /* Auch Ebenen ausserhalb des Stapels (T-418): wählbar, mit `inPlay: false`. */
     const ziele = await schreibZiele(user, map, kampagne);
@@ -278,7 +278,7 @@ export function registerEbenenrechte(
     const user = await viewerOf(request);
     if (!user || user.disabledAt) return nein(reply, 401, 'Nicht angemeldet.');
     const map = await bestand();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     if (!kampagne) return nein(reply, 409, 'Es läuft keine Kampagne.');
     const roh = request.body?.layer;
     const layer = typeof roh === 'string' && roh ? roh : null;
@@ -319,7 +319,7 @@ export function registerEbenenrechte(
     const ziel = await wahlZiel(request, reply, request.body?.user);
     if (!ziel) return reply;
     const map = await bestand();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     if (!kampagne) return nein(reply, 409, 'Es läuft keine Kampagne.');
     const l = map.get(request.params.layer);
     if (!istEbene(l)) return nein(reply, 404, 'Diese Ebene gibt es nicht.');
@@ -335,7 +335,7 @@ export function registerEbenenrechte(
     const ziel = await wahlZiel(request, reply, request.query.user);
     if (!ziel) return reply;
     const map = await bestand();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     const wahl = (await repo.getPrefs(ziel.id))[WRITE_LAYER_PREF];
     if (kampagne && wahl && typeof wahl === 'object' && kampagne.id in wahl) {
       const { [kampagne.id]: _weg, ...rest } = wahl as Record<string, unknown>;
