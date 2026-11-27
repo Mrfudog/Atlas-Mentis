@@ -32,3 +32,14 @@ Epic: [[EP-08 Live-Spiel]]
 | [[REQ-365]] Spielende sehen von Rundenquellen und ihren Auslösungen nur, was die Leitung freigibt; die Rundenübersicht bleibt bei der Leitung | Spielleitung | 2 | offen |
 | [[REQ-366]] Rundenoptionen aus Homebrew-Regelwerken (MCDM/Arcadis, z. B. Inspiration durch Spielende) kommen als Regelartikel ihrer Ebene herein, mit derselben Form wie Legendary und Lair | Spielleitung | 3 | offen |
 <!-- stories:ende -->
+
+## Minions und Overkill (T-497, 27.11.2026)
+
+Ein Statblock mit `minion` fällt im Tracker an jedem eingetragenen Schaden
+auf 0 (`damageAtTable`, `minionDamage`); Minions derselben Vorlage
+würfeln beim Kampfstart eine Initiative (`minionGroup`). Mit der
+Regeloption **Overkill** (Rules & options › Combat, `Campaign.overkill`)
+nennt das Ergebnis den Rest für den nächsten Minion in Reichweite.
+Villain Actions sind eine Aktionsart mit Runde (`Action.round`); der Bogen
+ordnet sie, die Rundenübersicht dafür bleibt REQ-364/REQ-366.
+

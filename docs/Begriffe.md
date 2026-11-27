@@ -1978,6 +1978,25 @@ DEX und Übung +4 ergäben. Der Bogen nimmt ihn statt der Rechnung. Was ein
 Monster führt, sagt die Kante `equips` zum Gegenstand aus dem Buch; ein
 Inventar hat erst die Figur am Tisch.
 
+### Wer folgt, rechnet mit seinem Anführer (T-497)
+
+Ein Reittier, ein Begleiter, ein Gefolgsmann aus Strongholds & Followers
+oder Flee, Mortals! hat Zahlen, die nicht feststehen: „AC 12 + PB", „5
+Trefferpunkte je Stufe", „ab Stufe 3". Sie auszurechnen und einzutippen
+hiesse, sie bei jedem Stufenaufstieg neu zu tippen — und zu vergessen. Also
+steht am Statblock die Regel (`pbFrom`, `addPb`, `hpPerLevel`) und an der
+Kante `follows` zur Figur die Stufe; die Zahl rechnet der Bogen beim Lesen
+(D8). Die Stufe steht **an der Kante**, nicht am Statblock: sie ist das
+Verhältnis zur Figur, und ein Statblock aus dem Buch gilt für jeden
+Gefolgsmann dieser Sorte. Ebenso steht „ab Stufe 3" an `composedOf` und
+nicht an der Aktion.
+
+Eine eigene Art „Retainer" gibt es weiterhin nicht: was ihn ausmacht, sind
+Felder am Statblock und eine Kante, und `Creature.kind` sagt das Wort. Ein
+**Minion** ist dagegen ein Wahrheitswert und kein Wort, weil der Tracker
+ihn liest; **Villain Actions** sind eine Aktionsart wie Legendary Actions,
+und ihre Runde ein Feld der Aktion.
+
 ### Der Kopf und die Reiter der Spielerseite
 
 **Der Kopf steht über den Reitern**, nicht in einem (T-247): Trefferpunkte,

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-followers-villains-minions",
+      "date": "2026-11-27",
+      "title": "Retainers, companions, villain actions and minions",
+      "text": "A creature can follow a character with a level: its statblock then uses the leader’s or its own proficiency bonus, adds it where the book says “+ PB”, gains hit points per level and unlocks actions by level. Villain actions list in their round, minions roll one initiative and drop at any damage, with Overkill as a rule option. Arcs, scenes and encounters now carry a source.",
+      "area": "Articles",
+      "link": "/compendium?type=Statblock"
+    },
+    {
       "id": "2026-11-05-creature-forms",
       "date": "2026-11-05",
       "title": "Roleplay and Fight forms for creatures",

@@ -378,6 +378,16 @@
           ]
         },
         {
+          "heading": "Giving a character a retainer or a mount",
+          "text": [
+            "1. Create the follower as a creature (Kind: retainer, companion or mount) with its statblock.",
+            "2. On the creature, add the relation “follows” to the character and set its level.",
+            "3. On the statblock, set Proficiency bonus from: “leader” for a mount or companion that uses its rider’s bonus, “level” for a retainer with its own. Tick where the book writes “+ PB” under Adds the proficiency bonus to, and fill Hit points per level if it has them.",
+            "4. For actions it gains with levels, set From level on their “composed of” relation; a retainer’s signature attack takes the ability “primary” and the statblock’s Primary ability.",
+            "5. Raise the level on “follows” when the follower grows — the sheet recalculates armour class, hit points, saves and attacks, and unlocks the actions of the new level."
+          ]
+        },
+        {
           "heading": "More to come",
           "text": [
             "Further workflows are being written; until then each page’s help in the chapter Pages describes its steps."
