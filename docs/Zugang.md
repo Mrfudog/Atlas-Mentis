@@ -452,6 +452,45 @@ sieht Mara das nicht?".
 - **Echtzeit-Ereignisse** gibt es noch nicht; wenn sie kommen, werden sie
   für das Zielkonto gefiltert wie jede andere Antwort.
 
+## Kampagne und Globalfilter je Konto (T-496)
+
+REQ-408 und REQ-412 der Zentrale (die Story-Notizen dort reichen weiter
+als `VTT/Stories`, das bei REQ-394 endet). Jedes Konto wählt seine
+Kampagne selbst; die Einstellung `settings.campaign` ist nur noch die
+Vorgabe. Rangfolge (`chosenCampaign`, `packages/model/src/kontosicht.ts`):
+eigene Wahl mit Rolle (die Verwaltung jede) › Vorgabe, wenn das Konto
+darin eine Rolle hat › die Kampagne mit der stärksten Rolle › Vorgabe.
+
+```mermaid
+flowchart LR
+  A[Anfrage] --> B[ermittle: Konto]
+  B --> C[ladeWahl: campaign, layerView]
+  C --> D[chosenCampaign]
+  D --> E[viewedCampaign: Sicht]
+  E --> F[Liste, Suche, Board, Sieb]
+  G[Live-Kanal] -->|mitKonto Empfänger| D
+```
+
+Der **Globalfilter** im Popup der Kopfleiste hat zwei Reiter. Beide gelten
+nur für dieses Konto und diese Kampagne und werden am Server gespeichert
+(`/api/me/layer-view`, Einstellung `layerView`). Sie sind eine Lesart der
+Kampagne und werden nie in sie geschrieben:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Kampagne: keine Sicht
+  Kampagne --> Eng: Häkchen weg (off)
+  Eng --> Kampagne: Reset
+  Kampagne --> Meine: My view (layers)
+  Eng --> Meine: My view
+  Meine --> Kampagne: Reset
+```
+
+Die Ebene der Kampagne bleibt in jeder Sicht an. Sichtbarkeit und Wissen
+gelten unverändert: My view zeigt, was das Konto dort sähe, nicht mehr.
+Routen: `PUT /api/me/campaign`, `GET|PUT|DELETE /api/me/layer-view`;
+`PUT /api/campaigns/current` setzt nur noch die Vorgabe (Verwaltung).
+
 ## Was noch fehlt
 
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
@@ -460,11 +499,15 @@ sieht Mara das nicht?".
 - **Artikel ohne Ebene** schreibt nur die Verwaltung; die Leitung ändert
   sie als Fassung in der Ebene ihrer Kampagne (T-098). Ob sie mit der
   Kampagne wandern sollen, hängt an der offenen Frage unten.
-- **Die laufende Kampagne ist eine globale Einstellung.** `currentCampaign()`
-  liest `setting('campaign')` — wer umschaltet, schaltet für alle um.
-  Solange das so ist, gibt es faktisch eine Kampagne. Sie muss der
-  Betrachter mitbringen: die, in denen er leitet, plus die, in deren Stapel
-  seine Figur liegt.
+- ~~**Die laufende Kampagne ist eine globale Einstellung.**~~ Seit T-496
+  (REQ-408, 27.11.2026) wählt jedes Konto seine Kampagne selbst
+  (`PUT /api/me/campaign`, unter denen mit Rolle, die Verwaltung jede);
+  `settings.campaign` ist nur noch die Vorgabe für Konten ohne Wahl und
+  ohne Rolle anderswo. Jede Route fragt die Kampagne des Betrachters
+  (`apps/server/src/kampagnenwahl.ts`), der Live-Kanal je Empfänger. Dazu
+  der Globalfilter je Konto (REQ-412: Campaign view, My view).
+  Offen: ob ein Co-GM den Stapel der Kampagne schalten darf (heute nur
+  Leitung und Verwaltung, `rechtAn`) — als Entscheid vorgeschlagen.
 - **Ohne Ebenenkante gehört ein Artikel niemandem besonders** — heute 65 von
   75. Das stimmt bei *einer* Kampagne; bei zweien braucht jede ihre eigene
   Ebene, und die Umkehrung kostet eine Wanderung.

@@ -239,8 +239,9 @@ wiederkommen, werden sie neu geschrieben.
   eine Ebene ausserhalb des Stapels — und der Vergleichsebenen, wer sie
   sieht — erscheint weder als Artikel noch als Fassung, Filteroption,
   Kürzel oder Zählung; gesiebt wird im Listenindex am Server, nicht je
-  Seite. Ein- und ausgeschaltet wird nur an der Kampagne (Kampagnenseite,
-  Popup der Kopfleiste); Bibliothek und Werkbank (`allLayers=1`) sehen alle.
+  Seite. Ein- und ausgeschaltet wird an der Kampagne (Kampagnenseite,
+  Popup der Kopfleiste, „Campaign stack“) und für sich im Globalfilter
+  (T-496); Bibliothek und Werkbank (`allLayers=1`) sehen alle.
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer
@@ -322,7 +323,18 @@ wiederkommen, werden sie neu geschrieben.
   Seit Migration 152 hat jeder Artikel eine Ebene (E-182); was keine
   andere hatte, liegt in „Unassigned“ und gehört so niemandem besonders,
   bis es verschoben ist.
-  Ebenso offen: die laufende Kampagne ist eine globale Einstellung.
+  **Die laufende Kampagne ist je Konto** (T-496, REQ-408): jedes Konto
+  wählt unter seinen Kampagnen (`PUT /api/me/campaign`, die Verwaltung
+  jede), `settings.campaign` ist nur noch Vorgabe. Der Server fragt sie
+  über `currentCampaign` aus `apps/server/src/kampagnenwahl.ts` — dieselbe
+  Gestalt wie im Modell, aber mit dem Konto der Anfrage
+  (`AsyncLocalStorage`; der Live-Kanal setzt den Empfänger mit
+  `mitKonto`). **Wer dort `currentCampaign` aus `@nw/model` importiert,
+  rechnet am Betrachter vorbei.** Dazu der **Globalfilter** (REQ-412):
+  Campaign view nimmt für mich aus dem Stapel, My view stellt lesbare
+  Ebenen zusammen (`viewedCampaign`, `/api/me/layer-view`); beides ist eine
+  Lesart, nie geschrieben, und ein Zwischenspeicher je Kampagne nimmt
+  `kampagneSchluessel` statt der Id.
   **Eine Spielerebene gehört der Kampagne, die sie aufschaltet**, wie die
   Kampagnenebene (T-164): genau eine, also sieht deren Leitung darin, was
   sie dort sähe — die Ebene sagt Herkunft und Schreibrecht, die
@@ -912,7 +924,8 @@ wiederkommen, werden sie neu geschrieben.
   das Popup** („Saved selections“, `ebenensets.ts`, `/api/me/layer-sets`):
   je Konto, wahlweise nur für eine Kampagne, in der Einstellung
   `layerSets`; Laden schreibt den Stapel über `PUT /api/campaigns/:c/layers`
-  und darf darum nur, wer dort schaltet. Zwei Ebenenfilter — einer je
+  und darf darum nur, wer dort schaltet — im Globalfilter (T-496) lädt
+  jedes Konto eine Auswahl in seine My view. Zwei Ebenenfilter — einer je
   Seite, einer global — waren zwei Antworten auf dieselbe Frage.
 - **Das Diagramm zeichnet sich selbst.** Auf „How it works" steht ein
   Kasten je Artikelart und eine Linie je Kantenart (gestrichelt: die
