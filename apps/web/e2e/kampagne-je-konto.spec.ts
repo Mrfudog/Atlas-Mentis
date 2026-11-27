@@ -29,7 +29,8 @@ async function konto(browser: Browser, admin: APIRequestContext, kampagne: strin
 
 test('each account chooses its campaign and its own view; the other stays in hers', async ({ browser, api, lauf, eindeutig }, info) => {
   const admin = await api.als('verwaltung');
-  const kennung = eindeutig('k').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  /* Kurz: die Konten bekommen Spielerebenen mit ihrem Namen, und andere Specs der Leitung zeigen diese Ebenen in Auswahlen. */
+  const kennung = `${info.project.name[0]}${Date.now().toString(36)}`;
   /* Eine zweite Runde mit ihrer Ebene. */
   const zweite = (await (await ok(await admin.post('/api/campaigns', { data: { name: eindeutig('Saltpath') } }), 'Kampagne')).json()) as { id: string; name: string };
   const ebeneB = `ly_${zweite.id}`;

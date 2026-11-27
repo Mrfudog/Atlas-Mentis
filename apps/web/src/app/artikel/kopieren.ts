@@ -96,10 +96,14 @@ const WEGE: { key: KopierArt; label: string; satz: string }[] = [
       flex-wrap: wrap;
       gap: 0.4rem;
       align-items: center;
+      /* Ein langer Ebenenname (eine Spielerebene trägt Konto und Kampagne) darf das Blatt nicht breiter machen als das Telefon. */
+      min-width: 0;
     }
     .ziel select {
       min-height: 36px;
+      min-width: 0;
       max-width: 100%;
+      flex: 1 1 12rem;
     }
     button {
       min-height: 36px;
