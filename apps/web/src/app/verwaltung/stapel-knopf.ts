@@ -4,19 +4,24 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import type { SchreibOption, Schreibstand } from '../kern/api';
 import { Stapel } from '../kern/stapel';
-import { KampagnenEbenenListe } from './ebenen';
 import { SichtKnopf } from './sicht-knopf';
+import { MeineSicht } from './meine-sicht';
 
 /**
  * **Kampagne und Ebenen in der Kopfleiste** (T-143, Wunsch der Leitung
  * 14.10.): die laufende Kampagne steht immer da, mit der Zahl der Ebenen
  * im Spiel, unter der Marke — am Telefon gekürzt. Ein Klick öffnet das Popup:
  *
- * - die Kampagne, für die Verwaltung mit Wechsel (sie gilt für alle,
- *   darum nur dort; `PUT /api/campaigns/current`);
- * - die Ebenen wie auf der Kampagnenseite (`nw-kampagnen-ebenen`, kompakt):
- *   auf- und abschalten, Gruppen, Teilaufschaltung nach Bereich und Art,
- *   und **Vergleich** — auch einer ganzen Gruppe wie „2024 rules";
+ * - **zwei Reiter** (T-496, REQ-412): „Campaign view" — die Kampagne mit
+ *   Wechsel für jedes Konto, das in mehreren eine Rolle hat (nur für
+ *   dieses Konto, `PUT /api/me/campaign`), und ihre Ebenen zum Ausblenden
+ *   nur für mich (`nw-meine-sicht`); „My view" — eigene, lesbare Ebenen
+ *   und gespeicherte Auswahlen. Die Verwaltung setzt dazu die Vorgabe
+ *   für Konten ohne Wahl (`PUT /api/campaigns/current`);
+ * - für die Leitung, zugeklappt, die Ebenen wie auf der Kampagnenseite
+ *   (`nw-kampagnen-ebenen`, kompakt) — das schaltet für alle: auf- und
+ *   abschalten, Gruppen, Teilaufschaltung nach Bereich und Art, und
+ *   **Vergleich** — auch einer ganzen Gruppe wie „2024 rules";
  * - der Weg zur Kampagnenseite (der Kampagnenmanager, T-141, folgt).
  *
  * **Die Schreibebene** (T-161) steht daneben („Writes to", am Telefon ✎)
@@ -33,7 +38,7 @@ import { SichtKnopf } from './sicht-knopf';
  */
 @Component({
   selector: 'nw-stapel',
-  imports: [RouterLink, NgTemplateOutlet, KampagnenEbenenListe, SichtKnopf],
+  imports: [RouterLink, NgTemplateOutlet, SichtKnopf, MeineSicht],
   template: `
     @if (stapel.laufend(); as k) {
       @if (!vollbild()) {
@@ -48,6 +53,10 @@ import { SichtKnopf } from './sicht-knopf';
           <span class="zeichen" aria-hidden="true">◫</span>
           <span class="kname">{{ k.name }}</span>
           <span class="kzahl">{{ zahlText() }}</span>
+          @if (k.view === 'mine' || k.view === 'narrowed') {
+            <!-- Die eigene Sicht (T-496, REQ-412) steht in der Leiste, damit niemand eine fehlende Ebene sucht. -->
+            <span class="marke sichtmarke" [title]="sichtTitel()">{{ k.view === 'mine' ? 'my view' : 'narrowed' }}</span>
+          }
           @if (stapel.schreib(); as w) {
             <span class="schreib" [class.weg]="!!w.dropped" [class.ausserhalb]="schreibAusserhalb()">
               <span class="lang">Writes to</span><span class="kurz" aria-hidden="true">✎</span>
@@ -66,24 +75,19 @@ import { SichtKnopf } from './sicht-knopf';
             <h2 id="stapel-titel">Campaign &amp; layers</h2>
             <button type="button" class="zu" aria-label="Close" (click)="zu()">×</button>
           </header>
-          @if (stapel.verwaltung() && stapel.kampagnen().length > 1) {
-            <label class="wahl">
-              <span>Running campaign</span>
-              <select [value]="k.id" [disabled]="wechselt()" (change)="wechseln($any($event.target).value)">
-                @for (c of stapel.kampagnen(); track c.id) {
-                  <option [value]="c.id" [selected]="c.id === k.id">{{ c.name }}</option>
-                }
-              </select>
-            </label>
-            <p class="fuss">The running campaign is the same for everyone on this installation.</p>
-          } @else {
-            <p class="wer">
-              <b>{{ k.name }}</b>
-              @if (k.role) {
-                <span class="rolle">{{ k.role }}</span>
-              }
-            </p>
-          }
+          <!-- Zwei Reiter (T-496, REQ-412): die Kampagne mit ihrem Stapel, enger nur für mich — oder eigene Ebenen. -->
+          <div class="reiter" role="tablist" aria-label="What you see">
+            <button type="button" role="tab" id="reiter-kampagne" aria-controls="teil-sicht" [attr.aria-selected]="reiter() === 'campaign'" [disabled]="wechselt()" (click)="reiterWaehlen('campaign')">Campaign view</button>
+            <button type="button" role="tab" id="reiter-meine" aria-controls="teil-sicht" [attr.aria-selected]="reiter() === 'mine'" [disabled]="wechselt()" (click)="reiterWaehlen('mine')">My view</button>
+          </div>
+          <div class="teil" id="teil-sicht" role="tabpanel" [attr.aria-labelledby]="reiter() === 'mine' ? 'reiter-meine' : 'reiter-kampagne'">
+            <!-- Nachgeladen (P6): die Kopfleiste steht im Startpaket, Wahl und Sicht brauchen erst das offene Popup. -->
+            @defer {
+              <nw-meine-sicht />
+            } @placeholder {
+              <p class="fuss">Loading your view…</p>
+            }
+          </div>
           <!-- „View as" am Telefon: hier statt in der Leiste (T-269). -->
           <nw-sicht [liste]="true" />
           @if (fehler(); as f) {
@@ -147,16 +151,6 @@ import { SichtKnopf } from './sicht-knopf';
                 <small>Compendium, areas and search also list what only a comparison layer brings, marked “not in play”.</small>
               </span>
             </label>
-          }
-          @if (k.may) {
-            <!-- Erst beim Öffnen geladen (T-188): die Liste ist gross, und die Kopfleiste steht im Grundpaket mit seinem Budget. -->
-            @defer {
-              <nw-kampagnen-ebenen [kampagne]="k.id" [kompakt]="true" (geschaltet)="stapel.geaendert()" />
-            } @placeholder {
-              <p class="fuss">Loading the layers…</p>
-            }
-          } @else {
-            <p class="fuss">{{ zahlText() }} in play. The GM chooses which.</p>
           }
           @if (k.may) {
             <p class="weiter"><a routerLink="/campaign" (click)="zu()">Members and more on the campaign page</a></p>
@@ -330,26 +324,36 @@ import { SichtKnopf } from './sicht-knopf';
       color: var(--dim);
       cursor: pointer;
     }
-    .wahl {
+    /* Die Reiter des Globalfilters (T-496). */
+    .reiter {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
+      gap: 0.25rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .reiter [role='tab'] {
+      flex: 1 1 0;
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      border-radius: 6px 6px 0 0;
+      background: none;
+      color: var(--dim);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .reiter [role='tab'][aria-selected='true'] {
+      border-color: var(--line);
+      background: var(--surface);
+      color: var(--accent);
+      margin-bottom: -1px;
+    }
+    .teil {
+      display: flex;
+      flex-direction: column;
       gap: 0.5rem;
     }
-    .wahl select {
-      flex: 1 1 12rem;
-      min-height: 40px;
-    }
-    .wer {
-      margin: 0;
-    }
-    .rolle {
-      margin-left: 0.4rem;
-      padding: 0 0.4rem;
-      border: 1px solid var(--accent);
-      border-radius: 10px;
-      color: var(--accent);
-      font-size: 0.75rem;
+    .sichtmarke {
+      flex: none;
     }
     .fuss {
       margin: 0;
@@ -489,6 +493,8 @@ export class StapelKnopf {
     this.vorher = document.activeElement as HTMLElement | null;
     this.fehler.set(null);
     this.offen.set(true);
+    /* Die Sicht erst beim Öffnen (P1): die Kopfleiste braucht nur die Zahl. */
+    void this.sichtHolen();
   }
 
   protected zu(): void {
@@ -498,11 +504,48 @@ export class StapelKnopf {
     this.vorher = null;
   }
 
-  protected async wechseln(id: string): Promise<void> {
-    if (id === this.stapel.laufend()?.id) return;
+  protected readonly sichtTitel = computed(() =>
+    this.stapel.laufend()?.view === 'mine'
+      ? 'You are looking at your own layers, not the campaign’s.'
+      : 'You have hidden some of the campaign’s layers for yourself.',
+  );
+
+  /** Der Reiter, der gerade gewählt wird — bis der Server antwortet. */
+  private readonly gewaehlt = signal<'campaign' | 'mine' | null>(null);
+  /** Welcher Reiter offen ist — er sagt zugleich, welche Sicht gilt (T-496); nach einem Kampagnenwechsel die der neuen. */
+  protected readonly reiter = computed<'campaign' | 'mine'>(
+    () => this.gewaehlt() ?? this.stapel.sicht()?.mode ?? (this.stapel.laufend()?.view === 'mine' ? 'mine' : 'campaign'),
+  );
+
+  /**
+   * Ein Reiter ist die Sicht, die gilt: „My view" schaltet die eigenen
+   * Ebenen ein (beim ersten Mal die der Kampagne als Anfang, damit nichts
+   * verschwindet), „Campaign view" die Kampagne — mit dem, was ich dort
+   * ausgeblendet habe.
+   */
+  protected async reiterWaehlen(r: 'campaign' | 'mine'): Promise<void> {
+    if (r === this.reiter()) return;
+    this.gewaehlt.set(r);
+    await this.tun(async () => {
+      const v = this.stapel.sicht() ?? (await this.stapel.sichtLaden());
+      if (r === 'mine') await this.stapel.sichtSetzen({ mode: 'mine', mine: v.mine.length ? v.mine : v.stack.map((l) => l.id) });
+      else await this.stapel.sichtSetzen({ mode: 'campaign' });
+    });
+    this.gewaehlt.set(null);
+  }
+
+  private async sichtHolen(): Promise<void> {
+    try {
+      await this.stapel.sichtLaden();
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async tun(f: () => Promise<void>): Promise<void> {
     this.wechselt.set(true);
     try {
-      await this.stapel.wechseln(id);
+      await f();
       this.fehler.set(null);
     } catch (error) {
       this.fehler.set(error instanceof Error ? error.message : String(error));

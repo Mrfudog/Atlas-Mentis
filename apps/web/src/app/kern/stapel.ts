@@ -21,10 +21,20 @@
  * Dazu die **Schreibebene** (T-161, `schreib`): wohin dieses Konto in der
  * laufenden Kampagne anlegt. Sie hängt am Stapel — fällt die gewählte
  * heraus, gilt die Vorgabe —, also wird sie mit ihm neu geholt.
+ *
+ * **Die Kampagne je Konto** (T-496, REQ-408): `wechseln` wählt sie für
+ * dieses Konto, auf jedem Gerät, unter `kampagnen` (mit Rolle, für die
+ * Verwaltung jede). Die Vorgabe der Installation (`vorgabe`) setzt nur die
+ * Verwaltung (`vorgabeSetzen`); sie gilt für Konten ohne Wahl.
+ *
+ * **Die eigene Sicht** (REQ-412, `sicht`): enger filtern (Campaign view)
+ * oder eigene Ebenen (My view), am Server gespeichert und gerechnet —
+ * erst beim Öffnen des Popups geholt, denn die Liste der lesbaren Ebenen
+ * ist gross und die Kopfleiste braucht nur die Zahl.
  */
 
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Api, type KampagneKurz, type LaufendeKampagne, type Schreibstand } from './api';
+import { Api, type KampagneZurWahl, type LaufendeKampagne, type Schreibstand, type Sichtstand } from './api';
 import { Live } from './live';
 
 const VERGLEICH_KEY = 'nw.compareInLists';
@@ -40,7 +50,9 @@ function gemerkt(): boolean {
 export class Stapel {
   private readonly api = inject(Api);
   private readonly _laufend = signal<LaufendeKampagne | null>(null);
-  private readonly _kampagnen = signal<KampagneKurz[]>([]);
+  private readonly _kampagnen = signal<KampagneZurWahl[]>([]);
+  private readonly _vorgabe = signal<string | null>(null);
+  private readonly _sicht = signal<Sichtstand | null>(null);
   private readonly _verwaltung = signal(false);
   private readonly _stand = signal(0);
   private readonly _schreib = signal<Schreibstand | null>(null);
@@ -51,10 +63,14 @@ export class Stapel {
   private selbst = 0;
 
   readonly laufend = this._laufend.asReadonly();
-  /** Die Kampagnen, die dieses Konto verwaltet oder leitet. */
+  /** Die Kampagnen, unter denen dieses Konto wählt (T-496): mit Rolle, für die Verwaltung jede. */
   readonly kampagnen = this._kampagnen.asReadonly();
-  /** Die Verwaltung wechselt die laufende Kampagne; sie gilt für alle. */
+  /** Die Vorgabe der Installation — für Konten ohne eigene Wahl. */
+  readonly vorgabe = this._vorgabe.asReadonly();
+  /** Die Verwaltung setzt die Vorgabe der Installation. */
   readonly verwaltung = this._verwaltung.asReadonly();
+  /** Die eigene Sicht auf den Stapel (REQ-412), sobald das Popup sie geholt hat. */
+  readonly sicht = this._sicht.asReadonly();
   readonly stand = this._stand.asReadonly();
   /** Ob Listen die Artikel der Vergleichsebenen mitzeigen (T-213) — nur, wo es welche gibt. */
   readonly vergleich = computed(() => this._vergleich() && (this._laufend()?.compare ?? 0) > 0);
@@ -85,7 +101,8 @@ export class Stapel {
       const [k, w] = await Promise.all([this.api.campaigns(), this.api.writeLayer().catch(() => null)]);
       if (nr !== this.lauf) return;
       this._laufend.set(k.current ?? null);
-      this._kampagnen.set(k.campaigns.filter((c) => c.exists));
+      this._kampagnen.set(k.choices ?? k.campaigns.filter((c) => c.exists).map(({ id, name, role }) => ({ id, name, role })));
+      this._vorgabe.set(k.default ?? null);
       this._verwaltung.set(k.isAdmin);
       this._schreib.set(w);
     } catch {
@@ -126,8 +143,36 @@ export class Stapel {
     void this.laden();
   }
 
-  async wechseln(id: string): Promise<void> {
+  /** Die eigene Kampagne wählen (T-496); `null` folgt der Vorgabe. Nur dieses Konto wechselt. */
+  async wechseln(id: string | null): Promise<void> {
+    await this.api.setMyCampaign(id);
+    this._sicht.set(null);
+    this.geaendert();
+  }
+
+  /** Die Vorgabe der Installation setzen — nur die Verwaltung. */
+  async vorgabeSetzen(id: string): Promise<void> {
     await this.api.setCurrentCampaign(id);
+    this.geaendert();
+  }
+
+  /** Die eigene Sicht holen (beim Öffnen des Popups). */
+  async sichtLaden(): Promise<Sichtstand> {
+    const v = await this.api.myView();
+    this._sicht.set(v);
+    return v;
+  }
+
+  /** Die eigene Sicht setzen (REQ-412): Listen und Zahl folgen. */
+  async sichtSetzen(view: { mode: 'campaign' | 'mine'; hide?: string[]; mine?: string[] }): Promise<void> {
+    this._sicht.set(await this.api.setMyView(view));
+    this.geaendert();
+  }
+
+  /** „Reset": die Vorgabe der Kampagne, ohne Ausgeblendetes. Die eigene Auswahl geht mit. */
+  async sichtZuruecksetzen(): Promise<void> {
+    await this.api.resetMyView();
+    await this.sichtLaden();
     this.geaendert();
   }
 
@@ -136,5 +181,6 @@ export class Stapel {
     this._laufend.set(null);
     this._kampagnen.set([]);
     this._schreib.set(null);
+    this._sicht.set(null);
   }
 }
