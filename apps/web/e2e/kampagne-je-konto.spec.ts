@@ -13,7 +13,7 @@ import type { APIRequestContext, Browser, Page, TestInfo } from '@playwright/tes
 import { test, expect } from './hilfen';
 import { PASSWORT } from './stand';
 
-async function ok(res: { ok(): boolean; status(): number; text(): Promise<string> }, was: string) {
+async function ok<R extends { ok(): boolean; status(): number; text(): Promise<string> }>(res: R, was: string): Promise<R> {
   if (!res.ok()) throw new Error(`${was}: ${res.status()} ${await res.text()}`);
   return res;
 }
