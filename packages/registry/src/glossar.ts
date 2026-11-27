@@ -40,6 +40,16 @@ export interface AppTerm {
 /** Die Wörter, mit denen die App über sich selbst spricht. */
 const APP: AppTerm[] = [
   {
+    term: 'Follower',
+    sort: 'app',
+    aliases: ['Retainer', 'Companion', 'Mount'],
+    definition: 'A creature that follows a character — a retainer, companion or mount — through the relation “follows”, which carries its level.',
+    effect: 'Its statblock can take its proficiency bonus from the leader or from its level, add it where the book says “+ PB”, gain hit points per level and unlock actions by level; the sheet works the numbers out when read.',
+    example: 'A squire follows Rook at level 5: its signature strike uses DEX and +3, and its level-7 action is dimmed.',
+    translations: { de: 'Gefolge' },
+    see: '/handbook#workflows',
+  },
+  {
     term: 'Section bar',
     aliases: ['Expand all', 'Collapse all', 'Next section'],
     sort: 'app',
@@ -1000,11 +1010,14 @@ export const GAME_TERMS: readonly string[] = [
   'Hit points',
   'Initiative',
   'Inspiration',
+  'Minion',
   'Opportunity attack',
+  'Overkill',
   'Proficiency bonus',
   'Ritual',
   'Saving throw',
   'Speed',
   'Spell slot',
   'Temporary hit points',
+  'Villain action',
 ];

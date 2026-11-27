@@ -196,11 +196,11 @@ describe('shared choice lists', () => {
 
   /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
      Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
-  it('the ability list is named by the skill, the recipe, the disease, the spell, the zone and the saving throws', () => {
+  it('the ability list is named by the skill, the recipe, the disease, the spell, the zone, the saving throws, an action’s save and a retainer’s primary ability', () => {
     const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
     expect(wer).toEqual([
-      'Class.primaryAbility', 'Class.spellAbility', 'Disease.save', 'Proficiencies.saves',
-      'Recipe.ability', 'Skill.ability', 'Spell.save', 'Statblock.spellAbility',
+      'Action.saveAbility', 'Class.primaryAbility', 'Class.spellAbility', 'Disease.save', 'Proficiencies.saves',
+      'Recipe.ability', 'Skill.ability', 'Spell.save', 'Statblock.primaryAbility', 'Statblock.spellAbility',
       'Subclass.spellAbility', 'ZoneKind.save',
     ]);
     expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
@@ -1032,5 +1032,37 @@ describe('an encounter as a prepared article (T-333)', () => {
     expect(gruppe('happensAt')).toMatchObject({ text: 'Place' });
     expect(gruppe('loot')).toMatchObject({ text: 'Loot', show: 'table', props: ['qty', 'chance'] });
     expect(gruppe('onMap')).toMatchObject({ text: 'Map' });
+  });
+});
+
+/* **MCDM-Formate** (T-497): was beim Einlesen von Arcadia fehlte. */
+describe('MCDM-Formate (T-497)', () => {
+  it('Story, Arc, Szene und Begegnung nennen ihre Quelle', () => {
+    for (const t of ['Story', 'Arc', 'Scene', 'Encounter']) expect(typeChain(seedRegistry, t), t).toContain('Source');
+  });
+
+  it('der Statblock trägt Gefolge, Minion und eigenen Rettungswurfbonus — nichts davon gerechnet gespeichert', () => {
+    const p = seedRegistry.interfaces['Statblock']!.schema!.properties!;
+    for (const k of ['saveProf', 'minion', 'primaryAbility', 'pbFrom', 'addPb', 'hpPerLevel', 'tempHpPerLevel']) {
+      expect(p[k], k).toBeDefined();
+      expect(p[k]!.derived, k).toBeUndefined();
+    }
+    expect(p['pbFrom']!.enum).toEqual(['leader', 'level']);
+    expect(p['addPb']!.enum).toEqual(['ac', 'damage', 'dc', 'hp']);
+  });
+
+  it('Aktion und composedOf kennen Primärattribut, SG, Runde und Stufe', () => {
+    const a = seedRegistry.interfaces['Action']!.schema!.properties!;
+    expect(a['ability']!.enum).toContain('primary');
+    expect(a['round']).toMatchObject({ type: 'number', min: 1 });
+    const k = seedRegistry.relations['composedOf']!.props!.properties!;
+    expect(k['ability']!.enum).toContain('primary');
+    expect(k['level']).toMatchObject({ type: 'number', min: 1, max: 20 });
+  });
+
+  it('follows geht von Kreatur zu Kreatur, eine je Folgendem, mit Stufe', () => {
+    const f = seedRegistry.relations['follows']!;
+    expect([f.from, f.to, f.cardinality]).toEqual([['Creature'], ['Creature'], 'one']);
+    expect(Object.keys(f.props!.properties!)).toEqual(['as', 'level']);
   });
 });
