@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-11-04
+updated: 2026-11-27
 ---
 
 # Requirements by Epic
@@ -435,7 +435,7 @@ Körperplan des Inventarmoduls, tragende Ausrüstung als Behälter mit eigenem k
 
 ## EP-05 Kampagne & Sitzungen
 
-33 Stories · 119 Punkte · 17 steht · 4 teils · 12 offen — [[EP-05 Kampagne & Sitzungen]]
+34 Stories · 122 Punkte · 18 steht · 4 teils · 12 offen — [[EP-05 Kampagne & Sitzungen]]
 
 ### F-029 Kampagne
 
@@ -445,6 +445,7 @@ Die Kampagne als Wurzel: Einstellungen, Kampagnenwerte, Anlegen mit Dialog, Bere
 |---|---|---|---|---|---|
 | [[REQ-075]] | Die Kampagne als Wurzel | Spielleitung | 1 | 3 | steht |
 | [[REQ-278]] | Bereiche als eigene Seiten | Spielleitung | 1 | 2 | steht |
+| [[REQ-408]] | Kampagne je Konto wählen | Spieler | 1 | 3 | steht |
 | [[REQ-043]] | Einstellungen der Kampagne | Spielleitung | 2 | 2 | steht |
 | [[REQ-236]] | Kampagne mit Dialog anlegen | Spielleitung | 2 | 3 | offen |
 | [[REQ-279]] | Kampagnenwerte pflegen und in Texten nutzen | Spielleitung | 2 | 2 | teils |
@@ -896,7 +897,7 @@ PDF anzeigen, Seiten anspringen, Texte erkennen. — [[F-066 PDF & OCR]]
 
 ## EP-11 Oberfläche & Navigation
 
-38 Stories · 157 Punkte · 21 steht · 6 teils · 10 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
+39 Stories · 162 Punkte · 22 steht · 6 teils · 10 offen · 1 ersetzt — [[EP-11 Oberfläche & Navigation]]
 
 ### F-067 Boards
 
@@ -933,6 +934,7 @@ Filter einer Seite, gespeicherte Filtergruppen. — [[F-069 Filter & Filtergrupp
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-412]] | Globalfilter mit Campaign view und My view | Spieler | 1 | 5 | steht |
 | [[REQ-303]] | Filtergruppen je Seite | Spielleitung | 2 | 3 | steht |
 | [[REQ-318]] | Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | 3 | steht |
 | [[REQ-386]] | Suche und Filter in den Modulen | Spielleitung | 2 | 3 | offen |

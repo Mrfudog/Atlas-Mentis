@@ -21,7 +21,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 |---|---|---|---|
 | [[F-067 Boards]] — Leinwände mit Platzierungen, Ankern und Bereichen; Anlegen auf dem Board. | 13 | 61 | 8 steht · 2 teils · 3 offen |
 | [[F-068 Suche]] — Übergreifende Suche beim Tippen, Volltext. | 2 | 6 | 1 steht · 1 teils |
-| [[F-069 Filter & Filtergruppen]] — Filter einer Seite, gespeicherte Filtergruppen. | 4 | 10 | 3 steht · 1 offen |
+| [[F-069 Filter & Filtergruppen]] — Filter einer Seite, gespeicherte Filtergruppen. | 5 | 15 | 4 steht · 1 offen |
 | [[F-070 Navigation & Kurzansicht]] — Kopfleiste, Brotkrumen, Kurzansicht als Popup, Kampagne und Ebene sichtbar. | 7 | 22 | 5 steht · 2 teils |
 | [[F-071 Bearbeiten in der Ansicht]] — Felder dort bearbeiten, wo sie stehen; optionale Felder; Löschen mit Rückfrage. | 3 | 6 | 3 steht |
 | [[F-072 Design & Stilkonzept]] — Pergament wie die Bücher, Lesbarkeit, Stilkonzept, Sprache der Oberfläche. | 5 | 18 | 1 steht · 1 teils · 2 offen · 1 ersetzt |

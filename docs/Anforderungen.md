@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-11-04. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
+Stand 2026-11-27. Jede Story aus dem Vault (`VTT/Stories/`, gegliedert in Epics und Features), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz
 (`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.
 
@@ -12,7 +12,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 189 steht · 65 teils · 124 offen · 10 ersetzt · 6 verworfen — 394 Stories in 84 Features und 12 Epics.
+Zusammen: 191 steht · 65 teils · 124 offen · 10 ersetzt · 6 verworfen — 396 Stories in 84 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -20,13 +20,13 @@ Zusammen: 189 steht · 65 teils · 124 offen · 10 ersetzt · 6 verworfen — 39
 | [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 51 | 28 steht · 8 teils · 12 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 30 | 19 steht · 2 teils · 8 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 44 | 7 steht · 14 teils · 23 offen |
-| [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 33 | 17 steht · 4 teils · 12 offen |
+| [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 34 | 18 steht · 4 teils · 12 offen |
 | [EP-06 Welt & Lore](#ep-06-welt--lore) | 17 | 8 steht · 1 teils · 6 offen · 2 ersetzt |
 | [EP-07 Regeln & Nachschlagen](#ep-07-regeln--nachschlagen) | 29 | 13 steht · 3 teils · 13 offen |
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 33 | 14 steht · 6 teils · 12 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 29 | 20 steht · 6 teils · 3 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 23 | 4 steht · 3 teils · 16 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 38 | 21 steht · 6 teils · 10 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 39 | 22 steht · 6 teils · 10 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 11 | 5 steht · 2 teils · 2 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -459,6 +459,7 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 | REQ-236 | Kampagne mit Dialog anlegen | 2 | **offen** | Kampagne anlegen ohne Dialog |
 | REQ-278 | Bereiche als eigene Seiten | 1 | **steht** | `area` am Typ |
 | REQ-279 | Kampagnenwerte pflegen und in Texten nutzen | 2 | **teils** | Auflösung steht; Maske fehlt |
+| REQ-408 | Kampagne je Konto wählen | 1 | **steht** | T-496: laufende Kampagne je Konto (`PUT /api/me/campaign`, Einstellung `campaign` am Konto), die Einstellung der Installation nur noch Vorgabe; Sieb, Liste, Suche, Live-Kanal, Anlegen, Schreibebene und View as fragen die Kampagne des Kontos (`alsKonto`, `kontoKampagne`) |
 
 ### F-030 Bereich Story
 
@@ -936,6 +937,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | REQ-303 | Filtergruppen je Seite | 2 | **steht** | T-137, `list_filter`; seit T-382 auch Zeit und Autor (`f=@added:7d`, `@changed`, `@by`), D85 |
 | REQ-318 | Ein Ebenenfilter, global und speicherbar | 2 | **steht** | T-186: keine Ebenen-Häkchen mehr auf World/Story/Rules/Compendium; „Saved selections“ im Popup der Kopfleiste (`/api/me/layer-sets`); Filtergruppen ohne `layer`/`nolayer` (Migration 080 legt die alten Angaben nach `list_filter_ebenen_alt`) |
 | REQ-386 | Suche und Filter in den Modulen | 2 | **offen** |  |
+| REQ-412 | Globalfilter mit Campaign view und My view | 1 | **steht** | T-496: zwei Reiter im Popup der Kopfleiste; Sicht je Konto und Kampagne (`/api/me/view`, Einstellung `stackView`), am Server gerechnet über `viewedCampaign` — enger (`hide`) oder eigene Ebenen (`mine`); gespeicherte Auswahlen in My view |
 
 ### F-070 Navigation & Kurzansicht
 

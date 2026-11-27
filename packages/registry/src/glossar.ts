@@ -548,7 +548,7 @@ const APP: AppTerm[] = [
     aliases: ['Stack'],
     sort: 'app',
     definition: 'The layers a campaign has switched on, in order. A more specific layer may override or remove what a general one brings.',
-    effect: 'Changing the stack changes what everyone at the table can find — set it in the layers popup of the header.',
+    effect: 'Changing the stack changes what everyone at the table can find — GMs set it in the layers popup of the header (Campaign view › Turn layers on or off for the whole campaign). Each account may still narrow it for itself, or use My view.',
     translations: { de: 'Stapel' },
   },
   {
@@ -582,6 +582,28 @@ const APP: AppTerm[] = [
     sort: 'app',
     definition: 'A list filter on an article’s links and fields: has a relation or none, at least or at most so many, or one to a chosen article; with a type also has a field. Only links to articles you may see count.',
     translations: { de: 'Beziehungsfilter' },
+  },
+  {
+    term: 'Running campaign',
+    sort: 'app',
+    definition:
+      'The campaign an account is in right now (T-496). Each account chooses it in the popup under the mark, among the campaigns it has a role in; without a choice the default of the installation applies.',
+    translations: { de: 'Laufende Kampagne' },
+  },
+  {
+    term: 'Campaign view',
+    sort: 'app',
+    definition:
+      'The tab of the layers popup that shows the campaign’s layers. Unticking one hides it for this account only; the campaign does not change, and Reset brings back all of them.',
+    translations: { de: 'Kampagnensicht' },
+  },
+  {
+    term: 'My view',
+    aliases: ['Own view'],
+    sort: 'app',
+    definition:
+      'The tab of the layers popup where an account picks any layers it can read instead of the campaign’s, with saved selections. Visibility, writing and the write layer stay with the campaign.',
+    translations: { de: 'Eigene Sicht' },
   },
   {
     term: 'Write layer',

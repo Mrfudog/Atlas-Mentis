@@ -241,6 +241,8 @@ wiederkommen, werden sie neu geschrieben.
   Kürzel oder Zählung; gesiebt wird im Listenindex am Server, nicht je
   Seite. Ein- und ausgeschaltet wird nur an der Kampagne (Kampagnenseite,
   Popup der Kopfleiste); Bibliothek und Werkbank (`allLayers=1`) sehen alle.
+  „Der Stapel" ist dabei der in der Sicht des Kontos (T-496, unten): wer
+  eine Ebene für sich ausblendet, für den steht sie nicht da.
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer
@@ -322,7 +324,17 @@ wiederkommen, werden sie neu geschrieben.
   Seit Migration 152 hat jeder Artikel eine Ebene (E-182); was keine
   andere hatte, liegt in „Unassigned“ und gehört so niemandem besonders,
   bis es verschoben ist.
-  Ebenso offen: die laufende Kampagne ist eine globale Einstellung.
+  **Die laufende Kampagne wählt jedes Konto selbst** (T-496, REQ-408,
+  D99): unter den Kampagnen mit Rolle, die Verwaltung jede
+  (`PUT /api/me/campaign`); `settings.campaign` ist nur die Vorgabe für
+  Konten ohne Wahl. Am Server liest jede Route sie über `kontoKampagne`
+  (Anfrage-Speicher, gesetzt von `werIst` aus `alsKonto`); wer
+  ausserhalb einer Anfrage rechnet — das Sieb im Live-Kanal —, gibt
+  `user.campaign` ausdrücklich mit. **Die eigene Sicht** (REQ-412,
+  `/api/me/view`): Campaign view blendet Ebenen nur für dieses Konto aus,
+  My view wählt lesbare Ebenen; gerechnet als Kopie der Kampagne mit
+  anderen Aufschaltkanten (`viewedCampaign`), die nie geschrieben wird —
+  Sichtbarkeit, Wissen, Rollen und Schreibebene bleiben bei der Kampagne.
   **Eine Spielerebene gehört der Kampagne, die sie aufschaltet**, wie die
   Kampagnenebene (T-164): genau eine, also sieht deren Leitung darin, was
   sie dort sähe — die Ebene sagt Herkunft und Schreibrecht, die

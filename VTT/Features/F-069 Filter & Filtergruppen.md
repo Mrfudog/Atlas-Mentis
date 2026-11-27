@@ -15,7 +15,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 10 Punkte · 3 steht · 1 offen
+5 Stories · 15 Punkte · 4 steht · 1 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,6 +23,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 | [[REQ-303]] Filtergruppen je Seite | Spielleitung | 2 | steht |
 | [[REQ-318]] Ein Ebenenfilter, global und speicherbar | Spielleitung | 2 | steht |
 | [[REQ-386]] Suche und Filter in den Modulen | Spielleitung | 2 | offen |
+| [[REQ-412]] Globalfilter mit Campaign view und My view | Spieler | 1 | steht |
 <!-- stories:ende -->
 
 ## Wann und von wem (T-382)
@@ -52,3 +53,41 @@ flowchart LR
   F --> A
 ```
 
+
+## Stand: Kampagne und Sicht je Konto (T-496, REQ-408, REQ-412, D99)
+
+Seit 27.11.2026 wählt jedes Konto seine laufende Kampagne selbst, im
+Globalfilter (Popup der Kopfleiste, „Running campaign“) — unter den
+Kampagnen, in denen es eine Rolle hat, die Verwaltung unter allen. Die
+Einstellung `campaign` der Installation ist nur noch die Vorgabe für Konten
+ohne Wahl („Make this the default“, nur die Verwaltung).
+
+Das Popup hat zwei Reiter, und der Reiter ist die Sicht, die gilt:
+
+- **Campaign view** — die Ebenen der Kampagne mit Häkchen; abhaken blendet
+  nur für mich aus, „Reset“ stellt die Vorgabe her. Die Leitung schaltet
+  darunter, zugeklappt, den Stapel für alle.
+- **My view** — jede lesbare Ebene frei gewählt, dazu die gespeicherten
+  Auswahlen (T-186).
+
+Gerechnet wird am Server: `alsKonto` liest Kampagne und Sicht des Kontos
+(`/api/me/prefs`, Schlüssel `campaign` und `stackView`, nur über
+`PUT /api/me/campaign` und `PUT /api/me/view`), `viewedCampaign` macht
+daraus eine Kopie der Kampagne mit anderen Aufschaltkanten, und jede
+Stapelrechnung nimmt sie. Sichtbarkeit, Wissen, Rollen und Schreibebene
+bleiben bei der Kampagne.
+
+```mermaid
+flowchart LR
+  P[Popup: Running campaign / Campaign view / My view] -->|PUT /api/me/campaign, /api/me/view| E[Einstellungen des Kontos]
+  E --> A[alsKonto: Kampagne mit Rolle, sonst Vorgabe]
+  V[settings.campaign = Vorgabe] --> A
+  A --> S[Anfrage-Speicher: kontoKampagne]
+  A --> W[viewedCampaign: Kopie mit eigener Sicht]
+  W --> SI[Sieb, Listenindex, Suche, Fassungen]
+  S --> R[übrige Routen: Anlegen, Schreibebene, Karten, Handwerk]
+  A --> L[Live-Kanal je Empfänger]
+```
+
+Offen (im PR genannt): ob ein Co-GM den Stapel der Kampagne für alle
+schalten darf — heute nein (403).

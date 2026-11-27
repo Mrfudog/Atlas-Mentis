@@ -8,7 +8,7 @@
         {
           "heading": "Finding your way",
           "text": [
-            "The header leads to the areas World, Story, Rules and Play, and to the Compendium, which lists everything at once. Under the mark at the left you see the running campaign and how many layers it plays with.",
+            "The header leads to the areas World, Story, Rules and Play, and to the Compendium, which lists everything at once. Under the mark at the left you see your running campaign and how many layers you see in it; “my view” or “narrowed” beside it says you have changed what you see.",
             "Search with Ctrl+K or /. Each hit opens its quick view with +; Enter opens the article."
           ]
         },
@@ -42,6 +42,15 @@
             "Players see what is ready, what was revealed to their character and what they made themselves. Nothing has a separate “player view”: you see the same page with less in it.",
             "As GM, “View as ▾” under the campaign in the header shows the site as one of your members — players with their characters, spectators, co-GMs. Every page then shows what they would see, read only; the band at the top and Alt+Shift+V lead back. On a phone, View as is in the campaign popup.",
             "Knowledge decides which fields players read. On any article, the Knowledge box (GMs) sets which information exists and which knowledge it belongs to; give the knowledge to characters, a party, a faction — or to an ancestry, background, class or feat, and everyone who has it knows. An information can also hold for a whole group, like every orc. The page of a knowledge writes out all it brings together, so players read what they know in one place. The GM and co-GMs of a campaign read its articles whole — secrets, tactics, solutions, hints and every combatant — even without a character of their own; whoever runs another campaign reads here like any player."
+          ]
+        },
+        {
+          "heading": "Your campaign and your view",
+          "text": [
+            "Each account has its own running campaign. If you have a role in several, choose in the popup under the mark (Running campaign): it changes for you only, on every device — the others at the table stay in theirs. Accounts that have not chosen are in the installation’s default, which the admin sets.",
+            "The popup has two tabs. Campaign view shows the campaign’s layers; untick one to hide it for yourself — the campaign does not change, and Reset brings back all of them. My view lets you pick any layer you can read instead, for example a rulebook the campaign does not use, and save or reuse a selection.",
+            "Your view only changes which layers you see. Who sees which article, what you write and where it goes stay with the campaign: a hidden article stays hidden in My view, and new articles still go to your write layer.",
+            "GMs find “Turn layers on or off for the whole campaign” folded in Campaign view — that changes the campaign for everyone at the table."
           ]
         },
         {
@@ -119,6 +128,16 @@
             "For several, tick them (or “all shown”) and use the bar above the list: the same levels, Follow the group, and Show to / Hide from each player. The selection stays, so you can set a level and then show the same articles to one player.",
             "The message says how many changed. Articles in a layer you do not write — a rulebook several campaigns share — can be set too: the choice becomes a rule of this campaign for that one article (“campaign (this article)”), and the book stays as it is. It wins over every group; the article’s own setting still wins over it.",
             "↺ in a row, or Follow the group, removes the article's own setting: the campaign's rule for its group or the layer's default applies again."
+          ]
+        },
+        {
+          "heading": "Switching campaign or looking at your own layers",
+          "text": [
+            "1. Click the campaign under the mark in the header. The popup Campaign & layers opens.",
+            "2. To play in another campaign, choose it under Running campaign. Only campaigns you have a role in are listed; the change is for your account only.",
+            "3. To see less of your campaign, stay in Campaign view and untick the layers you do not want. The bar then says “narrowed”. Reset shows them all again.",
+            "4. To see other layers, open My view. It starts with the campaign’s layers; tick or untick any layer you can read. Under Saved selections, “Save my view” keeps the selection under a name and “Use” brings it back.",
+            "5. Back to Campaign view at any time: the campaign’s layers return, and your own selection stays saved for next time."
           ]
         },
         {
