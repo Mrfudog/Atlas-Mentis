@@ -616,6 +616,20 @@ export const RULE_OPTIONS: readonly RuleOptionDef[] = [
     when: { field: 'combat', is: ['on'] },
   },
   {
+    /* Overkill (T-497, Flee, Mortals!), gelesen über `initiativeRulesOf`. */
+    key: 'overkill',
+    sort: 'combat',
+    label: 'Overkill',
+    does: 'What happens to damage beyond what a minion had left. Minions are marked on their statblock and drop to 0 hit points from any damage the GM enters.',
+    source: { field: 'overkill' },
+    glossary: 'Overkill',
+    variants: [
+      { key: 'off', label: 'Off', does: 'Damage beyond a minion’s hit points is lost.' },
+      { key: 'on', label: 'On', does: 'The tracker names the damage left over, for the GM to deal to another minion within reach of the attack.' },
+    ],
+    when: { field: 'combat', is: ['on'] },
+  },
+  {
     key: 'initColumns',
     sort: 'combat',
     label: 'Tracker columns',

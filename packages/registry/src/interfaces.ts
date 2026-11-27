@@ -951,7 +951,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     icon: 'book-open',
     area: 'story',
     label: 'Story',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
+    /* `Source` seit T-497: ein eingelesenes Abenteuer nennt Buch und Seite an Arc, Szene und Begegnung. */
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes', 'Source'],
     schema: merge(g.StoryInfo),
     /* **Was ohne Rang zu einer Geschichte gehört** (T-425, löst „Contains"
        aus T-422 ab): die Szenen eines Arcs, die Begegnungen einer Szene —
@@ -1524,7 +1525,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     icon: 'swords',
     area: 'play',
     label: 'Encounter',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty', 'Played'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty', 'Played', 'Source'],
     schema: merge(g.EncounterInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */

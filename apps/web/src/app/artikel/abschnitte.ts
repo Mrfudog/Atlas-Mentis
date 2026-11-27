@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import { bookSections, entityName, relationDef } from '@nw/model';
-import type { BookSection, Entity } from '@nw/model';
+import type { BookSection, Entity, FollowerContext } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from './text';
 
@@ -33,6 +33,8 @@ import { Text } from './text';
         } @else {
           <nw-text
             class="eintrag"
+            [class.gesperrt]="e.locked"
+            [attr.title]="e.locked ? 'Not yet — unlocks at level ' + e.level : null"
             [text]="e.text"
             [scopes]="e.scopes"
             [vorspann]="e.name + '.'"
@@ -48,6 +50,8 @@ import { Text } from './text';
 export class Abschnitte {
   /** Der Artikel, dessen `section`-Kanten gezeichnet werden. */
   readonly besitzer = input.required<Entity>();
+  /** Wem der Besitzer folgt (T-497): schaltet Stufenaktionen frei und rechnet „+ PB". */
+  readonly folgt = input<FollowerContext | null>(null);
 
   private readonly bestand = inject(Bestand);
 
@@ -107,6 +111,7 @@ export class Abschnitte {
         return (ganz && entityName(ganz)) || name(id);
       },
       campaign: r.vars,
+      follower: this.folgt(),
     });
   });
 }

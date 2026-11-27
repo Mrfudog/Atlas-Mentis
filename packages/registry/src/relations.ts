@@ -28,7 +28,7 @@ export const relations: Record<string, RelationDef> = {
       type: 'object',
       properties: {
         vars: { type: 'object', title: 'Variable bindings' },
-        ability: { type: 'string', title: 'Ability', enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell'] },
+        ability: { type: 'string', title: 'Ability', enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell', 'primary'] },
         damageDice: { type: 'string', title: 'Damage dice' },
         damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
         reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
@@ -41,6 +41,14 @@ export const relations: Record<string, RelationDef> = {
         toHit: { type: 'number', title: 'To hit (book, fixed)', format: 'signed' },
         damageFlat: { type: 'number', title: 'Damage modifier (book, fixed)', format: 'signed' },
         note: { type: 'string', format: 'long', title: 'Only here' },
+        saveDc: { type: 'number', min: 1, title: 'Save DC (here)' },
+        /* **Ab welcher Stufe** (T-497): ein Gefolgsmann (Strongholds &
+           Followers, Flee, Mortals!) schaltet Spezialaktionen mit seiner
+           Stufe frei. Die Stufe steht an seiner Kante `follows`; der Bogen
+           zeigt, was noch gesperrt ist. An der Kante, nicht an der Aktion:
+           dieselbe Aktion kommt bei zwei Gefolgsleuten auf
+           verschiedenen Stufen. */
+        level: { type: 'number', min: 1, max: 20, title: 'From level', description: 'A follower can use this from that level on; its level stands on its “follows” edge.' },
       },
     },
   },
@@ -1865,6 +1873,31 @@ export const relations: Record<string, RelationDef> = {
    * eine eigene Kante und darf etwas ganz anderes sagen — genau da wird es
    * interessant (REQ-081): einer traut, der andere nicht.
    */
+  /**
+   * **Gefolge** (T-497): ein Gefolgsmann, Begleiter oder ein Reittier folgt
+   * einer Figur — seinem Mentor, Reiter oder Besitzer. Die Kante steht beim
+   * Folgenden, denn er folgt einem und der Anführer vielen; an ihr stehen
+   * die Stufe (Spezialaktionen, Trefferpunkte nach Stufe) und die Sorte.
+   * Was mit dem Übungsbonus des Anführers wächst, sagt sein Statblock
+   * (`pbFrom`, `addPb`); gerechnet wird beim Lesen (`followerStats`, D8).
+   */
+  follows: {
+    type: 'follows',
+    label: 'follows',
+    inverseLabel: 'followed by',
+    means: 'A retainer, companion or mount follows a character — its mentor, rider or owner; the edge says its level, and its statblock may grow with the leader’s proficiency bonus.',
+    from: ['Creature'],
+    to: ['Creature'],
+    cardinality: 'one',
+    props: {
+      type: 'object',
+      properties: {
+        as: { type: 'string', title: 'As', suggest: true, description: 'retainer, companion, mount, follower — free text.' },
+        level: { type: 'number', min: 1, max: 20, title: 'Level', description: 'The follower’s level: it unlocks actions and hit points per level.' },
+      },
+    },
+  },
+
   regards: {
     type: 'regards',
     label: 'regards',

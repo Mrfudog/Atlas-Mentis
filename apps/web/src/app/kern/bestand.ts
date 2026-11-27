@@ -20,7 +20,7 @@
 
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
-import type { Entity, Registry } from '@nw/model';
+import type { Entity, FollowerContext, Registry } from '@nw/model';
 import { Live, type ArtikelEreignis } from './live';
 import { BildStand } from '../artikel/bild';
 import { Api, ApiError, type Begegnungsbezug, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
@@ -64,6 +64,9 @@ export class Bestand {
   /** Was eine Begegnung über ihre Beteiligten weiss (`refs.encounter`, T-215). */
   private readonly _begegnung = signal<ReadonlyMap<string, Begegnungsbezug>>(new Map());
   readonly begegnung = this._begegnung.asReadonly();
+  /** Wem ein Gefolgsmann folgt, je Kreatur und Statblock (`refs.follower`, T-497). */
+  private readonly _gefolge = signal<ReadonlyMap<string, FollowerContext>>(new Map());
+  readonly gefolge = this._gefolge.asReadonly();
   /** Die geltende Sichtbarkeitsstufe je geöffnetem Artikel (`refs.audience`, T-277). */
   private readonly _stufe = signal<ReadonlyMap<string, NonNullable<Bezuege['audience']>>>(new Map());
   readonly stufe = this._stufe.asReadonly();
@@ -412,6 +415,13 @@ export class Bestand {
     this._laden.update((m) => {
       const n = new Map(m);
       if (refs?.shop) n.set(id, refs.shop);
+      else n.delete(id);
+      return n;
+    });
+    this._gefolge.update((m) => {
+      if (!refs?.follower && !m.has(id)) return m;
+      const n = new Map(m);
+      if (refs?.follower) n.set(id, refs.follower);
       else n.delete(id);
       return n;
     });

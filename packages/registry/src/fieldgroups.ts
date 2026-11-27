@@ -653,6 +653,54 @@ export const fieldGroups = {
            Rettungswurf) auf den ganzen Bonus. Was hier nicht steht, rechnet
            der Bogen. */
         bonuses: { type: 'object', title: 'Fixed bonuses' },
+        /* **Ein eigener Übungsbonus für Rettungswürfe** (T-497): manche
+           Statblöcke (Gefolge, Begleiter aus MCDM-Büchern) nennen für
+           Rettungswürfe einen anderen Bonus als für Angriffe und
+           Fertigkeiten. Leer heisst: der Übungsbonus. Eine feste Zahl je
+           Wurf steht weiter unter `bonuses`. */
+        saveProf: {
+          type: 'number', title: 'Saving throw proficiency', format: 'signed',
+          description: 'Added to proficient saving throws instead of the proficiency bonus, when the statblock names a different one. Empty: the proficiency bonus.',
+          glossary: 'Saving throw',
+        },
+        /* **Minion** (T-497, Flee, Mortals!): stirbt an jedem Treffer und
+           handelt mit seinesgleichen — beim Kampfstart würfeln Minions
+           derselben Vorlage eine Initiative (`startEncounter`), der Schaden
+           im Tracker setzt sie auf 0 und nennt den Überschuss, wenn die
+           Kampagne „Overkill" spielt. Ein Wahrheitswert und kein Wort an
+           `combatRole`: die Laufzeit liest ihn. */
+        minion: {
+          type: 'boolean', title: 'Minion',
+          description: 'Dies to any damage from an attack or failed save, and takes its turn together with the other minions of its kind.',
+          glossary: 'Minion',
+        },
+        /* **Gefolge und Begleiter** (T-497): Werte, die mit der Stufe des
+           Gefolgsmanns oder dem Übungsbonus seines Anführers wachsen. Die
+           Stufe und der Anführer stehen an der Kante `follows` der
+           Kreatur; gerechnet wird beim Lesen (D8, `followerStats`). */
+        primaryAbility: {
+          type: 'string', title: 'Primary ability', enumRef: 'Ability',
+          description: 'The ability a retainer is built around; attacks with the ability “primary” use it.',
+        },
+        pbFrom: {
+          type: 'string', title: 'Proficiency bonus from', enum: ['leader', 'level'],
+          description: 'Where the proficiency bonus comes from, instead of the number above: the leader it follows (a mount or companion), or its own level on the “follows” edge (a retainer).',
+          glossary: 'Proficiency bonus',
+        },
+        addPb: {
+          type: 'array', title: 'Adds the proficiency bonus to', items: { type: 'string' },
+          enum: ['ac', 'damage', 'dc', 'hp'],
+          description: 'Values written as “+ PB” in the book: armour class, the damage of its attacks, the save DCs of its actions, its hit points.',
+        },
+        hpPerLevel: {
+          type: 'number', min: 0, title: 'Hit points per level',
+          description: 'Added once per level of the follower to the hit points above.',
+        },
+        tempHpPerLevel: {
+          type: 'number', min: 0, title: 'Temporary hit points per level',
+          description: 'Temporary hit points it gains, per level of the follower — say in the text when.',
+          glossary: 'Temporary hit points',
+        },
         /* Das Bild auf der Karte. Ein Asset und keine URL: die Bilder von
            5e.tools kommen nicht herein (E5). */
         token: { type: 'string', format: 'asset', title: 'Token', target: { where: { component: 'Asset', property: 'kind', value: 'token' } } },
@@ -811,7 +859,7 @@ export const fieldGroups = {
         ability: {
           type: 'string',
           title: 'Ability',
-          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell'],
+          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell', 'primary'],
         },
         toHitBonus: { type: 'number', title: 'To-hit bonus', format: 'signed' },
         reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
@@ -826,6 +874,19 @@ export const fieldGroups = {
            ohne Modifikator, mitgewürfelt. */
         extraDamageDice: { type: 'string', title: 'Extra damage dice' },
         extraDamageType: { type: 'string', title: 'Extra damage type', enumRef: 'DamageType' },
+        /* **Ein Rettungswurf mit SG** (T-497): der Statblock rechnet ihn
+           nicht, er steht im Buch — aber „+ PB" eines Begleiters kommt
+           dazu (`Statblock.addPb`). */
+        saveDc: { type: 'number', min: 1, title: 'Save DC', description: 'The DC of the saving throw this action asks for, as the book prints it.' },
+        saveAbility: { type: 'string', title: 'Save ability', enumRef: 'Ability' },
+        /* **Villain Actions** (T-497, MCDM): je Runde eine, in der
+           Reihenfolge des Buchs; der Bogen ordnet danach. Die Aktionsart
+           ist ein Artikel wie jede andere, hier steht nur die Runde. */
+        round: {
+          type: 'number', min: 1, max: 10, title: 'Round',
+          description: 'For actions used once in a set round, such as villain actions: the round (1, 2, 3 …). The statblock lists them in this order.',
+          glossary: 'Villain action',
+        },
       },
     },
   },
@@ -3315,6 +3376,10 @@ export const fieldGroups = {
         initHealth: { type: 'string', title: 'Foes’ health shown to players', enum: ['none', 'coarse', 'exact'], default: 'coarse' },
         initEffects: { type: 'string', title: 'Effects shown to players', enum: ['all', 'party', 'none'], default: 'all' },
         initActions: { type: 'string', title: 'Foes’ actions shown to players', enum: ['hidden', 'shown'], default: 'hidden' },
+        /* **Overkill** (T-497, Flee, Mortals!): Schaden über das hinaus,
+           was ein Minion noch hatte, nennt der Tracker als Rest für den
+           nächsten in Reichweite. Gelesen über `initiativeRulesOf`. */
+        overkill: { type: 'string', title: 'Overkill', enum: ['off', 'on'], default: 'off' },
         initColumns: {
           type: 'array',
           title: 'Tracker columns',

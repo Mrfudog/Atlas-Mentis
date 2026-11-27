@@ -97,7 +97,9 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
     user: User,
     kampagne: string | null,
   ): Promise<{ text: string; schreiben: Entity[] } | { error: string }> {
-    const r = trackerDamage(stand.map, begegnung, op);
+    /* Overkill (T-497) ist eine Regel der Kampagne. */
+    const k = kampagne ? stand.map.get(kampagne) : undefined;
+    const r = trackerDamage(stand.map, begegnung, op, { overkill: initiativeRulesOf(k).overkill === 'on' });
     if ('error' in r) return r;
     const teile = damageLines(r.name, r.damage);
     let figur = r.creature;

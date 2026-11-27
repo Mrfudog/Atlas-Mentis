@@ -81,6 +81,8 @@ export interface InitiativeRules extends Required<PlayerViewRules> {
   enemyActions: 'hidden' | 'shown';
   columns: TrackerColumn[];
   quickActions: QuickAction[];
+  /** Overkill (T-497): Schaden über den Stand eines Minions hinaus nennt der Tracker als Rest. */
+  overkill: 'on' | 'off';
 }
 
 export const DEFAULT_INITIATIVE_RULES: InitiativeRules = {
@@ -92,6 +94,7 @@ export const DEFAULT_INITIATIVE_RULES: InitiativeRules = {
   enemyActions: 'hidden',
   columns: ['init', 'ac', 'hp', 'effects'],
   quickActions: ['damage', 'heal', 'effect', 'remove'],
+  overkill: 'off',
 };
 
 /** Das System einer Einstellung — `null`, wenn der Tracker aus ist. */
@@ -121,6 +124,7 @@ export function initiativeRulesOf(campaign: Entity | null | undefined): Initiati
     enemyActions: eines(c['initActions'], ['hidden', 'shown'], d.enemyActions),
     columns: liste(c['initColumns'], TRACKER_COLUMNS, d.columns),
     quickActions: knoepfe,
+    overkill: eines(c['overkill'], ['on', 'off'], d.overkill),
   };
 }
 
@@ -328,6 +332,7 @@ export function trackerDamage(
   entities: Lookup,
   encounter: Entity,
   op: { edge: string; amount: unknown; type?: unknown },
+  options: { overkill?: boolean } = {},
 ): { encounter: Entity; creature: Entity | null; damage: TableDamage; name: string } | { error: string } {
   const rel = encounter.relations ?? [];
   const kante = rel.find((r) => r.id === op.edge && r.type === PARTICIPATES);
@@ -340,7 +345,9 @@ export function trackerDamage(
   const stats = creatureStats(ziel, entities, { conditions: entryConditions(p.conditions), actions: entryActions(p.conditions) });
   const vitals = (ziel.components?.['Vitals'] ?? {}) as Record<string, unknown>;
   const art = typeof op.type === 'string' ? op.type.trim().slice(0, 40) : '';
-  const damage = damageAtTable({ stats, vitals, edge: p, pc: primaryInterface(ziel) === 'PlayerCharacter', rolled: Math.trunc(betrag), type: art });
+  /* Ein Minion fällt an jedem Schaden (T-497); was er ist, sagt sein Statblock. */
+  const minion = stats.statblock?.components?.['Statblock']?.['minion'] === true ? { overkill: !!options.overkill } : null;
+  const damage = damageAtTable({ stats, vitals, edge: p, pc: primaryInterface(ziel) === 'PlayerCharacter', rolled: Math.trunc(betrag), type: art, minion });
   const relations = damage.edgeHp === null ? rel : rel.map((r) => (r === kante ? { ...r, props: { ...p, hp: damage.edgeHp! } as Relation['props'] } : r));
   const creature = damage.vitals ? { ...ziel, components: { ...ziel.components, Vitals: damage.vitals } } : null;
   return { encounter: mitKampf(encounter, relations, {}), creature, damage, name: p.label || entityName(ziel) };

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-11-04. 94 Schnittstellen, 76 Kantenarten.
+Stand 2026-11-27. 94 Schnittstellen, 77 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -131,7 +131,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
+- `appearance` *long*, `personality` *long*, `background` *long*, `keyInfo` *long*, `agenda` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
 
 **Geerbte Felder**
 
@@ -168,6 +168,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 - `crafting` → Recipe — „working on"
+- `follows` → Creature — „follows"
 - `regards` → Creature | Party | Faction — „regards"
 
 **Kanten hierher**
@@ -191,6 +192,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
+- Creature — `follows` → „followed by"
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
@@ -658,7 +660,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
+- *`Creature`* — `appearance` *long*, `personality` *long*, `background` *long*, `keyInfo` *long*, `agenda` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `icon` *icon*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -697,6 +699,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 - `crafting` → Recipe — „working on"
+- `follows` → Creature — „follows"
 - `regards` → Creature | Party | Faction — „regards"
 
 **Kanten hierher**
@@ -720,6 +723,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Campaign — `prefers` → „Preferred in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
+- Creature — `follows` → „followed by"
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
@@ -911,7 +915,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Arc
 
-`Arc` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Arc` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes` ← `Source`
 
 **Eigene Felder**
 
@@ -932,6 +936,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
 - *`Notes`* — `note` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -970,11 +975,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Campaign
 
-`Campaign` · erbt von `Story` ← `VisibilityRules` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Campaign` · erbt von `Story` ← `VisibilityRules` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes` ← `Source`
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `playerStart` *board | compendium*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `turnPlanner` *off | move | actions | full*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `passageTrigger` *gm | players | both*, `passageWhen` *any | turn | roundEnd*, `passageMove` *none | square | half | all*, `passageAction` *none | action | bonus*, `passageConfirm` *moves | always | never*, `mapLinkShow` *jump | frame | icon | hidden*, `mapLinkShowPlayers` *jump | frame | icon | hidden*, `mapLinkOuter` *faded | none*, `mapTools` *object*, `markerViews` *object*
+- `compareFor` *gm | players*, `playerStart` *board | compendium*, `languages` *Language articles*, `feats` *boolean*, `hitPoints` *either | average | roll*, `inventory` *grid | weight | slots*, `itemPricing` *combined | base | none*, `enhancementsBy` *gm | players*, `stowing` *anytime | bySessionEnd | immediately*, `craftFailure` *noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*, `craftLearning` *all | taught | rarity*, `craftLearnRarity` *none | common | uncommon | rare | very rare | legendary*, `playerRolls` *table | gm*, `ruleGraphs` *off | on*, `combat` *on | off*, `initNames` *cover | real*, `initHealth` *none | coarse | exact*, `initEffects` *all | party | none*, `initActions` *hidden | shown*, `overkill` *off | on*, `initColumns` *init | ac | hp | effects | actions*, `initQuickActions` *damage | heal | effect | delay | reroll | remove*, `turnPlanner` *off | move | actions | full*, `fog` *party | player*, `moves` *free | confirm*, `tokenMove` *none | own | party | allies | all*, `revealOnMove` *boolean*, `doors` *players | gm*, `tokenSizes` *rules | tinyHalf*, `passageTrigger` *gm | players | both*, `passageWhen` *any | turn | roundEnd*, `passageMove` *none | square | half | all*, `passageAction` *none | action | bonus*, `passageConfirm` *moves | always | never*, `mapLinkShow` *jump | frame | icon | hidden*, `mapLinkShowPlayers` *jump | frame | icon | hidden*, `mapLinkOuter` *faded | none*, `mapTools` *object*, `markerViews` *object*
 
 **Geerbte Felder**
 
@@ -992,6 +997,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
 - *`Notes`* — `note` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -1091,7 +1097,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Scene / Encounter
 
-`Scene` · erbt von `Story` ← `Tactics` ← `Difficulty` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Scene` · erbt von `Story` ← `Tactics` ← `Difficulty` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes` ← `Source`
 
 **Eigene Felder**
 
@@ -1114,6 +1120,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
 - *`Notes`* — `note` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -1152,7 +1159,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Session
 
-`Session` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Session` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes` ← `Source`
 
 **Eigene Felder**
 
@@ -1173,6 +1180,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
 - *`Notes`* — `note` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -1212,7 +1220,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Story
 
-`Story` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Story` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes` ← `Source`
 
 **Eigene Felder**
 
@@ -1232,6 +1240,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
 - *`Notes`* — `note` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -1335,7 +1344,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `actionType` **Pflicht** *link → ActionType*, `recharge` *string*, `uses` *string*, `attack` *melee weapon | ranged weapon | melee spell | ranged spell*, `ability` *str | dex | con | int | wis | cha | finesse | spell*, `toHitBonus` *signed*, `reach` *number in ft*, `range` *measure in ft*, `target` *string*, `damageDice` *string*, `damageBonus` *signed*, `damageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*, `extraDamageDice` *string*, `extraDamageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*
+- `actionType` **Pflicht** *link → ActionType*, `recharge` *string*, `uses` *string*, `attack` *melee weapon | ranged weapon | melee spell | ranged spell*, `ability` *str | dex | con | int | wis | cha | finesse | spell | primary*, `toHitBonus` *signed*, `reach` *number in ft*, `range` *measure in ft*, `target` *string*, `damageDice` *string*, `damageBonus` *signed*, `damageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*, `extraDamageDice` *string*, `extraDamageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*, `saveDc` *1…∞*, `saveAbility` *Ability: str | dex | con | int | wis | cha*, `round` *1…10*
 
 **Geerbte Felder**
 
@@ -2658,7 +2667,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `legendaryActionsLair` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *link → Condition*, `legendaryActions` *1…∞*, `legendaryActionsLair` *1…∞*, `bonuses` *object*, `saveProf` *signed*, `minion` *boolean*, `primaryAbility` *Ability: str | dex | con | int | wis | cha*, `pbFrom` *leader | level*, `addPb` *ac | damage | dc | hp*, `hpPerLevel` *0…∞*, `tempHpPerLevel` *0…∞*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 
@@ -3087,7 +3096,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Encounter
 
-`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty` ← `Played`
+`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty` ← `Played` ← `Source`
 
 **Eigene Felder**
 
@@ -3108,6 +3117,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Secrets`* — `secret` *long*
 - *`Difficulty`* — `difficulty` *1…20*
 - *`Played`* — `playedAt` *string*, `playedIn` *link → Session*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
