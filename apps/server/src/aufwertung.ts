@@ -21,7 +21,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   ENCHANTED_RELATION,
-  currentCampaign,
   enhancementRefusal,
   enhancementsByOf,
   entityName,
@@ -37,6 +36,7 @@ import {
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 import { leitetTisch } from './wuerfe.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -66,7 +66,7 @@ export function registerAufwertung(app: FastifyInstance, deps: AufwertungDeps): 
     const piece = stand.map.get(id);
     const [sichtbar] = piece ? await sieve(request, [piece], stand.map) : [];
     if (!piece || !sichtbar) return { code: 404, error: 'Dieses Stück gibt es nicht.' };
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
     const leitung = leitetTisch(user, kampagne?.id ?? null);
     /* Spielende (wenn die Kampagne es erlaubt) an einem Stück, das sie
        schreiben oder das in einem Inventar liegt, das sie schreiben — ihr

@@ -13,9 +13,10 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { cleanColumns, currentCampaign, tableRole, type Entity } from '@nw/model';
+import { cleanColumns, tableRole, type Entity } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 /** `world`, `compendium|Spell` — die Seite und, wenn gewählt, die Art. */
 const SCHLUESSEL = /^[a-z][a-z0-9-]{0,31}(\|[A-Za-z][A-Za-z0-9_]{0,63})?$/;
@@ -31,7 +32,7 @@ export function registerSpaltenwahl(app: FastifyInstance, deps: SpaltenDeps): vo
 
   async function kampagne(): Promise<Entity | null> {
     const registry = await repo.getRegistry();
-    return currentCampaign((await roh()).map, registry.settings ?? null);
+    return kontoKampagne((await roh()).map, registry.settings ?? null);
   }
 
   /** Wie bei den Filtergruppen: die Leitung (`gm`, `co-gm`) und die Verwaltung. */

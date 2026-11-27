@@ -21,7 +21,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  currentCampaign,
   diceModifier,
   entityName,
   naturalD20,
@@ -37,6 +36,7 @@ import {
 import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';
 import type { Repository, StoredEvent } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 const SESSION_TYPE = 'Session';
 /** So viele Einträge liest ein Log auf einmal aus der Datenbank — gesiebt wird danach. */
@@ -156,7 +156,7 @@ export function registerWuerfe(app: FastifyInstance, deps: WuerfeDeps): void {
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
     const b = request.body ?? {};
     const stand = await roh();
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
     const kid = kampagne?.id ?? null;
     const rolle = kid ? tableRole({ roles: user.roles ?? {} }, kid) : null;
     const leitet = leitetTisch(user, kid);
@@ -267,7 +267,7 @@ export function registerWuerfe(app: FastifyInstance, deps: WuerfeDeps): void {
         sessions: [...sessions].map(([sid, name]) => ({ id: sid, name })),
         subjects,
         ...(capped ? { capped: true } : {}),
-        leitet: leitetTisch(user, currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null)?.id ?? null),
+        leitet: leitetTisch(user, kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null)?.id ?? null),
       };
     },
   );

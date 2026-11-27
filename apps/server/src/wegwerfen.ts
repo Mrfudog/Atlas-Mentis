@@ -24,7 +24,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   buybackFor,
-  currentCampaign,
   discardPiece,
   entityName,
   primaryInterface,
@@ -43,6 +42,7 @@ import type { User } from './auth.js';
 import { inventareDerFigur } from './laden.js';
 import { RevisionConflict, type Repository } from './repo.js';
 import { reservierteSperre } from './reservierung.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -101,7 +101,7 @@ export function registerWegwerfen(app: FastifyInstance, deps: WegwerfenDeps): vo
     const roherInv = stand.map.get(request.params.id);
     const [sichtbar] = roherInv ? await sieve(request, [roherInv], stand.map) : [];
     if (!roherInv || !sichtbar || primaryInterface(roherInv) !== 'Inventory') return { fehler: { code: 404, error: 'Kein Inventar.' } } as const;
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
     const leitet = user.isAdmin || rolle === 'gm' || rolle === 'co-gm';
     return { user, stand, registry, kampagne, leitet, roherInv } as const;

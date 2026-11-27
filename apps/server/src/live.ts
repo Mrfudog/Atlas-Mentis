@@ -240,6 +240,8 @@ export interface LiveDeps {
   viewerOf: (request: FastifyRequest) => Promise<User | null>;
   sieveFuer: (user: User | null, entities: Entity[], bestand: Map<string, Entity>) => Promise<Entity[]>;
   roh: () => Promise<{ map: Map<string, Entity> }>;
+  /** Das Konto, wie es in seiner Kampagne fragt (T-496): Kampagne, Sicht, Figuren dort. */
+  alsKonto?: (user: User) => Promise<User>;
   /** Wie oft ein Lebenszeichen geht (ms). */
   heartbeatMs?: number;
   /** Wie lange eine Verbindung höchstens offen bleibt (ms). */
@@ -289,12 +291,13 @@ export function registerLive(
   const stroeme = new Set<Strom>();
 
   /** Das Konto frisch gelesen: Rollen, Figuren und Sperre gelten ab jetzt,
-   *  nicht ab dem Verbinden. */
+   *  nicht ab dem Verbinden — und seine Kampagne und Sicht (T-496): wer
+   *  im Popup wechselt, bekommt ab dem nächsten Ereignis die neue. */
   async function frisch(userId: string): Promise<User | null> {
     const u = await repo.getUser(userId);
     if (!u || u.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = u;
-    return rest;
+    return deps.alsKonto ? deps.alsKonto(rest) : rest;
   }
 
   app.get('/api/live', async (request, reply) => {

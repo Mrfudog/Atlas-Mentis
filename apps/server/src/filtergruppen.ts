@@ -31,13 +31,13 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  currentCampaign,
   tableRole,
   type Entity,
   type Registry,
 } from "@nw/model";
 import type { User } from "./auth.js";
 import type { ListFilterRow, Repository } from "./repo.js";
+import { kontoKampagne } from './kampagne.js';
 
 /** Was eine Gruppe festhält. Jede Liste leer oder weg heisst: keine Grenze. */
 export interface SavedFilter {
@@ -106,7 +106,7 @@ export function registerFiltergruppen(
 
   async function kampagne(): Promise<Entity | null> {
     const registry: Registry = await repo.getRegistry();
-    return currentCampaign((await roh()).map, registry.settings ?? null);
+    return kontoKampagne((await roh()).map, registry.settings ?? null);
   }
 
   /** Die Gruppen einer Kampagne pflegt ihre Leitung (`gm`, `co-gm`) und die Verwaltung. */

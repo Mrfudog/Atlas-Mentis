@@ -14,7 +14,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  currentCampaign,
   leaveBehind,
   partiesOf,
   pickUp,
@@ -29,6 +28,7 @@ import {
 import type { User } from './auth.js';
 import { inventareDerFigur } from './laden.js';
 import { RevisionConflict, type Repository } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -131,7 +131,7 @@ export function registerLiegen(app: FastifyInstance, deps: LiegenDeps): void {
     if (!roh_ || !sichtbar || !typeChain(registry, primaryInterface(roh_)).includes(SESSION_TYPE)) {
       return { fehler: { code: 404, error: 'Keine Sitzung.' } };
     }
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
     const leitet = user.isAdmin || rolle === 'gm' || rolle === 'co-gm';
     return { user, stand, sitzung: roh_, kampagne, leitet };

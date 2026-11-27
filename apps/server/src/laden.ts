@@ -19,7 +19,6 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   arriveUnstowed,
   buyWare,
-  currentCampaign,
   entityName,
   insideOf,
   isInstance,
@@ -41,6 +40,7 @@ import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
 import { reservierteSperre } from './reservierung.js';
 import { handeltFuer } from './wegwerfen.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -101,7 +101,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     if (!roherLaden || !sichtbar || !typeChain(registry, primaryInterface(roherLaden)).includes(SHOP_TYPE)) {
       return { fehler: { code: 404, error: 'Kein Laden.' } };
     }
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
     const leitet = user.isAdmin || rolle === 'gm' || rolle === 'co-gm';
     const actorId = String(request.body?.actor ?? '');

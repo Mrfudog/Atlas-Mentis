@@ -35,7 +35,6 @@ import {
   assetVersion,
   tokenLook,
   type TokenLook,
-  currentCampaign,
   carriedLights,
   darkvisionFor,
   passageRulesOf,
@@ -102,6 +101,7 @@ import {
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { darfZiehen, plaeneDerKarte, zieher } from './zugplan.js';
+import { kontoKampagne } from './kampagne.js';
 
 const SESSION_TYPE = 'Session';
 
@@ -352,7 +352,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
        für sie gilt (`showPlayers`); die eigenen Angaben der Kante nur die
        Leitung, die sie einstellt. */
     const register = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, register.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, register.settings ?? null);
     /* **Ausgerichtet gelesen** (T-329): Grösse aus beiden Massstäben, Lage
        am Raster — die Bildgrössen vom Asset (`mapNatOf`), gerechnet beim
        Lesen (D8). */
@@ -640,7 +640,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
     const [karte] = await sieve(request, [gefunden], stand.map);
     if (!karte) return reply.code(404).send({ error: 'Nicht gefunden' });
 
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
     const gruppeRoh = kampagne ? partiesOf(stand.map, kampagne.id)[0] : undefined;
     const [gruppe] = gruppeRoh ? await sieve(request, [gruppeRoh], stand.map) : [];
     let figures: SideFigure[] = [];
@@ -704,7 +704,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
    */
   app.get<{ Querystring: { session?: string } }>('/api/play', async (request) => {
     const stand = await roh();
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
     const sitzungen = await sieve(
       request,
       stand.alle.filter((e) => primaryInterface(e) === SESSION_TYPE),

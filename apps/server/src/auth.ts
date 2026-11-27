@@ -22,7 +22,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
-import { isLayer, layersOf, type Entity, type TableRole } from '@nw/model';
+import { isLayer, layersOf, type Entity, type StackView, type TableRole } from '@nw/model';
 
 /** Wie lange eine Sitzung ohne Wiedersehen gilt. Eine Woche: lange genug,
  *  dass niemand mitten in der Sitzung herausfliegt, kurz genug, dass ein
@@ -75,6 +75,15 @@ export interface User {
    *  danach kam — wer neu dazukommt, braucht nicht die ganze Geschichte.
    *  Aus `app_user.created_at`; `putUser` schreibt es nicht. */
   createdAt?: string | undefined;
+  /** **Die Kampagne, in der dieses Konto gerade fragt** (T-496, REQ-408):
+   *  die gewählte (Einstellung `campaign` des Kontos), wenn es sie wählen
+   *  darf, sonst die Vorgabe der Installation. Nur an einer Anfrage
+   *  gesetzt (`alsKonto`), nie gespeichert; `undefined` heisst „nicht
+   *  gerechnet" und fällt auf die Vorgabe zurück. */
+  campaign?: string | null | undefined;
+  /** **Seine Sicht auf den Stapel dieser Kampagne** (REQ-412): enger
+   *  oder eigene Ebenen. `null`: die Vorgabe der Kampagne. */
+  stackView?: StackView | null | undefined;
 }
 
 /** Eine Einladung: ein Code, der eine Registrierung erlaubt, und sonst

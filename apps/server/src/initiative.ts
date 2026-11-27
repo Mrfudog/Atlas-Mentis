@@ -23,7 +23,6 @@ import { randomUUID, getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   applyTrackerOp,
-  currentCampaign,
   diceModifier,
   entityName,
   naturalD20,
@@ -53,6 +52,7 @@ import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 import type { ChangeFeed } from './live.js';
 import { leitetTisch, tischSitzung, wurfEintragen } from './wuerfe.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -146,7 +146,7 @@ export function registerTracker(app: FastifyInstance, deps: TrackerDeps): void {
     /* Sieht er sie überhaupt? Dieselbe Frage wie jede Route. */
     const [gesiebt] = await sieve(request, [gefunden], stand.map);
     if (!gesiebt) return nicht(404, 'Nicht gefunden');
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
     const rules = initiativeRulesOf(kampagne);
     const gm = leitetTisch(user, kampagne?.id ?? null);
     return { fehlt: false, user, stand, gefunden, gesiebt, rules, gm, kampagne: kampagne?.id ?? null };

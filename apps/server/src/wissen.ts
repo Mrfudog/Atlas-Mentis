@@ -30,7 +30,6 @@ import {
   knows,
   unitsFor,
   bundlesWith,
-  currentCampaign,
   entityName,
   infoApplies,
   informationsOf,
@@ -45,6 +44,7 @@ import {
 } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -73,7 +73,7 @@ export function registerWissen(app: FastifyInstance, deps: WissenDeps): void {
     const user = await viewerOf(request);
     if (!user) return null;
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     if (user.isAdmin) return { user, kampagne };
     const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
     return rolle === 'gm' || rolle === 'co-gm' ? { user, kampagne } : null;

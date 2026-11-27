@@ -42,7 +42,6 @@ import {
   substitutionText,
   craftRulesOf,
   CRAFTING_RELATION,
-  currentCampaign,
   entityName,
   insideOf,
   knows,
@@ -92,6 +91,7 @@ import {
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 import { stueckWerkstatt } from './stueck.js';
+import { kontoKampagne } from './kampagne.js';
 
 const ORDER_TYPE = 'CraftingOrder';
 const PARTY_RELATION = 'memberOfParty';
@@ -336,7 +336,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const roh1 = stand.map.get(request.params.id);
     const [e] = roh1 ? await sieve(request, [roh1], stand.map) : [];
     if (!e || !roh1) return reply.code(404).send({ error: 'Nicht gefunden' });
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const rules = regelSicht(kampagne);
     const leitung = leitet(user, kampagne);
     if (await istAuftrag(roh1)) {
@@ -571,7 +571,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const sichtbareBerufe = await sieve(request, berufe, stand.map);
     const gesiebt = await sieve(request, rezepte, stand.map);
     const darf = leitung || (user.actorIds ?? []).includes(figur.id);
-    const gelernt = darf ? kenntnis(figur, stand, registry, currentCampaign(stand.map, registry.settings ?? null), berufe) : undefined;
+    const gelernt = darf ? kenntnis(figur, stand, registry, kontoKampagne(stand.map, registry.settings ?? null), berufe) : undefined;
     const tools = [];
     for (const w of geuebt) {
       const liste = recipesOfTool(gesiebt, sichtbareBerufe, w);
@@ -607,7 +607,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
           if (wer && !x.where.includes(wer)) x.where.push(wer);
         }
       }
-      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
       const rules = craftRulesOf(kampagne);
       const eigene = stand.alle.filter((o) => primaryInterface(o) === ORDER_TYPE && (figur.relations ?? []).some((r) => r.type === CRAFTING_RELATION && r.to === o.id));
       for (const o of await sieve(request, eigene, stand.map)) {
@@ -710,7 +710,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     if (!rezept || !sichtbar || !typeChain(registry, primaryInterface(rezept)).includes(RECIPE_COMPONENT) || (await istAuftrag(rezept))) {
       return reply.code(404).send({ error: 'Kein Rezept.' });
     }
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const actor = stand.map.get(String(request.query.actor ?? ''));
     if (!actor) return reply.code(404).send({ error: 'Diese Figur gibt es nicht.' });
     if (!fuerFigur(user, actor, leitet(user, kampagne))) return reply.code(403).send({ error: 'Nur für die eigene Figur.' });
@@ -731,7 +731,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
     const stand = await roh();
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const leitung = leitet(user, kampagne);
     const rezept = stand.map.get(String(request.body?.recipe ?? ''));
     const [sichtbar] = rezept ? await sieve(request, [rezept], stand.map) : [];
@@ -895,7 +895,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const order = stand.map.get(request.params.id);
     const [sichtbar] = order ? await sieve(request, [order], stand.map) : [];
     if (!order || !sichtbar || !(await istAuftrag(order))) return { ok: false, code: 404, error: 'Kein Auftrag.' } as const;
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const a = auftrag(order, stand.map);
     const leitung = leitet(user, kampagne);
     const eigen = !!a.actor && (user.actorIds ?? []).includes(a.actor.id);

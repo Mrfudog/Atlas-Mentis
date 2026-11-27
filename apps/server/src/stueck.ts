@@ -16,7 +16,6 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   arriveUnstowed,
-  currentCampaign,
   entityName,
   isInstance,
   newInstance,
@@ -30,6 +29,7 @@ import {
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
 import { reservierteSperre } from './reservierung.js';
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -137,7 +137,7 @@ export function registerGeben(app: FastifyInstance, deps: GebenDeps): void {
       const roherInv = stand.map.get(request.params.id);
       const [sichtbar] = roherInv ? await sieve(request, [roherInv], stand.map) : [];
       if (!roherInv || !sichtbar || primaryInterface(roherInv) !== 'Inventory') return reply.code(404).send({ error: 'Kein Inventar.' });
-      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
       const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
       const leitet = user.isAdmin || rolle === 'gm' || rolle === 'co-gm';
       /* Die Leitung teilt aus, wohin sie will (wie beim Kauf für jede Figur);

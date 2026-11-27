@@ -75,7 +75,11 @@ import {
   STATUS_COMPONENT,
   classParts,
   originParts,
-  currentCampaign,
+  cleanStackView,
+  viewedCampaign,
+  stackViewKey,
+  CAMPAIGN_PREF,
+  STACK_VIEW_PREF,
   campaignVisibility,
   effectiveAudience,
   inStack,
@@ -181,7 +185,7 @@ import {
   missingText,
   duplicateText,
 } from '@nw/model';
-import type { BulkChange, BulkPlan, BulkRequest, CopyMode, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
+import type { BulkChange, BulkPlan, BulkRequest, CopyMode, CraftCheck, CraftSource, Entity, Registry, StackView, ValidationIssue } from '@nw/model';
 import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository, StoredEvent } from './repo.js';
@@ -197,6 +201,7 @@ import { registerAufwertung } from './aufwertung.js';
 import { registerFiltergruppen } from './filtergruppen.js';
 import { registerSpaltenwahl } from './spaltenwahl.js';
 import { LAYER_SETS_PREF, registerEbenensets } from './ebenensets.js';
+import { darfWaehlen, kontoWahlen, registerKampagnenwahl } from './kampagnenwahl.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { liegenlassen, registerLiegen } from './liegen.js';
 import { registerAbfrage } from './abfrage.js';
@@ -228,7 +233,7 @@ import { registerTracker } from './initiative.js';
 import { insSpiel, registerSpielinstanz } from './spielinstanz.js';
 import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
-import { messe, messeSync, mitAnfrageSpeicher, mitZeiten, mitZeitmessung, zeitenKopf } from './zeitmessung.js';
+import { anfrageKonto, messe, messeSync, mitAnfrageSpeicher, mitZeiten, mitZeitmessung, setzeAnfrageKonto, zeitenKopf } from './zeitmessung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -255,6 +260,7 @@ import {
   type TokenScope,
   type User,
 } from './auth.js';
+import { kontoKampagne } from './kampagne.js';
 
 /* Kanten, über die eine Figur etwas „hat". Was daran hängt, darf ihr
    Spieler schreiben — das Inventar ist seines, der Ort, an dem es liegt,
@@ -552,7 +558,12 @@ export function buildApp({
   function werIst(request: FastifyRequest): Promise<Wer | null> {
     let p = gefragt.get(request);
     if (!p) {
-      p = ermittle(request);
+      /* Kampagne und Sicht des Kontos in den Anfrage-Speicher (T-496): jede
+         Stelle, die die laufende Kampagne braucht, liest dort (`kontoKampagne`). */
+      p = ermittle(request).then((wer) => {
+        setzeAnfrageKonto(wer ? { campaign: wer.user.campaign ?? null, stackView: wer.user.stackView ?? null } : null);
+        return wer;
+      });
       gefragt.set(request, p);
     }
     return p;
@@ -565,15 +576,33 @@ export function buildApp({
       const treffer = await repo.useToken(hashToken(roh));
       if (!treffer || treffer.user.disabledAt) return null;
       const { passwordHash: _hash, ...user } = treffer.user;
-      return { user: inKampagne(user, await laufendeKampagne()), token: treffer.token };
+      return { user: await alsKonto(user), token: treffer.token };
     }
     const token = request.cookies?.[COOKIE];
     if (!token) return null;
     const user = await repo.touchSession(hashToken(token), sessionExpiry().toISOString());
     if (!user || user.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = user;
-    return { user: inKampagne(rest, await laufendeKampagne()) };
+    return { user: await alsKonto(rest) };
   }
+  /**
+   * **Das Konto, wie es in seiner Kampagne fragt** (T-496, REQ-408): die
+   * gewählte Kampagne, wenn es dort eine Rolle hat (die Verwaltung jede)
+   * und es sie gibt, sonst die Vorgabe der Installation; „meine Figuren"
+   * sind die dieser Kampagne (T-412), und die Sicht auf ihren Stapel ist
+   * die eigene (REQ-412). Jede Route liest `user.campaign`, keine die
+   * Einstellung allein.
+   */
+  async function alsKonto<U extends User>(user: U): Promise<U> {
+    const wahl = await kontoWahl.lesen(user.id);
+    let kampagne: string | null = null;
+    if (wahl.campaign && darfWaehlen(user, wahl.campaign) && (await repo.getEntity(wahl.campaign))?.interfaces?.[0] === CAMPAIGN_TYPE) {
+      kampagne = wahl.campaign;
+    }
+    kampagne ??= await laufendeKampagne();
+    return { ...inKampagne(user, kampagne), campaign: kampagne, stackView: kampagne ? cleanStackView(wahl.views[kampagne]) : null };
+  }
+  const kontoWahl = kontoWahlen(repo);
   /** Die laufende Kampagne, für `inKampagne` (T-412): eine Anfrage fragt
    *  in ihr, also sind „meine Figuren" die Figuren dieser Kampagne. */
   async function laufendeKampagne(): Promise<string | null> {
@@ -585,7 +614,8 @@ export function buildApp({
     const stempel = `${await repo.version()}|${gesetzt ?? ''}`;
     if (ohneEinstellung?.stempel !== stempel) {
       const alle = await repo.entityMap();
-      ohneEinstellung = { stempel, id: currentCampaign(alle, settings)?.id ?? null };
+      /* Die Vorgabe, nicht die Wahl eines Kontos: `null` fragt den Anfrage-Speicher nicht. */
+      ohneEinstellung = { stempel, id: kontoKampagne(alle, settings, null)?.id ?? null };
     }
     return ohneEinstellung.id;
   }
@@ -632,10 +662,14 @@ export function buildApp({
     const gespeichert = await repo.getUser(zielId);
     const ziel = gespeichert ? (({ passwordHash: _h, ...r }) => r)(gespeichert) : null;
     const alle = await repo.entityMap();
-    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
+    /* In der Kampagne dessen, der hineinschaut (T-496): dort leitet er. */
+    const kampagne = kontoKampagne(alle, (await repo.getRegistry()).settings ?? null, wer.user.campaign)?.id ?? null;
     if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
     await merkeBeginn(wer.user, ziel, kampagne);
-    return { als: viewedAs(wer.user, inKampagne(ziel, kampagne), kampagne), von: wer.user, kampagne };
+    /* Ohne eigene Sicht des Mitglieds: gefragt ist, was es sehen *darf*. Der
+       Anfrage-Speicher rechnet dann ebenso (Fassungen, Ebenennamen). */
+    setzeAnfrageKonto({ campaign: kampagne, stackView: null });
+    return { als: { ...viewedAs(wer.user, inKampagne(ziel, kampagne), kampagne), campaign: kampagne, stackView: null }, von: wer.user, kampagne };
   }
 
   /**
@@ -915,7 +949,7 @@ export function buildApp({
   async function augeRechnen(user: User, bestand: ReadonlyMap<string, Entity>, registry: Registry) {
     /* Die Regeln je Gruppe der laufenden Kampagne (T-252, E-098): sagt ein
        Artikel keine Stufe, sagt es seine Gruppe. */
-    const campaignRules = campaignVisibility(bestand, registry, currentCampaign(bestand, registry.settings ?? null));
+    const campaignRules = campaignVisibility(bestand, registry, kontoKampagne(bestand, registry.settings ?? null));
     return {
       actors: user.actorIds ?? [],
       roles: user.roles ?? {},
@@ -949,7 +983,7 @@ export function buildApp({
     if (user.disabledAt) return false;
     if (user.isAdmin) return true;
     const map = alle ?? await repo.entityMap();
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
     if (!kampagne) return false;
     if (user.roles?.[kampagne.id] === 'player') return true;
     return (await zielEbenen(user, map, kampagne)).length > 0;
@@ -984,7 +1018,7 @@ export function buildApp({
     const rollen = user.roles ?? {};
     if (!Object.values(rollen).includes('gm')) return false;
     const alle = await repo.entityMap();
-    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(alle, (await repo.getRegistry()).settings ?? null);
     return !!kampagne && rollen[kampagne.id] === 'gm';
   }
 
@@ -1364,6 +1398,8 @@ export function buildApp({
     if (url.startsWith('/api/me/prefs/')) return;
     /* … und seine gespeicherten Ebenenauswahlen (T-186); geladen wird über die Kampagnenroute. */
     if (url === '/api/me/layer-sets' || url.startsWith('/api/me/layer-sets/')) return;
+    /* … und seine Kampagne und Sicht (T-496); die Routen prüfen selbst, was es wählen darf. */
+    if (url === '/api/me/campaign' || url === '/api/me/view') return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
     if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
@@ -1500,7 +1536,7 @@ export function buildApp({
        zählte den ganzen Bestand und widersprach damit der Liste, die nur
        zeigt, was die laufende Kampagne aufschaltet. Beides steht jetzt da;
        „sichtbar" heisst im Stapel, vor Sichtbarkeit und Wissen. */
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kontoKampagne(map, registry.settings ?? null);
     const stapel = kampagne ? playStack(map, kampagne, registry) : null;
     /* Gestaltete Ansichten (T-268): wie viele Artikel jede bekommt —
        gezählt, was im Stapel steht; Teile und Instanzen sind keine Artikel
@@ -1570,23 +1606,39 @@ export function buildApp({
    */
   /* Die laufende Kampagne je Bestand: ohne Einstellung sucht
      `currentCampaign` den ganzen Bestand ab, und das Sieb fragt je Aufruf. */
+  /* Seit T-496 je Konto: die gewählte Kampagne geht vor (`chosen`). */
   const kampagneJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; kampagne: Entity | null }>();
-  function kampagneIn(map: ReadonlyMap<string, Entity>, settings: Record<string, string> | null): Entity | null {
-    const key = settings?.[CAMPAIGN_SETTING] ?? '';
+  function kampagneIn(map: ReadonlyMap<string, Entity>, settings: Record<string, string> | null, chosen?: string | null): Entity | null {
+    const key = `${chosen ?? ''}|${settings?.[CAMPAIGN_SETTING] ?? ''}`;
     const da = kampagneJe.get(map);
     if (da?.key === key) return da.kampagne;
-    const kampagne = currentCampaign(map, settings);
+    const kampagne = kontoKampagne(map, settings, chosen);
     kampagneJe.set(map, { key, kampagne });
     return kampagne;
   }
 
-  const stapelJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
-  function stapelFuer(roh: ReadonlyMap<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
-    const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
-    const da = stapelJe.get(roh);
-    if (da?.key === key) return da.stapel;
-    const stapel = playStack(roh, kampagne, registry);
-    stapelJe.set(roh, { key, stapel });
+  /* **Mehrere Stapel je Stand** (T-496): je Kampagne und Sicht einer —
+     zwei Konten in zwei Runden oder mit eigener Sicht fragen abwechselnd,
+     und ein Stapel je Stand hiesse, ihn bei jedem Wechsel neu zu rechnen
+     (mit hunderttausend Teilen eine Sekunde, P3). Höchstens wenige: der
+     älteste geht, wenn ein neuer kommt. */
+  const STAPEL_JE_STAND = 8;
+  const stapelJe = new WeakMap<ReadonlyMap<string, Entity>, Map<string, ReturnType<typeof playStack>>>();
+  function stapelFuer(
+    roh: ReadonlyMap<string, Entity>,
+    kampagne: Entity | null,
+    registry: Registry,
+    /* Ohne Angabe die Sicht des fragenden Kontos (Anfrage-Speicher). */
+    sicht: StackView | null | undefined = anfrageKonto()?.stackView,
+  ): ReturnType<typeof playStack> {
+    const key = `${kampagne?.id ?? ''}|${stackViewKey(sicht)}|${registerStempel(registry)}`;
+    let je = stapelJe.get(roh);
+    if (!je) stapelJe.set(roh, (je = new Map()));
+    const da = je.get(key);
+    if (da) return da;
+    const stapel = playStack(roh, viewedCampaign(kampagne, sicht), registry);
+    if (je.size >= STAPEL_JE_STAND) je.delete(je.keys().next().value!);
+    je.set(key, stapel);
     return stapel;
   }
 
@@ -1655,11 +1707,13 @@ export function buildApp({
        überschreibt, ist nicht da — für jeden, auch für die Verwaltung.
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
-    const kampagne = messeSync('s.kampagne', () => kampagneIn(roh, registry.settings ?? null));
+    /* Ausdrücklich das Konto, nicht der Anfrage-Speicher: der Live-Kanal siebt im Speicher der schreibenden Anfrage. */
+    const kampagne = messeSync('s.kampagne', () => kampagneIn(roh, registry.settings ?? null, user?.campaign ?? null));
     /* Einmal je Bestand und Register gerechnet, nicht je Aufruf (T-086,
        T-108): mit hunderttausend Teilen kostet der Stapel eine Sekunde,
-       und die Leseansicht siebt je Anfrage zwei- oder dreimal. */
-    const sicht = messeSync('s.stapel', () => stapelFuer(roh, kampagne, registry));
+       und die Leseansicht siebt je Anfrage zwei- oder dreimal. Gerechnet
+       mit der Sicht des Kontos (T-496, REQ-412): enger oder eigene Ebenen. */
+    const sicht = messeSync('s.stapel', () => stapelFuer(roh, kampagne, registry, user?.stackView ?? null));
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = messeSync('s.imspiel', () => entities
       .filter((e) =>
@@ -1760,7 +1814,7 @@ export function buildApp({
       if (!nebel) {
         const eigene = new Set(augen);
         for (const a of augen) for (const r of alle.get(a)?.relations ?? []) if (r.type === PARTY_RELATION) eigene.add(r.to);
-        nebel = { fog: mapRulesOf(currentCampaign(alle, registry.settings ?? null)).fog, own: (id) => eigene.has(id) };
+        nebel = { fog: mapRulesOf(kampagne).fog, own: (id) => eigene.has(id) };
       }
       return nebel;
     };
@@ -1775,7 +1829,7 @@ export function buildApp({
         zones: (v) => zoneLightShapes(v, (id) => alle.get(id)),
       });
     /* Was die Kampagne Spielenden von der Initiative zeigt (T-022). */
-    const initRegeln = initiativeRulesOf(currentCampaign(alle, registry.settings ?? null));
+    const initRegeln = initiativeRulesOf(kampagne);
     const sichtbar = messeSync('s.sichtbar', () => entities.filter((e) => articleVisible(alle, e, auge)));
     /* Ein Deckname verdeckt für alle ausser der Leitung (REQ-178). */
     /* **Die Leitung der Kampagne des Artikels bekommt ihn ungesiebt im
@@ -1946,7 +2000,7 @@ export function buildApp({
   async function darfAlleEbenen(request: FastifyRequest): Promise<boolean> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
     if (!user) return true;
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     return user.isAdmin || (!!kampagne && !!rechtAn(user, kampagne.id));
   }
   async function indexFor(
@@ -1965,7 +2019,9 @@ export function buildApp({
       !user || user.isAdmin
         ? '*'
         : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}|${[...(await ausgenommen(stand.map, registry))].sort().join(',')}|${(user.layerIds ?? []).join(',')}|${[...(await besessen())].sort().join(',')}`;
-    const key = `${stand.stempel}|${stapel}|${alleEbenen ? 'alle' : ''}|${registerStempel(registry)}|${wer}`;
+    /* Kampagne und Sicht des Kontos gehören in den Schlüssel (T-496): zwei
+       Konten in zwei Runden sehen zwei Listen, auch als Verwaltung. */
+    const key = `${stand.stempel}|${stapel}|${alleEbenen ? 'alle' : ''}|${registerStempel(registry)}|${user?.campaign ?? ''}|${stackViewKey(user?.stackView)}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
       indizes.delete(key);
@@ -1974,8 +2030,10 @@ export function buildApp({
     }
     /* Der Rang je Artikel für die Kopfzeile der Fassungen (T-092) —
        derselbe Stapel, einmal gerechnet. */
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-    const rang = playStack(stand.map, kampagne, registry);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null, user?.campaign ?? null);
+    /* In der Sicht des Kontos (REQ-412): was es ausblendet, steht nicht da. */
+    const gelesen = viewedCampaign(kampagne, user?.stackView);
+    const rang = playStack(stand.map, gelesen, registry);
     /* **Was nicht aufgeschaltet ist, steht nicht da** (T-207): Ebenen
        ausserhalb des Stapels (und der Vergleichsebenen, wer sie sieht)
        fallen hier heraus — als Zeile, als Name und als Ebene einer Zeile.
@@ -1983,7 +2041,7 @@ export function buildApp({
        Auswahl auf einmal; der Zählindex (`unactivated`) bleibt, wie er war. */
     const genannt =
       (stapel === 'inPlay' && !alleEbenen) || stapel === 'compare'
-        ? shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne))
+        ? shownLayers(stand.map, gelesen, siehtVergleich(user, kampagne))
         : null;
     /* **Der Vergleichsindex** (T-213): was nur eine Vergleichsebene bringt,
        ein eigener Index neben dem des Spiels — im selben zählten Facetten
@@ -2133,7 +2191,7 @@ export function buildApp({
   ): Promise<{ idx: ListIndex; offset: number; canEnable: { campaign: string } | null } | null> {
     if (roh_['compare'] !== '1' && roh_['compare'] !== 'true') return null;
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     if (!kampagne || !siehtVergleich(user, kampagne)) return null;
     const offset = Math.max(0, Number.parseInt(String(roh_['compareOffset'] ?? '0'), 10) || 0);
     return {
@@ -2237,7 +2295,7 @@ export function buildApp({
     q: ReturnType<typeof parseListQuery>,
   ): Promise<{ campaign: { id: string; name: string }; total: number; canManage: boolean } | null> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     if (!kampagne) return null;
     const aus = queryList(await indexFor(request, 'unactivated'), {
       ...q,
@@ -2400,7 +2458,7 @@ export function buildApp({
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(RECIPE_COMPONENT)) return null;
     const get = (id: string) => map.get(id);
-    const campaign = currentCampaign(map, registry.settings ?? null);
+    const campaign = kontoKampagne(map, registry.settings ?? null);
     const benannt = (c: CraftCheck) => {
       const quelle = (q: CraftSource) => (q.holder ? { ...q, name: entityName(map.get(q.holder)) } : q);
       return { ...c, source: { tool: quelle(c.source.tool), ability: quelle(c.source.ability), dc: quelle(c.source.dc) } };
@@ -2434,7 +2492,7 @@ export function buildApp({
       .map((id) => map.get(id))
       .filter((x): x is Entity => !!x);
     const sichtbar = ziele.length ? await sieve(request, ziele, map) : [];
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kontoKampagne(map, registry.settings ?? null);
     const user = await viewerOf(request);
     const leitet = !!user && leitetTisch(user, kampagne?.id ?? null);
     return {
@@ -2452,7 +2510,7 @@ export function buildApp({
     if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
     /* Gerechnet wird in der Preissicht (T-139): jede Ware mit dem Preis
        ihrer geltenden Fassung, etwa aus „AI generated prices". */
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kontoKampagne(map, registry.settings ?? null);
     const roherStand = map;
     map = withVersionPrices(map, kampagne, registry);
     /* Eine Kante auf eine Collection steht für ihre Mitglieder (REQ-439): gesiebt wird jede Ware einzeln. */
@@ -2620,7 +2678,7 @@ export function buildApp({
        oder vergleicht (T-207) — „PHB · Ein Buch, das niemand aufschaltet"
        wäre die Ebene, die nirgends sonst steht. */
     const kampagne = kampagneIn(stand.map, registry.settings ?? null);
-    const genannt = shownLayers(stand.map, kampagne, siehtVergleich(await viewerOf(request), kampagne));
+    const genannt = shownLayers(stand.map, viewedCampaign(kampagne, anfrageKonto()?.stackView), siehtVergleich(await viewerOf(request), kampagne));
     const ids = new Set<string>();
     for (const r of e.relations ?? []) {
       if (!r.to) continue;
@@ -2701,8 +2759,10 @@ export function buildApp({
       : 0;
     if (!basis || !sichtbar) return reply.code(404).send({ error: 'Nicht gefunden' });
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-    const sicht = playStack(stand.map, kampagne, registry);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
+    /* Im Spiel heisst: in der Sicht dieses Kontos (T-496, REQ-412). */
+    const gelesen = viewedCampaign(kampagne, anfrageKonto()?.stackView);
+    const sicht = playStack(stand.map, gelesen, registry);
     const roheFassungen = versionsOf(stand.map, basis.id);
     const gesiebt = roheFassungen.length
       ? await sieve(request, roheFassungen, stand.map, undefined, 'versions')
@@ -2710,7 +2770,7 @@ export function buildApp({
     const user = await viewerOf(request);
     const eigene = kampagne && rechtAn(user, kampagne.id) === 'manage' ? await kampagnenEbene(stand.map, kampagne) : null;
     const vergleichsIds = new Set(compareLayers(stand.map, kampagne).map((l) => l.id));
-    const imSpiel = activeLayerRanks(stand.map, kampagne);
+    const imSpiel = activeLayerRanks(stand.map, gelesen);
     /* Übernommen ist eine Fassung, wenn eine Kopie in der Kampagnenebene
        mit `variantOf` auf sie zeigt und etwas überschreibt (`adopt`). */
     const kopieVon = new Map<string, string>();
@@ -2725,7 +2785,7 @@ export function buildApp({
     /* Genannt werden nur Spiel- und Vergleichsebenen (T-207): liegt der
        Artikel auch in einem Buch, das die Kampagne nicht aufschaltet, steht
        es hier nicht. */
-    const genannt = shownLayers(stand.map, kampagne, siehtVergleich(user, kampagne));
+    const genannt = shownLayers(stand.map, viewedCampaign(kampagne, anfrageKonto()?.stackView), siehtVergleich(user, kampagne));
     const ebenenIds = new Set(layersOf(basis));
     /* **Welche Fassung Listen und Verweise zeigen** (T-403): die mit dem
        höchsten Rang unter denen im Spiel — mit dem Vorrang der Kampagne
@@ -2798,7 +2858,7 @@ export function buildApp({
     vergleich: boolean,
   ): Promise<{ enable?: { campaign: string }; enabled?: { campaign: string } } | null> {
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kontoKampagne(map, registry.settings ?? null);
     if (!kampagne || rechtAn(await viewerOf(request), kampagne.id) !== 'manage') return null;
     if (enabledArticles(kampagne).has(entity.id)) return { enabled: { campaign: kampagne.id } };
     return vergleich ? { enable: { campaign: kampagne.id } } : null;
@@ -2835,7 +2895,7 @@ export function buildApp({
       if (rechtAn(user, c) !== 'manage') return reply.code(403).send({ error: 'Übernehmen darf die Leitung.' });
       const stand = await roh();
       const registry = await repo.getRegistry();
-      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
       if (!kampagne || kampagne.id !== c) {
         return reply.code(409).send({ error: 'Übernehmen geht nur in der laufenden Kampagne.' });
       }
@@ -2921,6 +2981,9 @@ export function buildApp({
     if (key === WRITE_LAYER_PREF) return reply.code(400).send({ error: 'Die Schreibebene setzt PUT /api/layers/write oder PUT /api/layers/:layer/default.' });
     /* Gespeicherte Ebenenauswahlen prüft ihre eigene Route (T-186). */
     if (key === LAYER_SETS_PREF) return reply.code(400).send({ error: 'Ebenenauswahlen speichert POST /api/me/layer-sets.' });
+    /* Kampagne und Sicht je Konto prüfen ihre eigenen Routen (T-496). */
+    if (key === CAMPAIGN_PREF) return reply.code(400).send({ error: 'Your campaign is set by PUT /api/me/campaign.' });
+    if (key === STACK_VIEW_PREF) return reply.code(400).send({ error: 'Your view is set by PUT /api/me/view.' });
     const value = request.body?.value ?? null;
     if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
     await repo.putPref(user.id, key, value);
@@ -3100,7 +3163,7 @@ export function buildApp({
   async function verfahren(request: FastifyRequest) {
     const stand = await roh();
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const genannt = (kampagne?.relations ?? []).filter((r) => r.type === 'allowsMethod').map((r) => r.to);
     const sichtbar = genannt.length
       ? new Set((await sieve(request, genannt.map((i) => stand.map.get(i)).filter((e): e is Entity => !!e), stand.map)).map((e) => e.id))
@@ -3136,7 +3199,7 @@ export function buildApp({
     const user = await viewerOf(request);
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
     const stand = await roh();
-    const kampagne = currentCampaign(stand.map, (await repo.getRegistry()).settings ?? null);
+    const kampagne = kontoKampagne(stand.map, (await repo.getRegistry()).settings ?? null);
     if (!kampagne) return { campaign: null, players: [] };
     const campaign = { id: kampagne.id, name: entityName(kampagne) };
     if (!user.isAdmin && !user.roles?.[kampagne.id]) return { campaign, players: [] };
@@ -3182,7 +3245,7 @@ export function buildApp({
   app.get('/api/inventory', async (request) => {
     const stand = await roh();
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const gruppen = kampagne ? await sieve(request, partiesOf(stand.map, kampagne.id), stand.map) : [];
     const ids = new Set(gruppen.map((p) => p.id));
     const mitglieder = await sieve(
@@ -3254,7 +3317,7 @@ export function buildApp({
   async function ausruestungsVerfahren(request: FastifyRequest) {
     const stand = await roh();
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const genannt = (kampagne?.relations ?? []).filter((r) => r.type === 'allowsEquipment').map((r) => r.to);
     const sichtbar = genannt.length
       ? new Set((await sieve(request, genannt.map((i) => stand.map.get(i)).filter((e): e is Entity => !!e), stand.map)).map((e) => e.id))
@@ -3498,6 +3561,15 @@ export function buildApp({
   registerFiltergruppen(app, { repo, viewerOf, roh });
   registerSpaltenwahl(app, { repo, viewerOf, roh });
   registerEbenensets(app, { repo, viewerOf });
+  registerKampagnenwahl(app, {
+    repo,
+    viewerOf,
+    wahl: kontoWahl,
+    inFremderSicht: async (request) => (await sichtVon(request)) !== null,
+    /* Die Ebenen selbst stehen in keinem Stapel; gesiebt wird nur ihre Sichtbarkeit. */
+    lesbareEbenen: (user, ebenen, bestand) =>
+      sieveFuer(user, ebenen, bestand, undefined, { preview: new Set(ebenen.map((e) => e.id)), whole: true }),
+  });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, {
     repo,
@@ -3635,6 +3707,7 @@ export function buildApp({
     viewerOf,
     sieveFuer: (user, entities, bestand) => sieveFuer(user, entities, bestand),
     roh,
+    alsKonto,
     ...(liveHeartbeatMs ? { heartbeatMs: liveHeartbeatMs } : {}),
   });
   app.addHook('onClose', async () => kanal.close());
@@ -3728,7 +3801,7 @@ export function buildApp({
     /* Die geltende Stufe und woher sie kommt (T-252), für das Kapitel
        „Admin" (T-277): sagt der Artikel keine, sagt es seine Gruppe. */
     const registry = await repo.getRegistry();
-    const audience = effectiveAudience(stand.map, einer, campaignVisibility(stand.map, registry, currentCampaign(stand.map, registry.settings ?? null)));
+    const audience = effectiveAudience(stand.map, einer, campaignVisibility(stand.map, registry, kontoKampagne(stand.map, registry.settings ?? null)));
     /* Was aus einer Ergänzung kommt (T-142): das Element Shape schreibt die Form dorthin. */
     const supplied = await ergaenzungen(einer);
     /* An einer Begegnung (T-215): die Haltung der Beteiligten zur Gruppe,
@@ -3788,7 +3861,7 @@ export function buildApp({
     const teil = kette.includes('BookPart');
     if (!(kette.includes('Story') || kette.includes(CHAPTER_TYPE) || teil) || OHNE_UEBERNAHME.has(primaryInterface(e))) return [];
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kontoKampagne(map, registry.settings ?? null);
     if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebene = await kampagnenEbene(map, kampagne);
     if (!ebene || layersOf(e).includes(ebene.id)) return [];
@@ -3831,7 +3904,7 @@ export function buildApp({
         into: ziele.map((z) => ({ id: z.id, name: entityName(z), type: primaryInterface(z) })),
       });
     }
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const ebene = (await kampagnenEbene(stand.map, kampagne))!;
     /* Ein Teil eines Buchs steht im Ziel an der nächsten Stelle (T-108). */
     const imFluss = [CHAPTER_TYPE, ...BOOK_PART_TYPES].includes(primaryInterface(original));
@@ -3932,7 +4005,7 @@ export function buildApp({
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
     if (OHNE_FASSUNG.has(primaryInterface(e))) return [];
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kontoKampagne(map, registry.settings ?? null);
     if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebenen = layersOf(e);
     /* Die Verwaltung schreibt ohnehin alles; eine Fassung legt sie in die
@@ -4054,7 +4127,7 @@ export function buildApp({
          hat (T-098), legt dort an — die genannte, sonst die erste. */
       let spielerin = false;
       if (user && !user.isAdmin) {
-        const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+        const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
         /* Genannt oder gewählt werden darf auch eine Ebene ausserhalb des Stapels (T-418). */
         const ziele = (await schreibZiele(user, stand.map, kampagne)).map((x) => x.layer);
         const genannt = relations.filter((r) => r.type === 'inLayer').map((r) => r.to);
@@ -4118,7 +4191,7 @@ export function buildApp({
            in der Testebene landen und mit „Empty this layer" wieder gehen;
            ohne Wahl in die Parkplatz-Ebene „Unassigned“ (E-182): jeder
            Artikel hat eine Ebene, und die Werkbank führt ihn als offen. */
-        const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+        const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
         const gewaehlt = await gewaehlteSchreibEbene(user, stand.map, kampagne);
         /* Ohne Wahl die Ebene der laufenden Kampagne — dort sucht man, was
            man eben angelegt hat; erst ohne Kampagne der Parkplatz. */
@@ -4179,7 +4252,7 @@ export function buildApp({
           const konto = await repo.getUser(user.id);
           if (konto && !konto.actorIds.includes(id)) {
             /* In der Kampagne, in der sie angelegt wird — der laufenden (T-412). */
-            await repo.putUser(figurDazu(konto, currentCampaign(stand.map, registry.settings ?? null)?.id ?? null, id));
+            await repo.putUser(figurDazu(konto, kontoKampagne(stand.map, registry.settings ?? null)?.id ?? null, id));
           }
         }
       }
@@ -4317,7 +4390,7 @@ export function buildApp({
           return { code: 403, body: { error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' } };
         }
         const map = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-        const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+        const kampagne = kontoKampagne(map, (await repo.getRegistry()).settings ?? null);
         const ziele = new Set((await schreibZiele(wer, map, kampagne)).map((x) => x.layer.id));
         const fremd = wechsel.added.filter((l) => !ziele.has(l));
         if (fremd.length) {
@@ -4408,7 +4481,7 @@ export function buildApp({
        Karte eine Begegnung, bewegen Spielende Tokens nur über den Zugplan. */
     if (vorherRoh && isMap(vorherRoh)) {
       const alleJetzt = await repo.listEntities();
-      const kampagneJetzt = currentCampaign(new Map(alleJetzt.map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null);
+      const kampagneJetzt = kontoKampagne(new Map(alleJetzt.map((e) => [e.id, e])), (await repo.getRegistry()).settings ?? null);
       const sperre = zugSperre(await viewerOf(request), alleJetzt, vorherRoh, entity, kampagneJetzt?.id ?? null);
       if (sperre) return { code: 423, body: { error: sperre } };
     }
@@ -4427,7 +4500,7 @@ export function buildApp({
       const neu = [...nachher].filter((z) => !vorher.has(z));
       if (neu.length || [...vorher].some((z) => !nachher.has(z))) {
         const wer = await viewerOf(request);
-        const kampagneJetzt = currentCampaign(bestand, (await repo.getRegistry()).settings ?? null);
+        const kampagneJetzt = kontoKampagne(bestand, (await repo.getRegistry()).settings ?? null);
         const darf = !!wer && (leitetTisch(wer, kampagneJetzt?.id ?? null) || enhancementsByOf(kampagneJetzt) === 'players');
         if (!darf) return { code: 403, body: { error: 'Enhancements hängt die Leitung an.' } };
         const ohne = { ...entity, relations: (entity.relations ?? []).filter((r) => !(r.type === ENCHANTED_RELATION && neu.includes(r.to))) };
@@ -4498,7 +4571,7 @@ export function buildApp({
        Kampf oder Karte und gilt `immediately`, bleibt liegen, was nicht
        verstaut ist. Nach dem Schreiben — die Sitzung steht dann schon. */
     if (vorherRoh && tableMovedOn(vorherRoh, entity) && typeChain(registry, primaryInterface(entity)).includes('Session')) {
-      const kampagne = currentCampaign(new Map((await repo.listEntities()).map((e) => [e.id, e])), registry.settings ?? null);
+      const kampagne = kontoKampagne(new Map((await repo.listEntities()).map((e) => [e.id, e])), registry.settings ?? null);
       if (kampagne && stowingRuleOf(kampagne) === 'immediately') {
         await liegenlassen({ repo, roh, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet) }, entity.id, kampagne, 'movedOn');
         const frisch = await repo.getEntity(entity.id);
@@ -4810,7 +4883,7 @@ export function buildApp({
        ein Original, das schon eine Fassung ersetzt, steht im Stapel. */
     const gesehen = original ? (await sieve(request, [original], stand.map, undefined, 'versions')).length > 0 : false;
     if (!original || !gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
-    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
     const ziele = await anpassZiele(request, original, stand.map);
     if (!kampagne || !ziele.length) {
       if (!user.isAdmin) return reply.code(403).send({ error: 'Dafür hast du keine Ebene, in der du schreibst.' });
@@ -4885,7 +4958,7 @@ export function buildApp({
       const original = stand.map.get(request.params.id);
       const gesehen = original ? (await sieve(request, [original], stand.map, undefined, 'versions')).length > 0 : false;
       if (!original || !gesehen || isLayer(original)) return reply.code(404).send({ error: 'Nicht gefunden' });
-      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      const kampagne = kontoKampagne(stand.map, registry.settings ?? null);
       const ziele: { id: string; name: string }[] = (
         mode === 'version'
           ? await anpassZiele(request, original, stand.map)
@@ -5349,7 +5422,7 @@ export function buildApp({
       const alle = await repo.listEntities();
       const roh = new Map(alle.map((e) => [e.id, e]));
       const registry = await repo.getRegistry();
-      const kampagne = currentCampaign(roh, registry.settings ?? null);
+      const kampagne = kontoKampagne(roh, registry.settings ?? null);
       const ebene = user.isAdmin
         ? await gewaehlteSchreibEbene(user, roh, kampagne)
         : await vorgabeEbene(user, roh, kampagne);
@@ -5427,7 +5500,7 @@ export function buildApp({
         return reply.code(403).send({ error: 'Only the administration keeps articles outside every layer. Choose one of your write layers.' });
       }
       if (layer && !user.isAdmin) {
-        const kampagne = currentCampaign(roh, registry.settings ?? null);
+        const kampagne = kontoKampagne(roh, registry.settings ?? null);
         const ziele = new Set((await schreibZiele(user, roh, kampagne)).map((x) => x.layer.id));
         if (!ziele.has(layer)) {
           return reply.code(403).send({

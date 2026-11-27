@@ -20,7 +20,6 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  currentCampaign,
   entityName,
   isMap,
   isPlayInstance,
@@ -38,6 +37,7 @@ import {
 import type { User } from "./auth.js";
 import type { Repository } from "./repo.js";
 import { leitetTisch } from "./wuerfe.js";
+import { kontoKampagne } from './kampagne.js';
 
 interface Stand {
   alle: Entity[];
@@ -151,7 +151,7 @@ export function registerSpielinstanz(
     const roherStand = await roh();
     /* Eine Kopie: was hier entsteht, liest der nächste Schritt mit. */
     const stand = { alle: roherStand.alle, map: new Map(roherStand.map) };
-    const kampagne = currentCampaign(
+    const kampagne = kontoKampagne(
       stand.map,
       (await repo.getRegistry()).settings ?? null,
     );
