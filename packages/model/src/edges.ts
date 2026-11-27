@@ -93,6 +93,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'stack.ts']: ['activates', 'enables', 'inLayer', 'layerRule', 'overrides', 'partOf', 'prefers'],
       /* Die Ebene eines Artikels wechseln (T-383), mit Teilen, Statblock und Stücken (T-402). */
       [M + 'layermove.ts']: ['holds', 'inLayer', 'partOf'],
+      /* Die Kampagne, wie ein Konto sie liest (T-496, REQ-412): Campaign view und My view. */
+      [M + 'kontosicht.ts']: ['activates'],
       [S + 'verwaltung.ts']: ['activates', 'inLayer'],
       [S + 'ebenenrechte.ts']: ['activates', 'inLayer', 'partOf'],
       /* Die Spielerebene: von ihrer Kampagne aufgeschaltet (T-164). */
