@@ -10,7 +10,7 @@ import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword } from '../src/auth.js';
 // @ts-expect-error — ein Node-Skript ohne Typen
-import { check, expand } from '../../../scripts/regelwerk/plan.mjs';
+import { check, expand, valueProblem } from '../../../scripts/regelwerk/plan.mjs';
 
 /* Der Einleser für Regelwerke (T-122) gegen einen echten Server mit
    Speicher. Das Paket ist erfunden — kein Buchinhalt im Repository. */
@@ -99,6 +99,48 @@ describe('Regelwerk-Paket prüfen (T-122)', () => {
     expect(fehler.join('\n')).toMatch(/unknown key fehlt/);
     expect(fehler.join('\n')).toMatch(/placed does not start at this type/);
     expect(check(paket, seedRegistry).fehler).toEqual([]);
+  });
+
+  /* T-497: ein Paket füllt Gefolge, Stufenaktionen, Villain Actions und Minions. */
+  const mcdm = {
+    format: 'atlas-regelwerk/1',
+    layer: { name: 'Test Followers Book', publisher: 'Third party' },
+    articles: [
+      { key: 'at', type: 'ActionType', name: 'Villain Action', fields: { 'ActionType.per': 'round', 'ActionType.count': 1 } },
+      { key: 'v1', type: 'Action', name: 'Opening Move', fields: { 'Action.actionType': 'at', 'Action.round': 1, 'Action.saveDc': 13, 'Action.saveAbility': 'wis' } },
+      { key: 'a1', type: 'Action', name: 'Signature Strike', fields: { 'Action.actionType': 'at', 'Action.attack': ['melee weapon'], 'Action.ability': 'primary', 'Action.damageDice': '1d8' } },
+      {
+        key: 'sb', type: 'Statblock', name: 'Test Squire',
+        fields: { 'Statblock.pbFrom': 'level', 'Statblock.primaryAbility': 'dex', 'Statblock.hpPerLevel': 6, 'Statblock.addPb': ['dc'], 'Statblock.saveProf': 1, 'Statblock.minion': false },
+        relations: [{ type: 'composedOf', to: 'a1' }, { type: 'composedOf', to: 'v1', props: { level: 3 } }, { type: 'belongsTo', to: 'cr' }],
+      },
+      { key: 'cr', type: 'Creature', name: 'Test Squire', fields: { 'Creature.kind': 'retainer' }, relations: [{ type: 'follows', to: { name: 'Someone', type: 'PlayerCharacter' }, props: { as: 'retainer', level: 2 } }] },
+      { key: 'sc', type: 'Scene', name: 'A scene', fields: { 'Source.publication': 'Test Followers Book', 'Source.page': '4' } },
+    ],
+  };
+
+  it('nimmt Gefolge, Stufenaktionen, Villain Actions, Minions und Quellen an der Szene (T-497)', () => {
+    expect(check(mcdm, seedRegistry).fehler).toEqual([]);
+  });
+
+  it('hält Werte ausserhalb von Aufzählung und Spanne an (T-497)', () => {
+    const kaputt = structuredClone(mcdm);
+    kaputt.articles[1]!.fields['Action.round'] = 0;
+    kaputt.articles[3]!.fields['Statblock.pbFrom'] = 'rider';
+    (kaputt.articles[3]!.relations![1]!.props as Record<string, unknown>)['level'] = 25;
+    const f = check(kaputt, seedRegistry).fehler.join('\n');
+    expect(f).toMatch(/v1 \(Action\): field Action\.round is below 1/);
+    expect(f).toMatch(/Statblock\.pbFrom value "rider" is not one of leader, level/);
+    expect(f).toMatch(/composedOf\.level is above 20/);
+  });
+
+  it('valueProblem: Liste, Zahl, Wahrheitswert, leer', () => {
+    expect(valueProblem({ type: 'array', enum: ['ac', 'dc'] }, ['ac', 'xx'])).toMatch(/"xx" is not one of/);
+    expect(valueProblem({ type: 'array', enum: ['ac'] }, 'ac')).toBe('expects a list');
+    expect(valueProblem({ type: 'number' }, '3')).toBe('expects a number');
+    expect(valueProblem({ type: 'boolean' }, 'yes')).toBe('expects true or false');
+    expect(valueProblem({ type: 'number', min: 1 }, undefined)).toBeNull();
+    expect(valueProblem(undefined, 3)).toBeNull();
   });
 });
 
