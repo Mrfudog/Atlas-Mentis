@@ -10,7 +10,7 @@ import {
   primaryInterface,
   typeChain,
 } from '@nw/model';
-import type { Entity, PropertySchema, Registry } from '@nw/model';
+import type { Entity, FollowerContext, PropertySchema, Registry } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -188,7 +188,7 @@ interface EFeld {
                 </form>
             } @else if (g.bogen) {
               <!-- Mit den Endwerten der Figur (T-272); bearbeitet wird oben die gespeicherte Karte. -->
-              <nw-statblock [artikel]="gelesen(le)" />
+              <nw-statblock [artikel]="gelesen(le)" [folgt]="folgtVon(artikel())" />
               <!-- Jede Übung mit Herkunft (T-239): an der Figur gerechnet, nicht am Statblock. -->
               <nw-uebungen [figur]="artikel()" />
               <!-- Wie jede Zahl zustande kommt (T-272). -->
@@ -484,6 +484,11 @@ export class Verlinkt {
    * Der Statblock, wie er an dieser Figur gilt (T-272): Endwerte statt der
    * gespeicherten Grundwerte. Für einen anderen verlinkten Artikel er selbst.
    */
+  /** Wem die Kreatur folgt (T-497): der Server bringt es in `refs.follower`, der Bestand hält es. */
+  protected folgtVon(e: Entity): FollowerContext | null {
+    return this.bestand.gefolge().get(e.id) ?? null;
+  }
+
   protected gelesen(le: Entity): Entity {
     const w = this.figurDaten.fuer(this.artikel().id).werte()?.statblock;
     return w && w.id === le.id ? w : le;

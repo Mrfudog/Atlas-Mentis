@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import { entityName, enumRefKind, primaryInterface, statblockBook } from '@nw/model';
-import type { Entity, StatblockBook } from '@nw/model';
+import type { Entity, FollowerContext, StatblockBook } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { BegriffLink, Glossar } from '../kern/glossar';
 import { Abschnitte } from './abschnitte';
@@ -70,13 +70,23 @@ import { Text } from './text';
         }
       </div>
       <div class="linie" aria-hidden="true"></div>
-      <nw-abschnitte [besitzer]="artikel()" />
+      <nw-abschnitte [besitzer]="artikel()" [folgt]="gefolge()" />
     }
   `,
   styleUrl: './buch.scss',
 })
 export class Statblock {
   readonly artikel = input.required<Entity>();
+  /**
+   * Wem der Statblock folgt (T-497): Stufe und Übungsbonus des Anführers.
+   * Der Server bringt es in `refs.follower` (am Statblock wie an der
+   * Kreatur), der Bestand hält es je Artikel; die Kreaturseite reicht es
+   * ausdrücklich herein, wo sie den gelesenen Statblock zeigt.
+   */
+  readonly folgt = input<FollowerContext | null>(null);
+  protected readonly gefolge = computed<FollowerContext | null>(
+    () => this.folgt() ?? this.bestand.gefolge().get(this.artikel().id) ?? null,
+  );
   /** Die verglichenen Fassungen (T-103): an jeder Zeile steht, was sie anders sagen. */
   readonly fassungen = input<readonly Vergleichsfassung[]>([]);
 
@@ -167,6 +177,7 @@ export class Statblock {
     const name = this.bestand.name();
     return statblockBook(r, artikel, {
       nameOf: (id) => name(id),
+      follower: this.gefolge(),
       kindOf: (n) => {
         const k = uebungen.get(n.toLowerCase());
         return k ? primaryInterface(k) : undefined;

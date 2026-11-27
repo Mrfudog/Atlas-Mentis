@@ -83,13 +83,19 @@ function num(v: unknown): number | null {
 
 /**
  * Auf welches Attribut gerechnet wird. `finesse` nimmt das bessere von
- * STR und DEX, `spell` das Zauberattribut des Statblocks. Ohne Angabe
+ * STR und DEX, `spell` das Zauberattribut des Statblocks, `primary` das
+ * Primärattribut eines Gefolgsmanns. Ohne Angabe
  * rechnet ein Fernkampf auf DEX und alles andere auf STR — die Regel des
  * Spielerhandbuchs.
  */
 export function attackAbility(wanted: unknown, kinds: string[], stats: Card): string | null {
   const w = typeof wanted === 'string' ? wanted : '';
   if (ABILITIES.includes(w)) return w;
+  /* Das Primärattribut eines Gefolgsmanns (T-497, `Statblock.primaryAbility`). */
+  if (w === 'primary') {
+    const p = stats['primaryAbility'];
+    return typeof p === 'string' && ABILITIES.includes(p) ? p : null;
+  }
   if (w === 'spell') {
     const s = stats['spellAbility'];
     return typeof s === 'string' && ABILITIES.includes(s) ? s : null;

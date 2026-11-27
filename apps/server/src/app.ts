@@ -105,6 +105,10 @@ import {
   registryUsage,
   appliesCount,
   incomingIndex,
+  followerContextOf,
+  creatureStats,
+  followsEdge,
+  type FollowerContext,
   instancesOf,
   isBookPart,
   isInstance,
@@ -3735,6 +3739,9 @@ export function buildApp({
        gesiebt wie jeder Artikel, und für die Leitung die schon
        freigegebenen Hinweise. */
     const encounter = await begegnungsBezug(request, einer, stand.map, registry);
+    /* Wem eine Kreatur (oder die Kreatur dieses Statblocks) folgt (T-497):
+       Stufe und Übungsbonus des Anführers, für den Bogen. */
+    const follower = await gefolgeVon(request, einer, stand.map);
     const refs = {
       audience,
       ...(Object.keys(supplied).length ? { supplied } : {}),
@@ -3747,6 +3754,7 @@ export function buildApp({
       ...(craft ? { craft } : {}),
       ...(shop ? { shop } : {}),
       ...(encounter ? { encounter } : {}),
+      ...(follower ? { follower } : {}),
     };
     /* Ob „Adapt" angeboten wird (E-018, T-082) und in welche Ebenen
        (`adaptTo`, T-098): dieselbe Frage wie die Route, damit die Seite
@@ -3764,6 +3772,29 @@ export function buildApp({
         ? { ...mitNehmen, adaptable: true, adaptTo: ziele.map((l) => ({ id: l.id, name: entityName(l) })) }
         : mitNehmen,
     };
+  }
+
+  /**
+   * **Gefolge** (T-497): folgt die Kreatur — oder die Kreatur, der dieser
+   * Statblock gehört — einer Figur (`follows`), kommen Stufe und
+   * Übungsbonus des Anführers mit. Der Anführer wird gesiebt wie jeder
+   * Artikel: wer ihn nicht sieht, bekommt seinen Namen nicht, die Zahl
+   * schon (sie steht ohnehin im Bogen). Ein Gang über den Bestand nur,
+   * wenn es die Kante gibt (`creatureStats` sucht den Statblock).
+   */
+  async function gefolgeVon(request: FastifyRequest, e: Entity, map: ReadonlyMap<string, Entity>): Promise<FollowerContext | null> {
+    const kreatur = primaryInterface(e) === 'Statblock'
+      ? map.get((e.relations ?? []).find((r) => r.type === 'belongsTo')?.to ?? '')
+      : e;
+    if (!followsEdge(kreatur)) return null;
+    const f = followerContextOf(kreatur, map, (leader) => creatureStats(leader, map).prof.value, entityName);
+    if (!f) return null;
+    const leader = f.leader ? map.get(f.leader) : undefined;
+    if (!leader || !(await sieve(request, [leader], map)).length) {
+      const { leader: _l, leaderName: _n, ...ohne } = f;
+      return ohne;
+    }
+    return f;
   }
 
   /** Was sich in die Geschichte holen lässt (E-026): ein Teil der Geschichte, kein Ganzes einer Runde. */
