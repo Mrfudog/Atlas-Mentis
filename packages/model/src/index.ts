@@ -22,6 +22,7 @@ export * from './playinstance.js';
 export * from './stack.js';
 export * from './mechanics.js';
 export * from './attack.js';
+export * from './follower.js';
 export * from './book.js';
 export * from './initiative.js';
 export * from './tracker.js';

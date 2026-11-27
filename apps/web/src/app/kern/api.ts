@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTerrain, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner, ZoneRuleSummary } from '@nw/model';
+import type { AbilityMethod, FollowerContext, DefaultShape, ShapeGroup, ShapeItem, Audience, AudienceSource, TransformStep, VisibilityRule, AssetMeta, Entity, EquipmentMethod, GlossaryEntry, GoldRoll, HitPointRule, AlignIssue, ChildGrid, LiftedGroup, PlacementSuggestion, MapLink, MapLinkDefaults, MapLinkShow, MapRules, MapToolGroup, MarkerView, PassageRules, Purchase, Registry, RegistryUsage, Relation, RollEntry, PlanStep, PlanTerrain, PlanTile, RolledScores, RuleSortState, StructureGraph, TokenLook, TrackerOp, TrackerView, TurnPlan, TurnPlanner, ZoneRuleSummary } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -303,6 +303,8 @@ export interface Bezuege {
   shop?: Ladenwaren;
   /** An einer Begegnung (T-215): Haltungen der Beteiligten, freigegebene Hinweise. */
   encounter?: Begegnungsbezug;
+  /** Wem die Kreatur (oder die Kreatur dieses Statblocks) folgt (T-497): Stufe und Übungsbonus des Anführers. */
+  follower?: FollowerContext;
   /** Das Bild des Artikels, wie der Server es rechnet (`articleImage`, T-211): an einer Kreatur ohne eigenes das ihres Statblocks (`from`). */
   image?: { id: string; version?: string; from?: string };
   /** Die Version jeder Bilddatei, die der Artikel nennt (T-211) — mit ihr darf der Browser das Bild behalten. */

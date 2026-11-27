@@ -10,7 +10,7 @@
  * verhielt sich der Bestand vor D53, und er bleibt damit gültig.
  */
 import type { Entity, EntityId, Relation } from './types.js';
-import { resolveInstance } from './instance.js';
+import { INSTANCE_RELATION, resolveInstance } from './instance.js';
 import { creatureStats } from './stats.js';
 
 export type TurnPoint = 'start' | 'end';
@@ -367,6 +367,11 @@ export function redactParticipants(
   return raus;
 }
 
+/** Die Gruppe eines Minions: die Vorlage seines Statblocks, sonst der Statblock selbst (T-497). */
+export function minionGroup(statblock: Entity): string {
+  return (statblock.relations ?? []).find((x) => x.type === INSTANCE_RELATION)?.to ?? statblock.id;
+}
+
 /**
  * **Eine Begegnung beginnen** (T-203): Runde 1, der erste in der Reihe ist
  * dran, `phase: running`. Wer noch keine Initiative hat, bekommt einen
@@ -381,16 +386,25 @@ export function startEncounter(
   d20: () => number,
 ): { encounter: Entity; rolled: { edge: string; to: EntityId; roll: number; mod: number; init: number }[] } {
   const rolled: { edge: string; to: EntityId; roll: number; mod: number; init: number }[] = [];
+  /* **Minions handeln gemeinsam** (T-497, Flee, Mortals!): Minions derselben
+     Vorlage würfeln einmal und stehen auf derselben Zahl — der erste würfelt
+     (und steht in `rolled`, also im Log), die übrigen übernehmen den Wurf. */
+  const gruppenWurf = new Map<string, number>();
   const relations = (encounter.relations ?? []).map((r) => {
     if (r.type !== PARTICIPATES || !r.to) return r;
     const props = (r.props ?? {}) as ParticipantProps;
     if (typeof props.init === 'number' && Number.isFinite(props.init)) return r;
     const t = entities.get(r.to);
     const sb = t ? statblockFor(entities, t) : null;
-    const dex = Number(((sb ? resolveInstance(entities, sb).components?.['Abilities'] : undefined) as { dex?: unknown } | undefined)?.dex);
+    const gelesen = sb ? resolveInstance(entities, sb) : null;
+    const gruppe = gelesen?.components?.['Statblock']?.['minion'] === true ? minionGroup(sb!) : null;
+    const schon = gruppe ? gruppenWurf.get(gruppe) : undefined;
+    if (schon !== undefined) return { ...r, props: { ...(r.props ?? {}), init: schon } };
+    const dex = Number((gelesen?.components?.['Abilities'] as { dex?: unknown } | undefined)?.dex);
     const mod = Number.isFinite(dex) ? Math.floor((dex - 10) / 2) : 0;
     const roll = d20();
     rolled.push({ edge: r.id, to: r.to, roll, mod, init: roll + mod });
+    if (gruppe) gruppenWurf.set(gruppe, roll + mod);
     return { ...r, props: { ...(r.props ?? {}), init: roll + mod } };
   });
   const card = (encounter.components?.['Encounter'] ?? {}) as Record<string, unknown>;

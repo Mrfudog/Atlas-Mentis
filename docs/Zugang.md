@@ -461,7 +461,7 @@ sieht Mara das nicht?".
   sie als Fassung in der Ebene ihrer Kampagne (T-098). Ob sie mit der
   Kampagne wandern sollen, hängt an der offenen Frage unten.
 - ~~**Die laufende Kampagne ist eine globale Einstellung.**~~ Seit T-496
-  (27.11.2026, D99) wählt jedes Konto seine Kampagne selbst — unter denen
+  (27.11.2026, D100) wählt jedes Konto seine Kampagne selbst — unter denen
   mit Rolle, die Verwaltung jede —, und `setting('campaign')` ist nur noch
   die Vorgabe. Der Server fragt sie je Anfrage (`alsKonto`,
   `kontoKampagne`).

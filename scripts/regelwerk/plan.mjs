@@ -26,6 +26,25 @@
  * Rezept legt seine **Blaupause** an: eine Information ohne Felder, über
  * `knowledge` am Rezept — die lernt man (D55). Ohne Angabe sind Rezepte
  * lernbar, denn ein Rezept, das niemand lernen kann, kann niemand.
+ *
+ * **Gefolge, Begleiter, Villain Actions, Minions** (T-497) füllt ein Paket
+ * mit denselben Mitteln — Felder und Kanten des Registers:
+ *
+ *   { "key": "sb1", "type": "Statblock", "name": "…",
+ *     "fields": { "Statblock.pbFrom": "level", "Statblock.primaryAbility": "dex",
+ *                 "Statblock.hpPerLevel": 6, "Statblock.addPb": ["dc"],
+ *                 "Statblock.saveProf": 1, "Statblock.minion": true },
+ *     "relations": [ { "type": "composedOf", "to": "a1", "props": { "level": 3 } } ] }
+ *   { "key": "a1", "type": "Action", "name": "…",
+ *     "fields": { "Action.actionType": "…", "Action.round": 1, "Action.saveDc": 12 } }
+ *   { "key": "c1", "type": "Creature", "name": "…",
+ *     "fields": { "Creature.kind": "retainer" },
+ *     "relations": [ { "type": "follows", "to": { "id": "…" }, "props": { "level": 1 } } ] }
+ *
+ * `check` prüft die Werte gegen Aufzählung und Spanne des Felds (und der
+ * Kanteneigenschaft) — ein „round": 0 oder „pbFrom": "rider" hält den Lauf
+ * an, bevor der Server ihn abweist. Eine Liste (`enumRef`) prüft der Server
+ * beim Schreiben (`validateEntity`), sie kann eine Art nennen.
  */
 
 export const FORMAT = 'atlas-regelwerk/1';
@@ -89,6 +108,29 @@ export function target(to) {
 }
 
 /**
+ * **Passt ein Wert zu seinem Feld?** Aufzählung (`enum`, auch je Eintrag
+ * einer Liste), Zahl mit Spanne (`min`, `max`) und Wahrheitswert — mehr
+ * nicht: `enumRef` und Verweise kennt erst der Server (T-497). Gibt den
+ * Grund zurück oder `null`.
+ */
+export function valueProblem(schema, wert) {
+  if (!schema || wert === undefined || wert === null || wert === '') return null;
+  const werte = Array.isArray(wert) ? wert : [wert];
+  if (schema.type === 'array' && !Array.isArray(wert)) return 'expects a list';
+  if (Array.isArray(schema.enum) && schema.enum.length) {
+    const fremd = werte.filter((w) => !schema.enum.includes(w));
+    if (fremd.length) return `value ${fremd.map((w) => JSON.stringify(w)).join(', ')} is not one of ${schema.enum.join(', ')}`;
+  }
+  if (schema.type === 'number') {
+    if (typeof wert !== 'number' || !Number.isFinite(wert)) return 'expects a number';
+    if (typeof schema.min === 'number' && wert < schema.min) return `is below ${schema.min}`;
+    if (typeof schema.max === 'number' && wert > schema.max) return `is above ${schema.max}`;
+  }
+  if (schema.type === 'boolean' && typeof wert !== 'boolean') return 'expects true or false';
+  return null;
+}
+
+/**
  * Prüft ein Paket gegen das Register, bevor irgendetwas geschrieben wird.
  * Fehler halten den Lauf an; Hinweise nicht. Die Meldungen nennen
  * Schlüssel, Art und Feld — nie den Text eines Artikels.
@@ -118,6 +160,10 @@ export function check(paket, registry) {
       if (!t || !k || !kette.includes(t)) fehler.push(`${wo}: field ${ref} does not belong to this type`);
       else if (!registry.interfaces[t]?.schema?.properties?.[k]) fehler.push(`${wo}: field ${ref} does not exist`);
       else if (registry.interfaces[t].schema.properties[k].derived) fehler.push(`${wo}: field ${ref} is derived and takes no value`);
+      else {
+        const grund = valueProblem(registry.interfaces[t].schema.properties[k], a.fields[ref]);
+        if (grund) fehler.push(`${wo}: field ${ref} ${grund}`);
+      }
     }
   }
   for (const a of artikel) {
@@ -138,8 +184,12 @@ export function check(paket, registry) {
       } else if (z.type && !fits(registry, z.type, def.to)) {
         fehler.push(`${wo}: ${r.type} may not point to a ${z.type}`);
       }
-      for (const p of Object.keys(r.props ?? {})) {
+      for (const [p, w] of Object.entries(r.props ?? {})) {
         if (!def.props?.properties?.[p]) fehler.push(`${wo}: ${r.type} has no property ${p}`);
+        else {
+          const grund = valueProblem(def.props.properties[p], w);
+          if (grund) fehler.push(`${wo}: ${r.type}.${p} ${grund}`);
+        }
       }
     }
   }

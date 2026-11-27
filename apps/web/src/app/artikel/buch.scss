@@ -67,6 +67,10 @@ h2 {
   font-family: var(--serif);
   font-size: 1.02rem;
 }
+/* Eine Stufenaktion, die der Gefolgsmann noch nicht hat (T-497). */
+.eintrag.gesperrt {
+  opacity: 0.55;
+}
 .text {
   font-family: var(--serif);
   font-size: 1.05rem;

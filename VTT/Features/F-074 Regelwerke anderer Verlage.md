@@ -22,3 +22,14 @@ Epic: [[EP-12 Import & Inhalte]]
 | [[REQ-314]] Regelwerk eines Drittverlags laden | Spielleitung | 3 | teils |
 | [[REQ-380]] Bücher über konfigurierbare Strukturen zerlegen | Verwaltung | 3 | offen |
 <!-- stories:ende -->
+
+## Paketformat für MCDM-Formen (T-497, 27.11.2026)
+
+Ein Paket füllt Gefolge, Stufenaktionen, Villain Actions und Minions mit
+den Feldern und Kanten des Registers (`Statblock.pbFrom`, `Action.round`,
+`composedOf.props.level`, `follows` …; Beispiel im Kopf von
+`scripts/regelwerk/plan.mjs`). `check` prüft jetzt auch die Werte gegen
+Aufzählung und Spanne (`valueProblem`) — ein `round: 0` hält den Lauf an,
+bevor der Server ihn abweist. Als Nächstes: *Flee, Mortals!* und
+*Strongholds & Followers* einlesen (eigener Auftrag, Inhalt nur auf dev).
+

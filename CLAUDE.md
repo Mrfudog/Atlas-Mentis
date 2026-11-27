@@ -325,7 +325,7 @@ wiederkommen, werden sie neu geschrieben.
   andere hatte, liegt in „Unassigned“ und gehört so niemandem besonders,
   bis es verschoben ist.
   **Die laufende Kampagne wählt jedes Konto selbst** (T-496, REQ-395,
-  D99): unter den Kampagnen mit Rolle, die Verwaltung jede
+  D100): unter den Kampagnen mit Rolle, die Verwaltung jede
   (`PUT /api/me/campaign`); `settings.campaign` ist nur die Vorgabe für
   Konten ohne Wahl. Am Server liest jede Route sie über `kontoKampagne`
   (Anfrage-Speicher, gesetzt von `werIst` aus `alsKonto`); wer

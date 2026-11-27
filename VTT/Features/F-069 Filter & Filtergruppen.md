@@ -54,7 +54,7 @@ flowchart LR
 ```
 
 
-## Stand: Kampagne und Sicht je Konto (T-496, REQ-395, REQ-396, D99)
+## Stand: Kampagne und Sicht je Konto (T-496, REQ-395, REQ-396, D100)
 
 Seit 27.11.2026 wählt jedes Konto seine laufende Kampagne selbst, im
 Globalfilter (Popup der Kopfleiste, „Running campaign“) — unter den

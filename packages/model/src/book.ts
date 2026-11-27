@@ -25,6 +25,7 @@
 
 import { abilityMod, checkBonus, formatValue } from './calc.js';
 import { attackLine, attackNumbers } from './attack.js';
+import { followerNumbers, unlockedAt, type FollowerContext } from './follower.js';
 import { isDice } from './dice.js';
 import { entityName, fieldTitle, primaryInterface, relationDef } from './entity.js';
 import type { VarScopes } from './inline.js';
@@ -232,6 +233,8 @@ export interface StatblockContext {
    * am Statblock einer Vorlage: keine.
    */
   effects?: Readonly<Record<string, number>>;
+  /** Wem der Statblock folgt (T-497, `refs.follower`): Stufe und Übungsbonus des Anführers. */
+  follower?: FollowerContext | null;
 }
 
 const STATBLOCK_PLACED = new Set([
@@ -240,6 +243,8 @@ const STATBLOCK_PLACED = new Set([
   'Statblock.prof', 'Statblock.senses', 'Statblock.languageNote', 'Statblock.resistances',
   'Statblock.vulnerabilities', 'Statblock.immunities', 'Statblock.conditionImmunities',
   'Statblock.bonuses', 'Statblock.legendaryActions', 'Statblock.legendaryActionsLair',
+  'Statblock.saveProf', 'Statblock.minion', 'Statblock.pbFrom', 'Statblock.addPb',
+  'Statblock.hpPerLevel', 'Statblock.tempHpPerLevel',
   'Abilities', 'Proficiencies.proficient', 'Proficiencies.expertise', 'Proficiencies.saves',
 ]);
 
@@ -261,27 +266,31 @@ export function statblockBook(
   const props = registry.interfaces['Statblock']?.schema?.properties ?? {};
   const abilityProps = registry.interfaces['Abilities']?.schema?.properties ?? {};
 
-  const prof = num(sb['prof']);
+  /* Gefolge und Begleiter (T-497): Übungsbonus, AC und HP können vom
+     Anführer oder der Stufe kommen — ohne beide steht die Formel. */
+  const folgt = followerNumbers(sb, ctx.follower);
+  const prof = folgt.prof;
   const bonuses = (sb['bonuses'] && typeof sb['bonuses'] === 'object' ? sb['bonuses'] : {}) as Card;
   const modOf = (a: string): number | null => {
     const s = num(ab[a]);
     return s === null ? null : abilityMod(s);
   };
 
-  const art = [capitalize(str(sb['size'])), str(sb['creatureType'])].filter(Boolean).join(' ');
+  const art = [capitalize(str(sb['size'])), str(sb['creatureType']), sb['minion'] === true ? '(minion)' : ''].filter(Boolean).join(' ');
   const gesinnung = str(sb['alignment']);
   const byline = [art, gesinnung].filter(Boolean).join(', ');
 
   const top: BookLine[] = [];
-  if (num(sb['ac']) !== null) {
+  if (folgt.ac) {
     const note = str(sb['acNote']);
-    top.push({ label: 'Armor Class', text: `${num(sb['ac'])}${note ? ` (${note})` : ''}`, ref: 'Statblock.ac' });
+    top.push({ label: 'Armor Class', text: `${folgt.ac.text}${note ? ` (${note})` : ''}`, ref: 'Statblock.ac' });
   }
-  if (num(sb['hp']) !== null) {
+  if (folgt.hp) {
     const formel = str(sb['hpFormula']);
     const wurf = formel ? (isDice(formel) ? ` ({{${formel}}})` : ` (${formel})`) : '';
-    top.push({ label: 'Hit Points', text: `${num(sb['hp'])}${wurf}`, ref: 'Statblock.hp' });
+    top.push({ label: 'Hit Points', text: `${folgt.hp.text}${wurf}`, ref: 'Statblock.hp' });
   }
+  if (folgt.tempHp) top.push({ label: 'Temporary Hit Points', text: folgt.tempHp.text, ref: 'Statblock.tempHpPerLevel' });
   if (str(sb['speed'])) {
     top.push({ label: 'Speed', text: fieldText(registry, props['speed'], sb['speed'], mode), ref: 'Statblock.speed' });
   }
@@ -298,11 +307,11 @@ export function statblockBook(
   });
 
   const details: BookLine[] = [];
-  const bonusFuer = (name: string, ability: string | undefined, faktor: number): number | null => {
+  const bonusFuer = (name: string, ability: string | undefined, faktor: number, uebung: number | null = prof): number | null => {
     const fest = num(bonuses[name]);
     if (fest !== null) return fest;
     const m = ability ? modOf(ability) : null;
-    return m === null || prof === null ? null : m + prof * faktor;
+    return m === null || uebung === null ? null : m + uebung * faktor;
   };
 
   const saves = list(pr['saves']).filter((s) => (ABILITIES as readonly string[]).includes(s));
@@ -311,13 +320,13 @@ export function statblockBook(
       label: 'Saving Throws',
       text: saves
         .map((s) => {
-          const b = bonusFuer(s, s, 1);
+          const b = bonusFuer(s, s, 1, folgt.saveProf);
           return `${capitalize(s)}${b === null ? '' : ` ${signedBook(b)}`}`;
         })
         .join(', '),
       ref: 'Proficiencies.saves',
       rolls: saves.flatMap((s) => {
-        const b = bonusFuer(s, s, 1);
+        const b = bonusFuer(s, s, 1, folgt.saveProf);
         return b === null ? [] : [{ name: capitalize(s), expr: d20Expr(b), label: `${s.toUpperCase()} save` }];
       }),
     });
@@ -383,7 +392,11 @@ export function statblockBook(
       ref: 'Statblock.cr',
     });
   }
+  if (folgt.level !== null) details.push({ label: 'Level', text: String(folgt.level) });
   if (prof !== null) details.push({ label: 'Proficiency Bonus', text: signedBook(prof), ref: 'Statblock.prof' });
+  else if (folgt.profFrom) {
+    details.push({ label: 'Proficiency Bonus', text: folgt.profFrom === 'leader' ? 'equals its leader’s' : 'by its level', ref: 'Statblock.pbFrom' });
+  }
 
   return {
     byline,
@@ -519,6 +532,12 @@ export interface BookEntry {
   scopes: VarScopes;
   /** Der Teil ist nicht da — es gibt ihn nicht, oder nicht für diesen Betrachter. */
   missing?: boolean;
+  /** Ab welcher Stufe ein Gefolgsmann die Aktion hat (`composedOf.props.level`, T-497). */
+  level?: number;
+  /** Die Stufe ist bekannt und noch nicht erreicht: die Aktion steht da, gilt aber noch nicht. */
+  locked?: boolean;
+  /** Die Runde einer Villain Action (`Action.round`, T-497). */
+  round?: number;
 }
 
 export interface BookSection {
@@ -537,7 +556,13 @@ export interface SectionContext {
   nameOf: (id: string) => string | undefined;
   /** Die Platzhalter der Kampagne. */
   campaign?: Record<string, string> | undefined;
+  /** Wem der Besitzer folgt (T-497): Stufe und Übungsbonus des Anführers. */
+  follower?: FollowerContext | null;
 }
+
+const ABILITY_NAMES: Record<string, string> = {
+  str: 'Strength', dex: 'Dexterity', con: 'Constitution', int: 'Intelligence', wis: 'Wisdom', cha: 'Charisma',
+};
 
 /* Merkmale, die im Buch einen eigenen Abschnitt haben. Alles andere ist ein
    Merkmal ohne Überschrift oben im Block. */
@@ -554,6 +579,11 @@ export function creatureRef(binding: string | undefined, name: string): string {
   if (!b) return `the ${name.toLowerCase()}`;
   if (/^the\s/i.test(b) || /^[A-Z]/.test(b)) return b;
   return `the ${b}`;
+}
+
+/** Schreibt das Buch an dieser Stelle „+ PB" (`Statblock.addPb`)? */
+function sbHat(sb: Card, key: string): boolean {
+  return Array.isArray(sb['addPb']) && (sb['addPb'] as unknown[]).includes(key);
 }
 
 /** „Action" → „Actions", „Legendary Action" → „Legendary Actions". */
@@ -580,9 +610,14 @@ export function bookSections(
 ): BookSection[] {
   const mode = unitsFor(registry, primaryInterface(owner));
   const fuss = (wert: string) => convertText(registry, wert, mode, 'ft');
+  const sbCard = (owner.components?.['Statblock'] ?? {}) as Card;
+  /* Ein Gefolgsmann rechnet mit dem Übungsbonus seines Anführers oder
+     seiner Stufe (T-497); `primaryAbility` steht in derselben Karte. */
+  const folgt = followerNumbers(sbCard, ctx.follower);
   const stats: Card = {
     ...((owner.components?.['Abilities'] ?? {}) as Card),
-    ...((owner.components?.['Statblock'] ?? {}) as Card),
+    ...sbCard,
+    prof: folgt.prof,
   };
   const sections = new Map<string, BookSection>();
   sections.set('trait', { key: 'trait', title: '', entries: [] });
@@ -621,14 +656,30 @@ export function bookSections(
     if (!sections.has(key)) sections.set(key, { key, title, entries: [] });
 
     let name = entityName(teil);
+    const runde = num(action?.['round']);
+    if (runde !== null) name = `Round ${runde}: ${name}`;
+    const ab = num(props['level']);
+    if (ab !== null) name += ` (level ${ab})`;
     const recharge = str(action?.['recharge']);
     if (recharge) name += ` (Recharge ${recharge})`;
     const uses = str(action?.['uses']);
     if (uses && !name.includes(uses)) name += ` (${uses})`;
 
     const body = bodyOf(teil);
-    const zahlen = attackNumbers(action, stats, props);
+    /* „+ PB" am Schaden (T-497): kommt zum Schadensbonus der Kante oder Aktion. */
+    const mitPb =
+      folgt.damageAdd && action
+        ? { ...props, damageBonus: (num(props['damageBonus']) ?? num(action['damageBonus']) ?? 0) + folgt.damageAdd }
+        : props;
+    const zahlen = attackNumbers(action, stats, mitPb);
     let text = body;
+    /* Ein Rettungswurf mit SG (T-497): das Buch nennt den SG, ein Begleiter legt „+ PB" darauf. */
+    const sg = num(props['saveDc']) ?? num(action?.['saveDc']);
+    if (sg !== null) {
+      const wurf = ABILITY_NAMES[str(action?.['saveAbility'])] ?? '';
+      const dc = sbHat(sbCard, 'dc') ? (folgt.dcAdd === null ? `${sg} + PB` : String(sg + folgt.dcAdd)) : String(sg);
+      text = [`DC ${dc}${wurf ? ` ${wurf}` : ''} saving throw.`, text].filter(Boolean).join(' ');
+    }
     if (zahlen) {
       const zeile = attackLine(zahlen, fuss);
       /* „…slashing damage, or 8 (1d10 + 3) if used with two hands." — der
@@ -645,7 +696,18 @@ export function bookSections(
       name,
       text,
       scopes: { reference: vars, entity: eigen, campaign: ctx.campaign },
+      ...(ab !== null ? { level: ab } : {}),
+      ...(!unlockedAt(ab, folgt.level) ? { locked: true } : {}),
+      ...(runde !== null ? { round: runde } : {}),
     });
+  }
+
+  /* Villain Actions stehen in ihrer Runde, Stufenaktionen nach Stufe (T-497);
+     was keine nennt, behält die Reihenfolge der Kanten. */
+  for (const s of sections.values()) {
+    if (!s.entries.some((e) => e.round !== undefined || e.level !== undefined)) continue;
+    const reihe = new Map(s.entries.map((e, i) => [e, i]));
+    s.entries.sort((a, b) => (a.round ?? 0) - (b.round ?? 0) || (a.level ?? 0) - (b.level ?? 0) || reihe.get(a)! - reihe.get(b)!);
   }
 
   /* Der Satz über den Legendären Aktionen steht im Buch vor ihnen; die Zahl
