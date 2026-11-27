@@ -30,7 +30,6 @@ import {
   knows,
   unitsFor,
   bundlesWith,
-  currentCampaign,
   entityName,
   infoApplies,
   informationsOf,
@@ -43,6 +42,7 @@ import {
   tableRole,
   type Entity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 

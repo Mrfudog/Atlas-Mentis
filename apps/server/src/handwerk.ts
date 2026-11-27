@@ -42,7 +42,6 @@ import {
   substitutionText,
   craftRulesOf,
   CRAFTING_RELATION,
-  currentCampaign,
   entityName,
   insideOf,
   knows,
@@ -89,6 +88,7 @@ import {
   type RollResult,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 import { stueckWerkstatt } from './stueck.js';

@@ -16,7 +16,6 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   arriveUnstowed,
-  currentCampaign,
   entityName,
   isInstance,
   newInstance,
@@ -27,6 +26,7 @@ import {
   type Entity,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
 import { reservierteSperre } from './reservierung.js';

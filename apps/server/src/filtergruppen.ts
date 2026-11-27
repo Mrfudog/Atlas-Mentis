@@ -31,11 +31,11 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  currentCampaign,
   tableRole,
   type Entity,
   type Registry,
 } from "@nw/model";
+import { currentCampaign } from "./kampagnenwahl.js";
 import type { User } from "./auth.js";
 import type { ListFilterRow, Repository } from "./repo.js";
 

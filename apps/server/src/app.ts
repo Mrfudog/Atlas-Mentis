@@ -75,7 +75,6 @@ import {
   STATUS_COMPONENT,
   classParts,
   originParts,
-  currentCampaign,
   campaignVisibility,
   effectiveAudience,
   inStack,
@@ -155,6 +154,8 @@ import {
   partsIndex,
   overridersIndex,
   CAMPAIGN_SETTING,
+  CAMPAIGN_PREF,
+  LAYER_VIEW_PREF,
   craftCheck,
   shopWares,
   withVersionPrices,
@@ -181,6 +182,8 @@ import {
   missingText,
   duplicateText,
 } from '@nw/model';
+import { registerKontosicht } from './kontosicht.js';
+import { currentCampaign, kampagneFuer, kampagneJeAnfrage, kampagneSchluessel, kontoJetzt, ladeWahl, mitKonto, setzeKonto, wahlSchluessel } from './kampagnenwahl.js';
 import type { BulkChange, BulkPlan, BulkRequest, CopyMode, CraftCheck, CraftSource, Entity, Registry, ValidationIssue } from '@nw/model';
 import { seedRegistry, UNASSIGNED_LAYER_ROW } from '@nw/registry';
 import { RelationIdTaken, RevisionConflict } from './repo.js';
@@ -452,6 +455,9 @@ export function buildApp({
     beginn.set(request, process.hrtime.bigint());
     mitZeiten(done);
   });
+  /* Die Kampagne des Betrachters (REQ-408, T-496): je Anfrage ein
+     Zusammenhang, in den `ermittle` das Konto einträgt. */
+  kampagneJeAnfrage(app);
   /* **Der Server sagt, dass er startet** (T-086, REQ-246), statt eine
      Anfrage hängen zu lassen, bis der Bestand gelesen ist: 503 mit der
      Zahl der Artikel, und die Oberfläche fragt nach einer Sekunde wieder.
@@ -565,19 +571,34 @@ export function buildApp({
       const treffer = await repo.useToken(hashToken(roh));
       if (!treffer || treffer.user.disabledAt) return null;
       const { passwordHash: _hash, ...user } = treffer.user;
-      return { user: inKampagne(user, await laufendeKampagne()), token: treffer.token };
+      return { user: inKampagne(user, await laufendeKampagne(user)), token: treffer.token };
     }
     const token = request.cookies?.[COOKIE];
     if (!token) return null;
     const user = await repo.touchSession(hashToken(token), sessionExpiry().toISOString());
     if (!user || user.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = user;
-    return { user: inKampagne(rest, await laufendeKampagne()) };
+    return { user: inKampagne(rest, await laufendeKampagne(rest)) };
   }
   /** Die laufende Kampagne, für `inKampagne` (T-412): eine Anfrage fragt
-   *  in ihr, also sind „meine Figuren" die Figuren dieser Kampagne. */
-  async function laufendeKampagne(): Promise<string | null> {
+   *  in ihr, also sind „meine Figuren" die Figuren dieser Kampagne.
+   *  **Je Konto** (REQ-408, T-496): seine Wahl, wenn es sie wählen darf;
+   *  danach die Vorgabe, wenn es darin eine Rolle hat; sonst rechnet
+   *  `kampagneFuer` wie jede Route. Das Konto steht ab hier im
+   *  Zusammenhang der Anfrage (`setzeKonto`). */
+  async function laufendeKampagne(user: Pick<User, 'id' | 'isAdmin' | 'roles'>): Promise<string | null> {
+    const wahl = await ladeWahl(repo, user.id);
+    setzeKonto(user);
     const settings = (await repo.getRegistry()).settings ?? null;
+    if (wahl.campaign && (user.isAdmin || user.roles?.[wahl.campaign]) && (await repo.getEntity(wahl.campaign))?.interfaces?.[0] === CAMPAIGN_TYPE) {
+      return wahl.campaign;
+    }
+    const vorgabe = await vorgabeKampagne(settings);
+    if (!vorgabe || user.isAdmin || user.roles?.[vorgabe]) return vorgabe;
+    return kampagneFuer(await repo.entityMap(), settings, user)?.id ?? null;
+  }
+  /** Die Vorgabe der Installation (`settings.campaign`), ohne Konto. */
+  async function vorgabeKampagne(settings: Record<string, string> | null): Promise<string | null> {
     /* Der gewöhnliche Fall ohne den ganzen Bestand: die Einstellung nennt
        eine Kampagne, die es gibt. Sonst rechnet `currentCampaign` wie überall. */
     const gesetzt = settings?.[CAMPAIGN_SETTING];
@@ -585,7 +606,7 @@ export function buildApp({
     const stempel = `${await repo.version()}|${gesetzt ?? ''}`;
     if (ohneEinstellung?.stempel !== stempel) {
       const alle = await repo.entityMap();
-      ohneEinstellung = { stempel, id: currentCampaign(alle, settings)?.id ?? null };
+      ohneEinstellung = { stempel, id: kampagneFuer(alle, settings, null)?.id ?? null };
     }
     return ohneEinstellung.id;
   }
@@ -1364,6 +1385,8 @@ export function buildApp({
     if (url.startsWith('/api/me/prefs/')) return;
     /* … und seine gespeicherten Ebenenauswahlen (T-186); geladen wird über die Kampagnenroute. */
     if (url === '/api/me/layer-sets' || url.startsWith('/api/me/layer-sets/')) return;
+    /* … und in welcher Kampagne es ist und mit welcher Sicht (T-496); die Routen prüfen die Rolle. */
+    if (url === '/api/me/campaign' || url === '/api/me/layer-view') return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
     if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
@@ -1572,7 +1595,9 @@ export function buildApp({
      `currentCampaign` den ganzen Bestand ab, und das Sieb fragt je Aufruf. */
   const kampagneJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; kampagne: Entity | null }>();
   function kampagneIn(map: ReadonlyMap<string, Entity>, settings: Record<string, string> | null): Entity | null {
-    const key = settings?.[CAMPAIGN_SETTING] ?? '';
+    /* Je Konto (T-496): seine Wahl und Sicht gehören in den Schlüssel. */
+    const konto = kontoJetzt();
+    const key = `${settings?.[CAMPAIGN_SETTING] ?? ''}|${konto ? `${konto.id}:${wahlSchluessel(konto.id)}` : ''}`;
     const da = kampagneJe.get(map);
     if (da?.key === key) return da.kampagne;
     const kampagne = currentCampaign(map, settings);
@@ -1580,13 +1605,21 @@ export function buildApp({
     return kampagne;
   }
 
-  const stapelJe = new WeakMap<ReadonlyMap<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
+  const stapelJe = new WeakMap<ReadonlyMap<string, Entity>, Map<string, ReturnType<typeof playStack>>>();
   function stapelFuer(roh: ReadonlyMap<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
-    const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
-    const da = stapelJe.get(roh);
-    if (da?.key === key) return da.stapel;
+    /* Je Sicht ein Stapel (T-496): zwei Konten mit verschiedener Sicht
+       wechseln sich ab, darum hält er die letzten acht je Bestand. */
+    const key = `${kampagneSchluessel(kampagne)}|${registerStempel(registry)}`;
+    let je = stapelJe.get(roh);
+    if (!je) {
+      je = new Map();
+      stapelJe.set(roh, je);
+    }
+    const da = je.get(key);
+    if (da) return da;
     const stapel = playStack(roh, kampagne, registry);
-    stapelJe.set(roh, { key, stapel });
+    je.set(key, stapel);
+    if (je.size > 8) je.delete(je.keys().next().value as string);
     return stapel;
   }
 
@@ -1965,7 +1998,10 @@ export function buildApp({
       !user || user.isAdmin
         ? '*'
         : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}|${[...(await ausgenommen(stand.map, registry))].sort().join(',')}|${(user.layerIds ?? []).join(',')}|${[...(await besessen())].sort().join(',')}`;
-    const key = `${stand.stempel}|${stapel}|${alleEbenen ? 'alle' : ''}|${registerStempel(registry)}|${wer}`;
+    /* Die Kampagne des Betrachters und seine Sicht (T-496) gehören in den
+       Schlüssel — auch für die Verwaltung, die sonst einen Index teilt. */
+    const sicht = kampagneSchluessel(currentCampaign(stand.map, registry.settings ?? null));
+    const key = `${stand.stempel}|${stapel}|${alleEbenen ? 'alle' : ''}|${registerStempel(registry)}|${sicht}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
       indizes.delete(key);
@@ -2316,7 +2352,7 @@ export function buildApp({
     const stand = await roh();
     const registry = await repo.getRegistry();
     const kampagne = kampagneIn(stand.map, registry.settings ?? null);
-    const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
+    const key = `${kampagneSchluessel(kampagne)}|${registerStempel(registry)}`;
     if (formenJe?.stand !== stand || formenJe.key !== key) {
       const idx = indexShapeDefaults(campaignShapeDefaults(stand.map, kampagne));
       formenJe = { stand, key, idx: hasShapeDefaults(idx) ? idx : null };
@@ -2921,6 +2957,9 @@ export function buildApp({
     if (key === WRITE_LAYER_PREF) return reply.code(400).send({ error: 'Die Schreibebene setzt PUT /api/layers/write oder PUT /api/layers/:layer/default.' });
     /* Gespeicherte Ebenenauswahlen prüft ihre eigene Route (T-186). */
     if (key === LAYER_SETS_PREF) return reply.code(400).send({ error: 'Ebenenauswahlen speichert POST /api/me/layer-sets.' });
+    /* Kampagne und Sicht prüfen ihre eigenen Routen (T-496). */
+    if (key === CAMPAIGN_PREF) return reply.code(400).send({ error: 'Die Kampagne wählt PUT /api/me/campaign.' });
+    if (key === LAYER_VIEW_PREF) return reply.code(400).send({ error: 'Die Sicht setzt PUT /api/me/layer-view.' });
     const value = request.body?.value ?? null;
     if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
     await repo.putPref(user.id, key, value);
@@ -3498,6 +3537,8 @@ export function buildApp({
   registerFiltergruppen(app, { repo, viewerOf, roh });
   registerSpaltenwahl(app, { repo, viewerOf, roh });
   registerEbenensets(app, { repo, viewerOf });
+  /* Kampagne und Globalfilter je Konto (REQ-408, REQ-412, T-496). */
+  registerKontosicht(app, { repo, viewerOf, bestand: async () => (await roh()).map, sieve: (request, entities, b) => sieve(request, entities, b) });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, {
     repo,
@@ -3633,7 +3674,11 @@ export function buildApp({
     repo,
     feed: live,
     viewerOf,
-    sieveFuer: (user, entities, bestand) => sieveFuer(user, entities, bestand),
+    /* Je Empfänger in dessen Kampagne und Sicht (T-496), nicht in der des Schreibenden. */
+    sieveFuer: async (user, entities, bestand) => {
+      if (user) await ladeWahl(repo, user.id);
+      return mitKonto(user, () => sieveFuer(user, entities, bestand));
+    },
     roh,
     ...(liveHeartbeatMs ? { heartbeatMs: liveHeartbeatMs } : {}),
   });

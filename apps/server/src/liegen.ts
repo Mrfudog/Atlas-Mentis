@@ -14,7 +14,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  currentCampaign,
   leaveBehind,
   partiesOf,
   pickUp,
@@ -26,6 +25,7 @@ import {
   type LeftPiece,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import { inventareDerFigur } from './laden.js';
 import { RevisionConflict, type Repository } from './repo.js';

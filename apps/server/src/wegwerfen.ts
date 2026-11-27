@@ -24,7 +24,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   buybackFor,
-  currentCampaign,
   discardPiece,
   entityName,
   primaryInterface,
@@ -39,6 +38,7 @@ import {
   type Relation,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import { inventareDerFigur } from './laden.js';
 import { RevisionConflict, type Repository } from './repo.js';

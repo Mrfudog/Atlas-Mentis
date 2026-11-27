@@ -21,7 +21,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  currentCampaign,
   diceModifier,
   entityName,
   naturalD20,
@@ -34,6 +33,7 @@ import {
   type RollEntry,
   type RollPayload,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';
 import type { Repository, StoredEvent } from './repo.js';

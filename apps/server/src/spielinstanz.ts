@@ -20,7 +20,6 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  currentCampaign,
   entityName,
   isMap,
   isPlayInstance,
@@ -35,6 +34,7 @@ import {
   type PlayedRow,
   type validateEntity,
 } from "@nw/model";
+import { currentCampaign } from "./kampagnenwahl.js";
 import type { User } from "./auth.js";
 import type { Repository } from "./repo.js";
 import { leitetTisch } from "./wuerfe.js";

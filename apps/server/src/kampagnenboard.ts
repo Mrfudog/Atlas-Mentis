@@ -23,7 +23,6 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
   campaignBoardOf,
-  currentCampaign,
   entityName,
   newCampaignBoard,
   PARTY_RELATION,
@@ -34,6 +33,7 @@ import {
   type Entity,
   type TableRole,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 

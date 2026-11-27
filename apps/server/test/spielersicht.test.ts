@@ -201,10 +201,16 @@ describe('the members list says where "View as" is offered', () => {
     };
     const wo = Object.fromEntries(m.members.map((x) => [x.name, x.viewAs]));
     expect(wo).toMatchObject({ Mira: false, Sela: true, Tom: true, Cora: true, Basil: false });
-    /* In einer Kampagne, die nicht läuft, gibt es die Sicht nicht. */
+    /* Seit T-496 (REQ-408) läuft für die Salzleitung ihre eigene Kampagne:
+       dort bietet die Liste die Sicht an, nie für sie selbst. */
     const salz = (await als('Salzleitung', 'GET', '/api/campaigns/camp_salz/members')).json() as {
       members: { name: string; viewAs: boolean }[];
     };
-    expect(salz.members.every((x) => !x.viewAs)).toBe(true);
+    expect(Object.fromEntries(salz.members.map((x) => [x.name, x.viewAs]))).toMatchObject({ Salzleitung: false, Fremd: true });
+    /* In einer Kampagne, die für sie nicht läuft, gibt es die Sicht nicht. */
+    const nebel = (await als('Basil', 'GET', '/api/campaigns/camp_salz/members')).json() as {
+      members: { name: string; viewAs: boolean }[];
+    };
+    expect(nebel.members.every((x) => !x.viewAs)).toBe(true);
   });
 });

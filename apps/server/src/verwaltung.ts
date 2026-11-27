@@ -31,6 +31,8 @@ import {
   activatingIndex,
   groupMembers,
   isGroupLayer,
+  isDefaultView,
+  mayChooseCampaign,
   layersInGroup,
   groupingOf,
   publisherInfo,
@@ -40,7 +42,6 @@ import {
   groupSwitched,
   GROUP_RELATION,
   campaignsOf,
-  currentCampaign,
   playStack,
   filterOf,
   withFilter,
@@ -76,6 +77,7 @@ import {
   preferencesOf,
   withPreference,
 } from '@nw/model';
+import { currentCampaign, kampagneFuer, ladeWahl } from './kampagnenwahl.js';
 import type { Repository, StoredUser } from './repo.js';
 import { sorgeSpielerEbene } from './spielerebene.js';
 import { figurenIn, mitFiguren } from './figurenzuteilung.js';
@@ -240,11 +242,28 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const user = await viewerOf(request);
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const da = await kampagnen();
-    const laufend = currentCampaign(da, (await repo.getRegistry()).settings ?? null);
-    const alleJetzt = laufend ? await bestandAls(await repo.version()) : new Map<string, Entity>();
+    const settings = (await repo.getRegistry()).settings ?? null;
+    /* Die Kampagne dieses Kontos, gelesen mit seiner Sicht (T-496) — über
+       den ganzen Bestand, denn die Sicht rechnet mit den Ebenen. */
+    const alleJetzt = da.size ? await bestandAls(await repo.version()) : new Map<string, Entity>();
+    const laufend = currentCampaign(alleJetzt, settings);
+    const roh = laufend ? (alleJetzt.get(laufend.id) ?? laufend) : null;
+    const wahl = await ladeWahl(repo, user.id);
+    const sicht = laufend ? wahl.views[laufend.id] : undefined;
+    const vorgabe = kampagneFuer(alleJetzt, settings, null)?.id ?? null;
     const ids = new Set<string>(user.isAdmin ? da.keys() : []);
     for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
     return {
+      /* **Zur Wahl** (REQ-408): jede Kampagne mit einer Rolle, für die
+         Verwaltung jede — die Kopfleiste wechselt darunter, nur für dieses Konto. */
+      choices: [...da.values()]
+        .filter((k) => mayChooseCampaign(user, k.id))
+        .map((k) => ({ id: k.id, name: entityName(k), role: user.roles?.[k.id] ?? null }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+      /** Die Vorgabe der Installation (`settings.campaign`). */
+      defaultCampaign: vorgabe,
+      /** Ob dieses Konto selbst gewählt hat. */
+      chosen: !!wahl.campaign && wahl.campaign === laufend?.id,
       campaigns: [...ids]
         .map((id) => ({
           id,
@@ -270,8 +289,12 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
             name: entityName(laufend),
             role: user.roles?.[laufend.id] ?? null,
             may: rechtAn(user, laufend.id),
-            /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst. */
+            /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst;
+               mit meiner Sicht (T-496), daneben die der Kampagne. */
             layers: resolvedStack(alleJetzt, laufend).filter((l) => !isGroupLayer(l)).length,
+            campaignLayers: roh ? resolvedStack(alleJetzt, roh).filter((l) => !isGroupLayer(l)).length : 0,
+            /* Welche Sicht gilt (REQ-412): die Kopfleiste sagt es immer. */
+            view: sicht && !isDefaultView(sicht) ? sicht.mode : null,
             /* Wie viele Vergleichsebenen dieser Betrachter sieht (T-213) —
                ohne eine gibt es den Schalter „Show comparison" nicht. */
             compare: siehtVergleich(user, laufend) ? compareLayers(alleJetzt, laufend).length : 0,
@@ -285,14 +308,15 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   });
 
   /**
-   * **Die laufende Kampagne wechseln** (T-143) — die Einstellung
-   * `campaign` im Register. Sie gilt für die ganze Installation (offen in
-   * CLAUDE.md: „die laufende Kampagne ist eine globale Einstellung"), also
-   * wechselt sie nur die Verwaltung; der Kampagnenmanager (T-141) übernimmt.
+   * **Die Vorgabe-Kampagne setzen** (T-143) — die Einstellung
+   * `campaign` im Register. Seit T-496 (REQ-408) wählt jedes Konto seine
+   * Kampagne selbst (`PUT /api/me/campaign`); die Einstellung gilt nur
+   * noch für Konten ohne Wahl und ohne Rolle in einer anderen. Darum
+   * setzt sie weiter nur die Verwaltung.
    */
   app.put<{ Body: { id?: unknown } }>('/api/campaigns/current', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isAdmin) return nein(reply, 403, 'Die laufende Kampagne wechselt die Verwaltung; sie gilt für alle.');
+    if (!user?.isAdmin) return nein(reply, 403, 'Die Vorgabe-Kampagne setzt die Verwaltung. Deine eigene wählst du im Globalfilter (PUT /api/me/campaign).');
     const id = request.body?.id;
     if (typeof id !== 'string' || !(await kampagnen()).has(id)) return nein(reply, 400, 'Diese Kampagne gibt es nicht als Artikel.');
     const registry = await repo.getRegistry();

@@ -74,7 +74,6 @@ import {
   PARTY_RELATION,
   participantIds,
   REACTION_EVENT,
-  currentCampaign,
   diceModifier,
   entityName,
   hitChance,
@@ -163,6 +162,7 @@ import {
   type TurnPlan,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { MapMarker } from '@nw/model';
 import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';

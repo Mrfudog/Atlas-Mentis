@@ -35,7 +35,6 @@ import {
   assetVersion,
   tokenLook,
   type TokenLook,
-  currentCampaign,
   carriedLights,
   darkvisionFor,
   passageRulesOf,
@@ -100,6 +99,7 @@ import {
   zoneRuleSummary,
   type ZoneRuleSummary,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { Repository } from './repo.js';
 import { darfZiehen, plaeneDerKarte, zieher } from './zugplan.js';
 

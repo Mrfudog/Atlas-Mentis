@@ -19,7 +19,6 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   arriveUnstowed,
   buyWare,
-  currentCampaign,
   entityName,
   insideOf,
   isInstance,
@@ -37,6 +36,7 @@ import {
   type TradeRefusal,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
 import { reservierteSperre } from './reservierung.js';

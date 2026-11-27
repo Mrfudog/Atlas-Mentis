@@ -21,7 +21,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   ENCHANTED_RELATION,
-  currentCampaign,
   enhancementRefusal,
   enhancementsByOf,
   entityName,
@@ -34,6 +33,7 @@ import {
   type Entity,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
 import { leitetTisch } from './wuerfe.js';

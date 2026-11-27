@@ -196,6 +196,28 @@ describe('live channel (T-116)', () => {
     expect(sela.ereignisse.some((x) => JSON.stringify(x).includes('p_geheim'))).toBe(false);
   });
 
+  it('sieves each device with its own layer view, not the writer’s (T-496, REQ-412)', async () => {
+    const { repo, app, keks, geraet, aendere, ruhe } = await aufbau();
+    /* Ein Buch im Stapel der Kampagne, mit einem Ort darin. */
+    await repo.putEntity({ ...ebene, id: 'ly_buch', name: 'Buch', components: { Identity: { name: 'Buch', id: 'layer-0002', aliases: [] }, Layer: { order: 1 } } });
+    await repo.putEntity({ ...runde, relations: [...(runde.relations ?? []), { id: 'a2', type: 'activates', to: 'ly_buch', props: { order: 1 } }] });
+    await repo.putEntity({ ...art('p_buch', 'Place', 'Die Bibliothek'), relations: [{ id: 'p_buch~l', type: 'inLayer', to: 'ly_buch', props: {} }] });
+    /* Mira schreibt im Buch (zugeteilt). */
+    await repo.grantLayer((await repo.findUserByName('mira'))!.id, 'ly_buch');
+    /* Sela nimmt das Buch für sich heraus (Campaign view). */
+    const eng = await app.inject({ method: 'PUT', url: '/api/me/layer-view', headers: { cookie: await keks('Sela') }, payload: { mode: 'campaign', off: ['ly_buch'] } });
+    expect(eng.statusCode, eng.body).toBe(200);
+    const mira = await geraet('Mira');
+    const sela = await geraet('Sela');
+    await aendere('Mira', 'p_buch', umbenannt('Die alte Bibliothek'));
+    await mira.warte((e) => e.some((x) => x.event === 'entity' && x.data['id'] === 'p_buch'));
+    await ruhe();
+    expect(sela.ereignisse.some((x) => JSON.stringify(x).includes('p_buch'))).toBe(false);
+    /* Was in ihrer Sicht liegt, kommt weiter an. */
+    await aendere('Mira', 'p_markt', umbenannt('Der Fischmarkt'));
+    await sela.warte((e) => e.some((x) => x.event === 'entity' && x.data['id'] === 'p_markt'));
+  });
+
   it('tells about a turn plan only who sees its map (T-198)', async () => {
     const { geraet, feed, ruhe } = await aufbau();
     const mira = await geraet('Mira');

@@ -30,7 +30,6 @@ import {
   articleVisible,
   BOARD_TYPE,
   campaignOfBoard,
-  currentCampaign,
   liveArticles,
   drawNext,
   entityName,
@@ -46,6 +45,7 @@ import {
   type Relation,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import { RevisionConflict, type Repository } from './repo.js';
 

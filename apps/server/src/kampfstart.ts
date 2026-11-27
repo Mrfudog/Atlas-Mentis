@@ -21,7 +21,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
-  currentCampaign,
   entityName,
   inParty,
   isMap,
@@ -37,6 +36,7 @@ import {
   type RollPayload,
   type validateEntity,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { User } from './auth.js';
 import type { ChangeFeed } from './live.js';
 import type { Repository } from './repo.js';

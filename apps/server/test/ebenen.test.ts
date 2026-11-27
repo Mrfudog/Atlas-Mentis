@@ -335,7 +335,7 @@ describe('the campaign page switches layers on', () => {
     expect(zeile(l, 'e5_book_phb')).toMatchObject({ alsoIn: ['Der Salzpfad'], canActivate: false });
   });
 
-  it('names the running campaign for everyone, and only the admin switches it (T-143)', async () => {
+  it('names the running campaign for everyone, and only the admin sets the default (T-143, T-496)', async () => {
     const { rufe } = await aufbau();
     expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', name: 'Aus Nebel wacht', role: 'player', may: null });
     expect((await rufe('Basil', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', may: 'manage' });
@@ -344,7 +344,10 @@ describe('the campaign page switches layers on', () => {
     expect((await rufe('Basil', 'PUT', '/api/campaigns/current', { id: 'camp_b' })).statusCode).toBe(403);
     expect((await rufe('Admin', 'PUT', '/api/campaigns/current', { id: 'r_frei' })).statusCode).toBe(400);
     expect((await rufe('Admin', 'PUT', '/api/campaigns/current', { id: 'camp_b' })).statusCode).toBe(200);
-    expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_b', name: 'Der Salzpfad', role: null });
+    /* Seit T-496 (REQ-408) ist das nur die Vorgabe: Sela spielt in Runde A
+       und bleibt dort; die Verwaltung ohne eigene Wahl folgt der Vorgabe. */
+    expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', role: 'player' });
+    expect((await rufe('Admin', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_b', name: 'Der Salzpfad', role: null });
     /* Was jetzt im Spiel ist, folgt: die Runde B bringt ihre Regel. */
     expect(namen((await rufe('Admin', 'GET', '/api/list?type=Rule')).json())).toContain('r_b');
   });

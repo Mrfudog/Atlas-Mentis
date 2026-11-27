@@ -26,7 +26,6 @@ import {
   LAYER_COMPONENT,
   LAYER_RELATION,
   GROUP_RELATION,
-  currentCampaign,
   entityName,
   isGroupLayer,
   publisherGroups,
@@ -38,6 +37,7 @@ import {
   type Entity,
   isLayer,
 } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import type { Repository } from './repo.js';
 import { foldName, type User } from './auth.js';
 import { spielerEbenen } from './spielerebene.js';

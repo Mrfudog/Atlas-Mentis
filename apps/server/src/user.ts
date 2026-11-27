@@ -38,7 +38,8 @@ import {
   type TokenScope,
 } from './auth.js';
 import type { Repository } from './repo.js';
-import { currentCampaign, isTableRole } from '@nw/model';
+import { isTableRole } from '@nw/model';
+import { currentCampaign } from './kampagnenwahl.js';
 import { figurDazu } from './figurenzuteilung.js';
 
 /** Die Figuren mit ihrer Kampagne (T-412): `e_1 (in camp)`, ohne bekannte Kampagne nur die Id. */
