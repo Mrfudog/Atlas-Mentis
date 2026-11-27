@@ -89,6 +89,16 @@ describe('the campaign in the bar (T-143)', () => {
     expect(gefragt.filter((u) => u === '/api/campaigns')).toHaveLength(2);
   });
 
+  it('always says which view applies (REQ-412)', async () => {
+    antwort = { ...(antwort as object), current: { id: 'camp', name: 'Aus Nebel wacht', role: 'player', may: null, layers: 2, campaignLayers: 4, view: 'mine' } };
+    await TestBed.inject(Stapel).laden();
+    const f = TestBed.createComponent(StapelKnopf);
+    await f.whenStable();
+    const marke = (f.nativeElement as HTMLElement).querySelector('.knopf .sicht');
+    expect(marke?.textContent).toBe('My view');
+    expect((f.nativeElement as HTMLElement).querySelector('.knopf')?.textContent).toContain('2 layers');
+  });
+
   it('shows nothing without a running campaign', async () => {
     antwort = { campaigns: [], canCreate: false, isAdmin: false, current: null };
     await TestBed.inject(Stapel).laden();

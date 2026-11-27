@@ -6,14 +6,19 @@ import type { SchreibOption, Schreibstand } from '../kern/api';
 import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
 import { SichtKnopf } from './sicht-knopf';
+import { Globalfilter } from './globalfilter';
 
 /**
  * **Kampagne und Ebenen in der Kopfleiste** (T-143, Wunsch der Leitung
  * 14.10.): die laufende Kampagne steht immer da, mit der Zahl der Ebenen
  * im Spiel, unter der Marke — am Telefon gekürzt. Ein Klick öffnet das Popup:
  *
- * - die Kampagne, für die Verwaltung mit Wechsel (sie gilt für alle,
- *   darum nur dort; `PUT /api/campaigns/current`);
+ * - die Kampagne, mit Wechsel für jedes Konto mit mehr als einer
+ *   (REQ-408, T-496, `PUT /api/me/campaign`) — er gilt nur für dieses
+ *   Konto; die Verwaltung setzt dazu die Vorgabe der Installation
+ *   (`PUT /api/campaigns/current`);
+ * - der **Globalfilter** (REQ-412, `nw-globalfilter`): Campaign view und
+ *   My view, nur für dieses Konto;
  * - die Ebenen wie auf der Kampagnenseite (`nw-kampagnen-ebenen`, kompakt):
  *   auf- und abschalten, Gruppen, Teilaufschaltung nach Bereich und Art,
  *   und **Vergleich** — auch einer ganzen Gruppe wie „2024 rules";
@@ -33,7 +38,7 @@ import { SichtKnopf } from './sicht-knopf';
  */
 @Component({
   selector: 'nw-stapel',
-  imports: [RouterLink, NgTemplateOutlet, KampagnenEbenenListe, SichtKnopf],
+  imports: [RouterLink, NgTemplateOutlet, KampagnenEbenenListe, SichtKnopf, Globalfilter],
   template: `
     @if (stapel.laufend(); as k) {
       @if (!vollbild()) {
@@ -48,6 +53,10 @@ import { SichtKnopf } from './sicht-knopf';
           <span class="zeichen" aria-hidden="true">◫</span>
           <span class="kname">{{ k.name }}</span>
           <span class="kzahl">{{ zahlText() }}</span>
+          @if (k.view) {
+            <!-- Welche Sicht gilt (REQ-412): immer zu sehen. -->
+            <span class="sicht" [class.meine]="k.view === 'mine'">{{ k.view === 'mine' ? 'My view' : 'filtered' }}</span>
+          }
           @if (stapel.schreib(); as w) {
             <span class="schreib" [class.weg]="!!w.dropped" [class.ausserhalb]="schreibAusserhalb()">
               <span class="lang">Writes to</span><span class="kurz" aria-hidden="true">✎</span>
@@ -66,23 +75,11 @@ import { SichtKnopf } from './sicht-knopf';
             <h2 id="stapel-titel">Campaign &amp; layers</h2>
             <button type="button" class="zu" aria-label="Close" (click)="zu()">×</button>
           </header>
-          @if (stapel.verwaltung() && stapel.kampagnen().length > 1) {
-            <label class="wahl">
-              <span>Running campaign</span>
-              <select [value]="k.id" [disabled]="wechselt()" (change)="wechseln($any($event.target).value)">
-                @for (c of stapel.kampagnen(); track c.id) {
-                  <option [value]="c.id" [selected]="c.id === k.id">{{ c.name }}</option>
-                }
-              </select>
-            </label>
-            <p class="fuss">The running campaign is the same for everyone on this installation.</p>
-          } @else {
-            <p class="wer">
-              <b>{{ k.name }}</b>
-              @if (k.role) {
-                <span class="rolle">{{ k.role }}</span>
-              }
-            </p>
+          <!-- Kampagnenwahl und Globalfilter (REQ-408, REQ-412): nur für mich, erst beim Öffnen geladen. -->
+          @defer (on immediate) {
+            <nw-globalfilter (geaendert)="stapel.geaendert()" />
+          } @placeholder {
+            <p class="fuss">Loading…</p>
           }
           <!-- „View as" am Telefon: hier statt in der Leiste (T-269). -->
           <nw-sicht [liste]="true" />
@@ -150,19 +147,25 @@ import { SichtKnopf } from './sicht-knopf';
           }
           @if (k.may) {
             <!-- Erst beim Öffnen geladen (T-188): die Liste ist gross, und die Kopfleiste steht im Grundpaket mit seinem Budget. -->
-            @defer {
-              <nw-kampagnen-ebenen [kampagne]="k.id" [kompakt]="true" (geschaltet)="stapel.geaendert()" />
-            } @placeholder {
-              <p class="fuss">Loading the layers…</p>
-            }
+            <details class="stapelwahl">
+              <summary>Campaign stack — changes it for everyone at the table</summary>
+              @defer (on viewport) {
+                <nw-kampagnen-ebenen [kampagne]="k.id" [kompakt]="true" (geschaltet)="stapel.geaendert()" />
+              } @placeholder {
+                <p class="fuss">Loading the layers…</p>
+              }
+            </details>
           } @else {
-            <p class="fuss">{{ zahlText() }} in play. The GM chooses which.</p>
+            <p class="fuss">The campaign has {{ kampagnenZahl() }} in play. The GM chooses which.</p>
           }
           @if (k.may) {
             <p class="weiter"><a routerLink="/campaign" (click)="zu()">Members and more on the campaign page</a></p>
           }
         </section>
       }
+    } @else if (stapel.geladen()) {
+      <!-- Ohne Kampagne sagt es die Kopfleiste (REQ-408). -->
+      <span class="keine" title="You are in no campaign yet. A GM adds you on the campaign page.">No campaign yet</span>
     }
   `,
   styles: `
@@ -206,6 +209,27 @@ import { SichtKnopf } from './sicht-knopf';
       flex: none;
       color: var(--dim);
       font-size: 0.85em;
+    }
+    .sicht {
+      flex: none;
+      padding: 0 0.3rem;
+      border: 1px solid var(--accent);
+      border-radius: 0.2rem;
+      font-size: 0.75em;
+    }
+    .sicht.meine {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+    .keine {
+      color: var(--dim);
+      font-size: 0.8rem;
+    }
+    .stapelwahl summary {
+      cursor: pointer;
+      min-height: 32px;
+      font-weight: 700;
+      color: var(--heading);
     }
     /* Eine eigene Zeile unter der Kampagne — sonst teilen sich beide Namen die schmale Spalte. */
     .schreib {
@@ -330,27 +354,6 @@ import { SichtKnopf } from './sicht-knopf';
       color: var(--dim);
       cursor: pointer;
     }
-    .wahl {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .wahl select {
-      flex: 1 1 12rem;
-      min-height: 40px;
-    }
-    .wer {
-      margin: 0;
-    }
-    .rolle {
-      margin-left: 0.4rem;
-      padding: 0 0.4rem;
-      border: 1px solid var(--accent);
-      border-radius: 10px;
-      color: var(--accent);
-      font-size: 0.75rem;
-    }
     .fuss {
       margin: 0;
       font-size: 0.82rem;
@@ -386,7 +389,6 @@ import { SichtKnopf } from './sicht-knopf';
 export class StapelKnopf {
   protected readonly stapel = inject(Stapel);
   protected readonly offen = signal(false);
-  protected readonly wechselt = signal(false);
   protected readonly fehler = signal<string | null>(null);
   protected readonly vollbild = signal(typeof document !== 'undefined' && !!document.fullscreenElement);
   private readonly popup = viewChild<ElementRef<HTMLElement>>('popup');
@@ -394,6 +396,12 @@ export class StapelKnopf {
 
   protected readonly zahlText = computed(() => {
     const n = this.stapel.laufend()?.layers ?? 0;
+    return `${n} ${n === 1 ? 'layer' : 'layers'}`;
+  });
+  /** Wie viele Ebenen die Kampagne selbst hat — ohne meine Sicht. */
+  protected readonly kampagnenZahl = computed(() => {
+    const k = this.stapel.laufend();
+    const n = k?.campaignLayers ?? k?.layers ?? 0;
     return `${n} ${n === 1 ? 'layer' : 'layers'}`;
   });
 
@@ -498,16 +506,4 @@ export class StapelKnopf {
     this.vorher = null;
   }
 
-  protected async wechseln(id: string): Promise<void> {
-    if (id === this.stapel.laufend()?.id) return;
-    this.wechselt.set(true);
-    try {
-      await this.stapel.wechseln(id);
-      this.fehler.set(null);
-    } catch (error) {
-      this.fehler.set(error instanceof Error ? error.message : String(error));
-    } finally {
-      this.wechselt.set(false);
-    }
-  }
 }

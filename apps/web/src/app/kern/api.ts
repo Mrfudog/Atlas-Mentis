@@ -1194,12 +1194,48 @@ export interface LaufendeKampagne {
   compare?: number;
   /** Die Ebene der Kampagne (T-251) — Listen nennen nur andere. */
   campaignLayer?: { id: string; name: string } | null;
+  /** Wie viele Ebenen die Kampagne selbst im Spiel hat — ohne meine Sicht (T-496). */
+  campaignLayers?: number;
+  /** Welche Sicht gilt (REQ-412): `null` der Stapel der Kampagne, `campaign` enger gefiltert, `mine` eigene Ebenen. */
+  view?: 'campaign' | 'mine' | null;
+}
+/** Eine Kampagne zur Wahl im Globalfilter (REQ-408): eine mit Rolle, für die Verwaltung jede. */
+export interface KampagnenWahl {
+  id: string;
+  name: string;
+  role: TableRole | null;
 }
 export interface Kampagnen {
   campaigns: KampagneKurz[];
   canCreate: boolean;
   isAdmin: boolean;
   current?: LaufendeKampagne | null;
+  /** Die Kampagnen, unter denen dieses Konto wählt (T-496). */
+  choices?: KampagnenWahl[];
+  /** Die Vorgabe der Installation. */
+  defaultCampaign?: string | null;
+  /** Ob dieses Konto selbst gewählt hat. */
+  chosen?: boolean;
+}
+/** Eine Ebene im Globalfilter (`GET /api/me/layer-view`, T-496). */
+export interface SichtEbene {
+  id: string;
+  name: string;
+  group: boolean;
+  inCampaign: boolean;
+}
+/** Meine Sicht in der laufenden Kampagne (REQ-412). */
+export interface Ebenensicht {
+  campaign: { id: string; name: string } | null;
+  mode: 'campaign' | 'mine';
+  off: string[];
+  layers: string[];
+  /** Die Ebene der Kampagne: in jeder Sicht an. */
+  fixed: string | null;
+  /** Der Stapel der Kampagne, von oben nach unten. */
+  stack: SichtEbene[];
+  /** Was My view zur Wahl hat. */
+  available: SichtEbene[];
 }
 export interface Mitglied {
   id: string;
@@ -2495,6 +2531,21 @@ export class Api {
   /** Die laufende Kampagne wechseln — nur die Verwaltung (T-143). */
   setCurrentCampaign(id: string): Promise<{ ok: true; current: string }> {
     return this.call('/api/campaigns/current', { method: 'PUT', body: JSON.stringify({ id }) });
+  }
+  /** Meine Kampagne wählen (REQ-408) — nur für dieses Konto; `null`: die Vorgabe. */
+  chooseCampaign(id: string | null): Promise<{ ok: true; campaign: string | null }> {
+    return this.call('/api/me/campaign', { method: 'PUT', body: JSON.stringify({ id }) });
+  }
+  /** Meine Sicht im Globalfilter (REQ-412). */
+  layerView(): Promise<Ebenensicht> {
+    return this.call('/api/me/layer-view');
+  }
+  setLayerView(view: { mode: 'campaign' | 'mine'; off?: string[]; layers?: string[] }): Promise<Ebenensicht> {
+    return this.call('/api/me/layer-view', { method: 'PUT', body: JSON.stringify(view) });
+  }
+  /** „Reset“: der Stapel der Kampagne gilt wieder. */
+  resetLayerView(): Promise<Ebenensicht> {
+    return this.call('/api/me/layer-view', { method: 'DELETE' });
   }
   /** Eine ganze Gruppe an oder aus, mit allem darin (T-185). */
   switchGroup(campaign: string, group: string, on: boolean): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {

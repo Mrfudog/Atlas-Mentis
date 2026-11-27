@@ -21,10 +21,15 @@
  * Dazu die **Schreibebene** (T-161, `schreib`): wohin dieses Konto in der
  * laufenden Kampagne anlegt. Sie hängt am Stapel — fällt die gewählte
  * heraus, gilt die Vorgabe —, also wird sie mit ihm neu geholt.
+ *
+ * **Je Konto** (REQ-408, REQ-412, T-496): jedes Konto wählt seine Kampagne
+ * selbst (`waehlen`, `PUT /api/me/campaign`) und filtert im Globalfilter
+ * für sich (Campaign view, My view). Beides ändert nur, was dieses Konto
+ * sieht; `wahl` sind die Kampagnen zur Wahl.
  */
 
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Api, type KampagneKurz, type LaufendeKampagne, type Schreibstand } from './api';
+import { Api, type KampagneKurz, type KampagnenWahl, type LaufendeKampagne, type Schreibstand } from './api';
 import { Live } from './live';
 
 const VERGLEICH_KEY = 'nw.compareInLists';
@@ -41,6 +46,10 @@ export class Stapel {
   private readonly api = inject(Api);
   private readonly _laufend = signal<LaufendeKampagne | null>(null);
   private readonly _kampagnen = signal<KampagneKurz[]>([]);
+  private readonly _wahl = signal<KampagnenWahl[]>([]);
+  private readonly _vorgabe = signal<string | null>(null);
+  private readonly _gewaehlt = signal(false);
+  private readonly _geladen = signal(false);
   private readonly _verwaltung = signal(false);
   private readonly _stand = signal(0);
   private readonly _schreib = signal<Schreibstand | null>(null);
@@ -55,6 +64,14 @@ export class Stapel {
   readonly kampagnen = this._kampagnen.asReadonly();
   /** Die Verwaltung wechselt die laufende Kampagne; sie gilt für alle. */
   readonly verwaltung = this._verwaltung.asReadonly();
+  /** Die Kampagnen, unter denen dieses Konto wählt (REQ-408). */
+  readonly wahl = this._wahl.asReadonly();
+  /** Die Vorgabe der Installation — gilt, solange ich nicht wähle. */
+  readonly vorgabe = this._vorgabe.asReadonly();
+  /** Ob ich selbst gewählt habe. */
+  readonly gewaehlt = this._gewaehlt.asReadonly();
+  /** Ob die Kampagnen schon einmal geladen sind — ohne Antwort sagt die Kopfleiste nichts. */
+  readonly geladen = this._geladen.asReadonly();
   readonly stand = this._stand.asReadonly();
   /** Ob Listen die Artikel der Vergleichsebenen mitzeigen (T-213) — nur, wo es welche gibt. */
   readonly vergleich = computed(() => this._vergleich() && (this._laufend()?.compare ?? 0) > 0);
@@ -87,6 +104,10 @@ export class Stapel {
       this._laufend.set(k.current ?? null);
       this._kampagnen.set(k.campaigns.filter((c) => c.exists));
       this._verwaltung.set(k.isAdmin);
+      this._wahl.set(k.choices ?? []);
+      this._vorgabe.set(k.defaultCampaign ?? null);
+      this._gewaehlt.set(!!k.chosen);
+      this._geladen.set(true);
       this._schreib.set(w);
     } catch {
       /* Ohne Antwort bleibt die Anzeige weg — sie ist eine Auskunft, kein Zugang. */
@@ -126,8 +147,15 @@ export class Stapel {
     void this.laden();
   }
 
+  /** Die Vorgabe der Installation setzen — nur die Verwaltung (T-143). */
   async wechseln(id: string): Promise<void> {
     await this.api.setCurrentCampaign(id);
+    this.geaendert();
+  }
+
+  /** Meine Kampagne wählen (REQ-408): nur für mich; `null` heisst die Vorgabe. */
+  async waehlen(id: string | null): Promise<void> {
+    await this.api.chooseCampaign(id);
     this.geaendert();
   }
 
@@ -135,6 +163,8 @@ export class Stapel {
     this.lauf += 1;
     this._laufend.set(null);
     this._kampagnen.set([]);
+    this._wahl.set([]);
+    this._geladen.set(false);
     this._schreib.set(null);
   }
 }

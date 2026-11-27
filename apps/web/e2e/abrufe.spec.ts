@@ -151,3 +151,29 @@ test('the help for a page loads only when asked for (T-348)', async ({ leitung }
   await expect(leitung.getByRole('dialog', { name: 'Help for this page' })).toBeVisible();
   await expect(leitung.getByRole('dialog', { name: 'Help for this page' }).locator('p').first()).not.toBeEmpty();
 });
+
+/**
+ * **Der Globalfilter fragt erst beim Öffnen** (T-496, REQ-412): die
+ * Kopfleiste kommt mit `GET /api/campaigns` aus (darin steht, welche
+ * Sicht gilt); das Popup holt einmal `GET /api/me/layer-view`, nicht je
+ * Ebene und nicht doppelt.
+ */
+test('the global filter asks once, and only when the popup opens (T-496)', async ({ spielerin }) => {
+  const laden = await abrufe(spielerin, '/compendium');
+  expect(laden.filter((x) => x === 'GET /api/campaigns'), laden.join('\n')).toHaveLength(1);
+  expect(laden.filter((x) => x.startsWith('GET /api/me/layer-view')), laden.join('\n')).toHaveLength(0);
+
+  const gesehen: string[] = [];
+  const mit = (r: Request) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith('/api/') && u.pathname !== '/api/live') gesehen.push(`${r.method()} ${u.pathname}${u.search}`);
+  };
+  spielerin.on('request', mit);
+  await spielerin.locator('nw-stapel button.knopf').click();
+  await expect(spielerin.getByRole('tab', { name: 'Campaign view' })).toBeVisible();
+  await spielerin.waitForLoadState('networkidle');
+  spielerin.off('request', mit);
+  expect(gesehen.filter((x) => x === 'GET /api/me/layer-view'), gesehen.join('\n')).toHaveLength(1);
+  expect(doppelt(gesehen), gesehen.join('\n')).toEqual([]);
+  expect(gesehen.length, gesehen.join('\n')).toBeLessThanOrEqual(3);
+});

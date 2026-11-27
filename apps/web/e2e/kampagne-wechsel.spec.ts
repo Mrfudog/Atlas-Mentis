@@ -27,11 +27,11 @@ test('a new campaign is offered in the bar at once, and the campaign page opens 
     await expect(p.locator('.uebersicht h2')).toHaveText(name);
     /* Sie läuft nicht — das sagt die Seite, mit dem Knopf für die Verwaltung. */
     await expect(p.locator('.nicht-laufend')).toContainText(lauf.campaign.name);
-    await expect(p.getByRole('button', { name: 'Make this the running campaign' })).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Switch to this campaign' })).toBeVisible();
 
     /* Im Popup der Kopfleiste steht sie schon zur Wahl. */
     await p.locator('nw-stapel .knopf').click();
-    await expect(p.getByLabel('Running campaign').locator('option', { hasText: name })).toHaveCount(1);
+    await expect(p.getByLabel('Campaign', { exact: true }).locator('option', { hasText: name })).toHaveCount(1);
   } finally {
     if (neu) for (const id of [`bd_${neu}`, `pt_${neu}`, neu, `ly_${neu}`]) await p.request.delete(`/api/entities/${id}`);
     await ctx.close();

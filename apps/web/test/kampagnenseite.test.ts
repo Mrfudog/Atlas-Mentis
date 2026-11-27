@@ -30,9 +30,9 @@ function antwort(url: string, method: string, body?: string): unknown {
     kampagnen = [...kampagnen, neu];
     return { id: neu.id, name };
   }
-  if (url === '/api/campaigns/current' && method === 'PUT') {
+  if (url === '/api/me/campaign' && method === 'PUT') {
     laufend = (JSON.parse(body ?? '{}') as { id: string }).id;
-    return { ok: true, current: laufend };
+    return { ok: true, campaign: laufend };
   }
   if (url === '/api/campaigns') {
     const k = kampagnen.find((c) => c.id === laufend)!;
@@ -98,14 +98,14 @@ describe('the campaign page follows the running campaign (T-411)', () => {
     await s.laden();
     const f = TestBed.createComponent(Verwaltung);
     await vi.waitFor(() => expect(mitgliederVon()).toContain('c-zeta'));
-    await s.wechseln('c-alpha');
+    await s.waehlen('c-alpha');
     await vi.waitFor(() => expect(s.laufend()?.id).toBe('c-alpha'));
     await vi.waitFor(() => expect(mitgliederVon()).toContain('c-alpha'));
     await f.whenStable();
     expect((f.nativeElement as HTMLElement).querySelector('.uebersicht h2')?.textContent).toBe('Alpha');
   });
 
-  it('puts a new campaign into the bar at once, and offers to make the shown one the running one', async () => {
+  it('puts a new campaign into the bar at once, and offers to switch to the shown one (T-496)', async () => {
     const s = TestBed.inject(Stapel);
     await s.laden();
     const f = TestBed.createComponent(Verwaltung);
@@ -125,12 +125,13 @@ describe('the campaign page follows the running campaign (T-411)', () => {
     await vi.waitFor(() => expect(mitgliederVon()).toContain('c-nebel'));
     await f.whenStable();
 
-    /* Die neue läuft noch nicht — die Verwaltung kann sie hier laufen lassen. */
+    /* Die neue läuft noch nicht — hier wechselt man hinein, nur für sich (T-496). */
     const knopf = el.querySelector<HTMLButtonElement>('.laufend-machen');
-    expect(knopf?.textContent).toContain('Make this the running campaign');
+    expect(knopf?.textContent).toContain('Switch to this campaign');
     knopf!.click();
     await vi.waitFor(() => expect(s.laufend()?.id).toBe('c-nebel'));
-    expect(gefragt.some((g) => g.url === '/api/campaigns/current' && g.method === 'PUT')).toBe(true);
+    expect(gefragt.some((g) => g.url === '/api/me/campaign' && g.method === 'PUT')).toBe(true);
+    expect(gefragt.some((g) => g.url === '/api/campaigns/current')).toBe(false);
     await f.whenStable();
     expect(el.querySelector('.laufend-machen')).toBeNull();
   });

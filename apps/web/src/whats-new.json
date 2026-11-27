@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-campaign-per-account",
+      "date": "2026-11-27",
+      "title": "Your own campaign and global filter",
+      "text": "Pick your campaign in the popup under the mark — only you switch, everyone else stays where they are. The global filter there has two tabs: Campaign view hides layers of the campaign just for you, My view lets you read any layer you may see, also outside the campaign. Reset brings back the campaign’s stack; the header shows which view applies.",
+      "area": "Campaign",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-11-05-creature-forms",
       "date": "2026-11-05",
       "title": "Roleplay and Fight forms for creatures",

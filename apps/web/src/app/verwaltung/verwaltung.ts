@@ -382,11 +382,12 @@ const ROLLEN: { role: TableRole; text: string }[] = [
             <!-- T-411: die Seite kann eine andere Kampagne zeigen als die
                  Kopfleiste; dann sagt sie es, und die Verwaltung schaltet
                  hier um wie dort. -->
+            <!-- Seit T-496 (REQ-408) wählt jedes Konto selbst: der Knopf wechselt nur für mich. -->
             <p class="nicht-laufend">
-              Not the running campaign — the bar shows <b>{{ stapel.laufend()?.name }}</b>.
-              @if (kampagnen()?.isAdmin && m.campaign.exists) {
+              Not your running campaign — the bar shows <b>{{ stapel.laufend()?.name }}</b>.
+              @if (m.campaign.exists && kannWechseln(m.campaign.id)) {
                 <button type="button" class="laufend-machen" [disabled]="laeuft()" (click)="laufendMachen(m.campaign.id)">
-                  Make this the running campaign
+                  Switch to this campaign
                 </button>
               }
             </p>
@@ -615,9 +616,14 @@ export class Verwaltung {
     });
   }
 
-  /** Die gezeigte Kampagne laufen lassen — dasselbe wie die Wahl in der Kopfleiste (T-143, T-411). */
+  /** Ob ich in diese Kampagne wechseln darf: mit einer Rolle darin, die Verwaltung in jede (REQ-408). */
+  protected kannWechseln(id: string): boolean {
+    return !!this.kampagnen()?.isAdmin || this.stapel.wahl().some((c) => c.id === id);
+  }
+
+  /** In die gezeigte Kampagne wechseln — dasselbe wie die Wahl im Globalfilter, nur für mich (T-411, T-496). */
   protected async laufendMachen(id: string): Promise<void> {
-    await this.tun(() => this.stapel.wechseln(id));
+    await this.tun(() => this.stapel.waehlen(id));
   }
 
   /** Die Sicht dieses Mitglieds einnehmen (REQ-241) und dorthin, wo man

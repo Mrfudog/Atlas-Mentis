@@ -8,7 +8,7 @@
         {
           "heading": "Finding your way",
           "text": [
-            "The header leads to the areas World, Story, Rules and Play, and to the Compendium, which lists everything at once. Under the mark at the left you see the running campaign and how many layers it plays with.",
+            "The header leads to the areas World, Story, Rules and Play, and to the Compendium, which lists everything at once. Under the mark at the left you see your running campaign and how many layers you see in it — “filtered” or “My view” when your global filter differs from the campaign.",
             "Search with Ctrl+K or /. Each hit opens its quick view with +; Enter opens the article."
           ]
         },
@@ -100,6 +100,16 @@
             "At any image field (an article, a character, a map, a board) tap Upload image; on Images, Upload images.",
             "Your phone shows its file menu (on Android it may open Files or Recent first): choose Browse or Files, then OneDrive (or another storage) and the image. Photos and the camera are in the same menu; Take photo goes straight to the camera.",
             "Any file can be chosen; it is checked afterwards. JPEG, PNG, WebP, GIF and AVIF are taken; animated GIF and WebP are kept as they are. A HEIC photo from Files is refused with a note — save it as JPEG or PNG first."
+          ]
+        },
+        {
+          "heading": "Choosing your campaign and layers",
+          "text": [
+            "Click the campaign under the mark at the left. If you play in more than one campaign, pick it under Campaign: the stack, your role, where you write, the start page and the live updates follow. Only you switch — everyone else stays in their campaign. With exactly one campaign you are in it without choosing.",
+            "Below, the global filter has two tabs and is only for you. Campaign view lists the layers the campaign plays with; untick one to hide it from your lists, search and boards. The campaign itself does not change.",
+            "My view lets you pick any layer you may read, also ones the campaign does not turn on — they are marked “not in campaign”. What a layer holds is still filtered as always: you see what you would see there. Saved selections load into My view, and Save my view keeps the current one under a name.",
+            "The campaign layer stays on in both views. Reset brings back the campaign’s own stack. The header always says which view applies.",
+            "To change the stack for everyone at the table, the GM uses Campaign stack in the same popup, or the campaign page."
           ]
         },
         {
